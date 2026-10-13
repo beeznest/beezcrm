@@ -22,6 +22,11 @@ declare(strict_types=1);
  * \brief   Parameters, stages, qualification, loss reasons and sources.
  */
 
+// The on/off switches call this page by ajax: that call must not rotate the CSRF token the open form still holds.
+if (isset($_POST['action']) && $_POST['action'] === 'toggle') {
+	define('NOTOKENRENEWAL', '1');
+}
+
 require_once __DIR__.'/../lib/crm_bootstrap.inc.php';
 
 /**
@@ -61,8 +66,43 @@ $constants = array(
 	'CRM_ARCHIVE_COPY' => 'CrmArchiveCopy',
 );
 
+// Settings that are only on or off are switches, saved at once. They are stored as 1 or 0, never deleted: a deleted
+// constant would be recreated with its default the next time the module is enabled.
+$switches = array('CRM_SEQUENCES_ON', 'CRM_DRY_RUN', 'CRM_REMINDERS_ON', 'CRM_REMINDER_DRY_RUN', 'CRM_REQUIRE_NEXT_STEP', 'CRM_AI_EMAIL_ASSIST');
+$switchName = '';
+$switchValue = 0;
+if ($action === 'toggle') {
+	$switchName = GETPOST('name', 'aZ09');
+	$switchValue = GETPOSTINT('value') ? 1 : 0;
+} elseif (preg_match('/^(set|del)_([A-Z0-9_]+)$/', $action, $switchMatch)) {
+	$switchName = $switchMatch[2];
+	$switchValue = ($switchMatch[1] === 'set') ? 1 : 0;
+}
+if ($switchName !== '') {
+	$tokenOk = hash_equals(currentToken(), GETPOST('token', 'alphanohtml'));
+	$allowed = in_array($switchName, $switches, true) && $tokenOk;
+	if ($allowed) {
+		dolibarr_set_const($db, $switchName, (string) $switchValue, 'chaine', 0, '', (int) $conf->entity);
+	}
+	if ($action === 'toggle') {
+		top_httphead('application/json');
+		print json_encode(array('ok' => $allowed, 'name' => $switchName, 'value' => $allowed ? $switchValue : null));
+		exit;
+	}
+	if ($allowed) {
+		setEventMessages($langs->trans('RecordSaved'), null);
+	} else {
+		setEventMessages($langs->trans('Error'), null, 'errors');
+	}
+	header('Location: '.$_SERVER['PHP_SELF'].'?tab=parameters');
+	exit;
+}
+
 if ($action === 'setconst') {
 	foreach ($constants as $name => $label) {
+		if (in_array($name, $switches, true)) {
+			continue;
+		}
 		dolibarr_set_const($db, $name, GETPOST($name, $name === 'CRM_AI_EMAIL_PROMPT' ? 'nohtml' : 'alphanohtml'), 'chaine', 0, '', (int) $conf->entity);
 	}
 	setEventMessages($langs->trans('RecordSaved'), null);
@@ -185,9 +225,19 @@ if ($tab === 'parameters') {
 			print '<br><span class="opacitymedium">'.$langs->trans('CrmAiEmailPromptHelp').'</span></td></tr>';
 			continue;
 		}
-		if ($name === 'CRM_AI_EMAIL_ASSIST') {
-			print '<td><input class="minwidth300" name="'.$name.'" value="'.dol_escape_htmltag((string) getDolGlobalInt($name, 0)).'">';
-			print '<br><span class="opacitymedium">'.$langs->trans('CrmAiEmailAssistHelp').'</span></td></tr>';
+		if (in_array($name, $switches, true)) {
+			$on = getDolGlobalInt($name, 0) !== 0;
+			// A confirmation before the two switches that have a consequence outside the module.
+			$confirmOn = ($name === 'CRM_AI_EMAIL_ASSIST') ? $langs->trans('CrmConfirmAiOn') : '';
+			$confirmOff = ($name === 'CRM_DRY_RUN') ? $langs->trans('CrmConfirmDryRunOff') : (($name === 'CRM_REMINDER_DRY_RUN') ? $langs->trans('CrmConfirmReminderDryRunOff') : '');
+			print '<td><a class="crm-toggle'.($on ? ' crm-toggle-on' : '').'" data-name="'.$name.'" data-value="'.($on ? 0 : 1).'"';
+			print ' data-confirm-on="'.dol_escape_htmltag($confirmOn).'" data-confirm-off="'.dol_escape_htmltag($confirmOff).'"';
+			print ' href="'.$_SERVER['PHP_SELF'].'?tab=parameters&action='.($on ? 'del_' : 'set_').$name.'&token='.newToken().'">';
+			print '<span class="crm-sw-on">'.img_picto($langs->trans('Enabled'), 'switch_on').'</span><span class="crm-sw-off">'.img_picto($langs->trans('Disabled'), 'switch_off').'</span></a>';
+			if ($name === 'CRM_AI_EMAIL_ASSIST') {
+				print '<br><span class="opacitymedium">'.$langs->trans('CrmAiEmailAssistHelp').'</span>';
+			}
+			print '</td></tr>';
 			continue;
 		}
 		if ($name === 'CRM_ARCHIVE_COPY') {
@@ -203,6 +253,32 @@ if ($tab === 'parameters') {
 	print '</form>';
 	print '<p class="opacitymedium">'.$langs->trans('CrmRunNote').'</p>';
 	print '<p class="opacitymedium">'.$langs->trans('CrmArchiveHelp').'</p>';
+	print '<p class="opacitymedium">'.$langs->trans('CrmSwitchHelp').'</p>';
+	$switchJs = <<<'JS'
+(function () {
+	var token = __TOKEN__;
+	var url = __URL__;
+	document.addEventListener("click", function (event) {
+		var link = event.target.closest("a.crm-toggle");
+		if (!link) { return; }
+		event.preventDefault();
+		var next = link.getAttribute("data-value") === "1" ? 1 : 0;
+		var message = link.getAttribute(next === 1 ? "data-confirm-on" : "data-confirm-off");
+		if (message && !window.confirm(message)) { return; }
+		var body = new URLSearchParams({ token: token, action: "toggle", name: link.getAttribute("data-name"), value: String(next) });
+		fetch(url, { method: "POST", body: body, credentials: "same-origin" })
+			.then(function (r) { return r.json(); })
+			.then(function (d) {
+				if (!d.ok) { throw new Error("refused"); }
+				link.classList.toggle("crm-toggle-on", next === 1);
+				link.setAttribute("data-value", next === 1 ? "0" : "1");
+				link.setAttribute("href", link.getAttribute("href").replace(/action=(set|del)_/, "action=" + (next === 1 ? "del_" : "set_")));
+			})
+			.catch(function () { window.location.reload(); });
+	});
+}());
+JS;
+	print '<script nonce="'.dol_escape_htmltag(getNonce()).'">'.str_replace(array('__TOKEN__', '__URL__'), array(json_encode(newToken()), json_encode($_SERVER['PHP_SELF'])), $switchJs).'</script>';
 }
 
 if ($tab === 'stages') {

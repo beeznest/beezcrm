@@ -263,3 +263,7 @@ CrmTabPlain=Plain text
 CrmTabPlainAlt=Plain-text version (automatic)
 CrmPlainAlternativeNote=Made from the formatted message when it is sent: edit the formatted tab. A link address is not repeated here, so write the address in the text when it matters.
 CrmConfirmToText=Switch to plain text? The formatting is lost.
+CrmConfirmDryRunOff=Switch dry-run off? From now on the sequence job sends real e-mails to customers (in "Send automatically" mode).
+CrmConfirmReminderDryRunOff=Switch the reminder dry-run off? From now on the daily digest is really e-mailed to deal owners.
+CrmConfirmAiOn=Switch the AI assistant on? The text of deals and e-mail exchanges will be sent to the AI service set up in the AI module.
+CrmSwitchHelp=The on/off switches are saved as soon as you click them; the other fields are saved with the Save button.

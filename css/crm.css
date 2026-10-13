@@ -176,3 +176,8 @@
 	left: -10000px;
 	width: 90%;
 }
+
+/* On/off switches of the setup screen: both pictos are in the link, the state class shows one of them. */
+.crm-toggle .crm-sw-on { display: none; }
+.crm-toggle-on .crm-sw-on { display: inline; }
+.crm-toggle-on .crm-sw-off { display: none; }

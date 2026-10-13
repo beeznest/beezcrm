@@ -263,3 +263,7 @@ CrmTabPlain=Texte brut
 CrmTabPlainAlt=Version texte brut (automatique)
 CrmPlainAlternativeNote=Tirée du message mis en forme au moment de l'envoi : modifiez l'onglet mis en forme. L'adresse d'un lien n'y est pas répétée, écrivez donc l'adresse dans le texte quand elle compte.
 CrmConfirmToText=Passer en texte brut ? La mise en forme sera perdue.
+CrmConfirmDryRunOff=Désactiver la simulation ? À partir de maintenant la tâche des séquences envoie de vrais e-mails aux clients (en mode « Envoi automatique »).
+CrmConfirmReminderDryRunOff=Désactiver la simulation des rappels ? À partir de maintenant le récapitulatif quotidien est réellement envoyé par e-mail aux propriétaires d'affaires.
+CrmConfirmAiOn=Activer l'assistant IA ? Le texte des affaires et des échanges d'e-mails sera envoyé au service IA configuré dans le module IA.
+CrmSwitchHelp=Les interrupteurs on/off sont enregistrés dès que vous cliquez ; les autres champs s'enregistrent avec le bouton Enregistrer.
