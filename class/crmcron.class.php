@@ -146,7 +146,7 @@ class CrmCron
 		$sequence = new Sequence($this->db);
 		$stats = $sequence->runDue($user, $max);
 		$dry = getDolGlobalInt('CRM_DRY_RUN') ? ' dry-run' : '';
-		$this->output = 'Sequences'.$dry.': '.$stats['steps'].' steps, '.$stats['emails'].' e-mails, '.$stats['errors'].' errors.';
+		$this->output = 'Sequences'.$dry.': '.$stats['steps'].' steps, '.$stats['emails'].' e-mails, '.$stats['drafts'].' drafts, '.$stats['errors'].' errors.';
 		if ($sequence->error !== '') {
 			$this->error = $sequence->error;
 		}

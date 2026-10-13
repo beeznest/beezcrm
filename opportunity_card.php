@@ -211,7 +211,7 @@ if ($action === 'create' || $action === 'edit') {
 	print '<tr><td>'.$langs->trans('CrmPipeline').'</td><td><select name="pipelineid" required>';
 	foreach ($pipelines as $pipeline) {
 		$selected = ((int) $object->fk_pipeline === (int) $pipeline->id) ? ' selected' : '';
-		print '<option value="'.((int) $pipeline->id).'"'.$selected.'>'.dol_escape_htmltag($pipeline->label).'</option>';
+		print '<option value="'.((int) $pipeline->id).'"'.$selected.'>'.dol_escape_htmltag(crmDictLabel((string) $pipeline->label)).'</option>';
 	}
 	print '</select></td></tr>';
 	print '<tr><td>'.$langs->trans('CrmAccount').'</td><td>';
@@ -256,7 +256,7 @@ if ($creating && $user->hasRight('societe', 'creer')) {
 	print '<tr><td>'.$langs->trans('CrmSource').'</td><td><select name="sourceid"><option value="0"></option>';
 	foreach ($sources as $source) {
 		$selected = ((int) $object->fk_source === (int) $source->rowid) ? ' selected' : '';
-		print '<option value="'.((int) $source->rowid).'"'.$selected.'>'.dol_escape_htmltag((string) $source->label).'</option>';
+		print '<option value="'.((int) $source->rowid).'"'.$selected.'>'.dol_escape_htmltag(crmDictLabel((string) $source->label)).'</option>';
 	}
 	print '</select></td></tr>';
 	print '<tr><td>'.$langs->trans('CrmOwner').'</td><td>';
@@ -271,7 +271,7 @@ if ($creating && $user->hasRight('societe', 'creer')) {
 		print '<input type="hidden" name="userid" value="'.((int) $user->id).'">';
 	}
 	print '</td></tr>';
-	print '<tr><td>'.$langs->trans('CrmDescription').'</td><td><textarea name="description" class="quatrevingtpercent" rows="4">'.dol_escape_htmltag((string) $object->description).'</textarea></td></tr>';
+	print '<tr><td>'.$langs->trans('CrmDescription').'</td><td><textarea name="description" class="quatrevingtpercent" rows="4">'.dol_escape_htmltag((string) $object->description, 0, 1).'</textarea></td></tr>';
 	print '</table>';
 	print '<div class="center"><input type="submit" class="button" value="'.$langs->trans('Save').'"></div>';
 	print '</form>';
@@ -305,14 +305,14 @@ foreach ($stages as $stage) {
 $pipelineLabel = '';
 foreach ($pipelines as $pipeline) {
 	if ((int) $pipeline->id === (int) $object->fk_pipeline) {
-		$pipelineLabel = (string) $pipeline->label;
+		$pipelineLabel = crmDictLabel((string) $pipeline->label);
 		break;
 	}
 }
 $sourceLabel = '';
 foreach ($sources as $source) {
 	if ((int) $source->rowid === (int) $object->fk_source) {
-		$sourceLabel = (string) $source->label;
+		$sourceLabel = crmDictLabel((string) $source->label);
 		break;
 	}
 }
@@ -389,7 +389,7 @@ print '</div>';
 print '<div class="clearboth"></div>';
 if (trim((string) $object->description) !== '') {
 	print '<table class="border centpercent tableforfield">';
-	print '<tr><td class="titlefield">'.$langs->trans('CrmDescription').'</td><td>'.dol_nl2br(dol_escape_htmltag((string) $object->description)).'</td></tr>';
+	print '<tr><td class="titlefield">'.$langs->trans('CrmDescription').'</td><td>'.dol_nl2br(dol_escape_htmltag((string) $object->description, 0, 1)).'</td></tr>';
 	print '</table>';
 }
 
@@ -409,7 +409,7 @@ if ($user->hasRight('crm', 'write')) {
 	print '<span id="crm-loss-reason"'.($lostSelected ? '' : ' style="display:none"').'>';
 	print $langs->trans('CrmLossReason').' <select name="lossreasonid" id="crm-lossreason"'.($lostSelected ? '' : ' disabled').'><option value="0"></option>';
 	foreach ($reasons as $reason) {
-		print '<option value="'.((int) $reason->rowid).'">'.dol_escape_htmltag((string) $reason->label).'</option>';
+		print '<option value="'.((int) $reason->rowid).'">'.dol_escape_htmltag(crmDictLabel((string) $reason->label)).'</option>';
 	}
 	print '</select></span> ';
 	print '<script nonce="'.dol_escape_htmltag(getNonce()).'">';
@@ -444,7 +444,7 @@ print '<div class="crm-section">';
 print '<div class="crm-section-head"><span>'.$langs->trans('CrmQualification').'</span>';
 print '<span class="crm-score-row"><span class="crm-scorebar"><span style="width:'.$scoreWidth.'%"></span></span> '.$scoreWidth.'</span></div>';
 if (count($qual->missing($items)) > 0) {
-	print '<p class="opacitymedium crm-qual-missing">'.$langs->trans('CrmMissing').': '.dol_escape_htmltag(implode(', ', $qual->missing($items))).'</p>';
+	print '<p class="opacitymedium crm-qual-missing">'.$langs->trans('CrmMissing').': '.dol_escape_htmltag(implode(', ', array_map('crmDictLabel', $qual->missing($items)))).'</p>';
 }
 if ($user->hasRight('crm', 'write')) {
 	print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'">';
@@ -455,7 +455,7 @@ if ($user->hasRight('crm', 'write')) {
 print '<div class="crm-qual-grid">';
 foreach ($items as $item) {
 	$checked = !empty($item['answer']) ? ' checked' : '';
-	print '<label><input type="checkbox" name="qual_'.((int) $item['id']).'" value="1"'.$checked.'> '.dol_escape_htmltag($item['label']);
+	print '<label><input type="checkbox" name="qual_'.((int) $item['id']).'" value="1"'.$checked.'> '.dol_escape_htmltag(crmDictLabel((string) $item['label']));
 	print ' <span class="crm-qual-points">'.((int) $item['points']).'</span></label>';
 }
 print '</div>';
@@ -491,13 +491,20 @@ if (count($events) === 0) {
 foreach ($events as $event) {
 	print '<tr class="oddeven">';
 	print '<td>'.dol_print_date($db->jdate($event->datep), 'dayhour').'</td>';
-	if (in_array((string) $event->event_code, array('AC_EMAIL', 'AC_EMAIL_IN'), true) && $user->hasRight('agenda', 'myactions', 'read')) {
+	$isDraftEmail = CrmActivity::isPlannedEmail((string) $event->event_code, (int) $event->percent);
+	$composeUrl = dol_buildpath('/crm/email_compose.php', 1).'?id='.(int) $event->rowid;
+	if ($isDraftEmail) {
+		print '<td><a href="'.$composeUrl.'">'.dol_escape_htmltag((string) $event->label).'</a></td>';
+	} elseif (in_array((string) $event->event_code, array('AC_EMAIL', 'AC_EMAIL_IN'), true) && $user->hasRight('agenda', 'myactions', 'read')) {
 		print '<td><a href="'.DOL_URL_ROOT.'/comm/action/card.php?id='.((int) $event->rowid).'">'.dol_escape_htmltag((string) $event->label).'</a></td>';
 	} else {
 		print '<td>'.dol_escape_htmltag((string) $event->label).'</td>';
 	}
 	print '<td>'.dol_escape_htmltag((string) $event->type_label).'</td>';
 	print '<td>'.((int) $event->percent >= 100 ? $langs->trans('CrmDone') : (int) $event->percent.'%').'</td><td>';
+	if ($isDraftEmail) {
+		print '<a href="'.$composeUrl.'">'.$langs->trans('CrmWriteSend').'</a> ';
+	}
 	if ($user->hasRight('crm', 'activity') && (int) $event->percent < 100) {
 		print '<a href="'.$_SERVER['PHP_SELF'].'?id='.$id.'&action=complete&eventid='.(int) $event->rowid.'&token='.newToken().'">'.$langs->trans('CrmComplete').'</a>';
 	}

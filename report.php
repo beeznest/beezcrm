@@ -63,7 +63,7 @@ print $langs->trans('CrmFrom').' '.$form->selectDate($from, 'datefrom', 0, 0, 0)
 print $langs->trans('CrmTo').' '.$form->selectDate($to - 86400, 'dateto', 0, 0, 0).' ';
 print '<select name="pipelineid">';
 foreach ($pipelines as $pipeline) {
-	print '<option value="'.((int) $pipeline->id).'"'.($pipeline->id === $pipelineId ? ' selected' : '').'>'.dol_escape_htmltag($pipeline->label).'</option>';
+	print '<option value="'.((int) $pipeline->id).'"'.($pipeline->id === $pipelineId ? ' selected' : '').'>'.dol_escape_htmltag(crmDictLabel((string) $pipeline->label)).'</option>';
 }
 print '</select> ';
 print '<input type="submit" class="button" value="'.$langs->trans('CrmFilter').'">';
@@ -97,7 +97,7 @@ print '<h2>'.$langs->trans('CrmLossReasons').'</h2>';
 print '<table class="noborder centpercent"><tr class="liste_titre"><td>'.$langs->trans('CrmLossReason').'</td><td class="right">'.$langs->trans('CrmCount').'</td><td class="right">'.$langs->trans('CrmAmount').'</td></tr>';
 foreach ($reasons as $reason) {
 	$label = $reason['label'] !== '' ? $reason['label'] : $langs->trans('CrmNone');
-	print '<tr class="oddeven"><td>'.dol_escape_htmltag($label).'</td><td class="right">'.(int) $reason['nb'].'</td><td class="right">'.price($reason['amount']).'</td></tr>';
+	print '<tr class="oddeven"><td>'.dol_escape_htmltag(crmDictLabel($label)).'</td><td class="right">'.(int) $reason['nb'].'</td><td class="right">'.price($reason['amount']).'</td></tr>';
 }
 print '</table>';
 
@@ -106,7 +106,7 @@ $printDim = function (string $title, array $rows) use ($langs): void {
 	print '<table class="noborder centpercent"><tr class="liste_titre"><td>'.$langs->trans('CrmLabel').'</td><td class="right">'.$langs->trans('CrmNbOpen').'</td><td class="right">'.$langs->trans('CrmAmountOpen').'</td><td class="right">'.$langs->trans('CrmWeighted').'</td><td class="right">'.$langs->trans('CrmNbWon').'</td><td class="right">'.$langs->trans('CrmNbLost').'</td></tr>';
 	foreach ($rows as $row) {
 		$label = $row['label'] !== '' ? $row['label'] : $langs->trans('CrmNone');
-		print '<tr class="oddeven"><td>'.dol_escape_htmltag($label).'</td><td class="right">'.(int) $row['nb_open'].'</td>';
+		print '<tr class="oddeven"><td>'.dol_escape_htmltag(crmDictLabel($label)).'</td><td class="right">'.(int) $row['nb_open'].'</td>';
 		print '<td class="right">'.price($row['amount_open']).'</td><td class="right">'.price($row['weighted']).'</td>';
 		print '<td class="right">'.(int) $row['nb_won'].'</td><td class="right">'.(int) $row['nb_lost'].'</td></tr>';
 	}

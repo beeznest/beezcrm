@@ -140,4 +140,35 @@ class ActionsCrm extends CommonHookActions
 		}
 		return 0;
 	}
+
+	/**
+	 * Add the CRM opportunities to the entries of the general search box. The search box lists core modules by
+	 * itself; an external module has to add its own entry through this hook.
+	 *
+	 * @param array<string,mixed> $parameters Hook parameters: search_boxvalue, arrayresult
+	 * @param object              $object     Not used
+	 * @param string              $action     Not used
+	 * @param HookManager         $hookmanager Hook manager
+	 * @return int 0 to append to the core entries
+	 */
+	public function addSearchEntry($parameters, &$object, &$action, $hookmanager)
+	{
+		global $langs, $user;
+		if (!isModEnabled('crm') || !is_object($user) || !($user->hasRight('crm', 'read') || $user->hasRight('crm', 'readall'))) {
+			return 0;
+		}
+		$langs->load('crm@crm');
+		$search = (string) ($parameters['search_boxvalue'] ?? '');
+		$url = dol_buildpath('/crm/opportunity_list.php', 1).'?status=all'.($search !== '' ? '&search_all='.urlencode($search) : '');
+		$label = $langs->trans('CrmSearchInto', $search);
+		$this->results = array('searchintocrmopportunity' => array(
+			'position' => getDolGlobalInt('SEARCHFORM_POSITION_CRM', 42),
+			'shortcut' => 'O',
+			'img' => 'fa-handshake',
+			'label' => $label,
+			'text' => img_picto('', 'fa-handshake', 'class="pictofixedwidth"').' '.$label,
+			'url' => $url,
+		));
+		return 0;
+	}
 }

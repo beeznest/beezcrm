@@ -43,7 +43,7 @@ The module does not copy customers, contacts, proposals, or events into private 
 
 The expected amount stays on the deal. Linking a proposal shows its total beside that amount and does not overwrite it. One deal often has several proposals; a single `fk_propal` column hides that.
 
-Agenda events use the existing types `AC_TEL`, `AC_RDV`, and `AC_OTH`. The module does not insert rows into `llx_c_actioncomm`. A logged e-mail uses `AC_EMAIL` only when that type is already active, otherwise `AC_OTH`. Creating an event goes through `ActionComm`. The third party and the contact are set on the event, so it shows on the account and in the calendar, including CalDAV.
+Agenda events use the existing types `AC_TEL`, `AC_RDV`, and `AC_OTH`. The module does not insert rows into `llx_c_actioncomm`. An e-mail uses `AC_EMAIL` (sent) or `AC_EMAIL_IN` (received) whether or not the type is active, as core does when it logs a message sent from a proposal or an invoice: `ActionComm` looks the type up by code, and the active flag only hides it from the manual pick-lists. It falls back to `AC_OTH` only if the type row is missing. Call and meeting still need an active type. Creating an event goes through `ActionComm`. The third party and the contact are set on the event, so it shows on the account and in the calendar, including CalDAV.
 
 Disabling CRM does not delete those events. They are real history. The link back to the deal stops resolving while the module is off, and works again when it is turned back on.
 
@@ -122,7 +122,8 @@ One message per owner per day. It lists overdue next steps, deals with no next s
 
 A sequence is an explicit cadence on a deal, not a blast to every prospect. Steps are `email`, `call`, or `task`, delayed D+n from enrolment.
 
-- E-mail goes to `fk_socpeople` on the deal. No address: log `error` and do not spin. The company address is not a fallback.
+- **E-mail steps have two modes** (`CRM_SEQUENCE_EMAIL_MODE`). `draft` (default, and the behaviour for any value other than `send`): the step creates a planned e-mail event on the deal, owned by the deal owner, with the subject as label (deal reference appended in square brackets) and the suggested text as note, and the journal row is `draft`. Nothing is sent, dry-run does not apply, and drafts do not count toward `CRM_MAX_EMAILS_PER_RUN`. See "E-mail drafts". `send`: the cron sends as described below.
+- In send mode, e-mail goes to `fk_socpeople` on the deal. No address: log `error` and do not spin. The company address is not a fallback.
 - Placeholders `__DEAL__`, `__REF__`, `__AMOUNT__`, `__CONTACT__`, `__CUSTOMER__`. An unknown token is left as written.
 - `call` and `task` create an agenda event for the owner. They do not send mail.
 - A real send uses `CMailFile` and then logs an agenda event.
@@ -130,15 +131,30 @@ A sequence is an explicit cadence on a deal, not a blast to every prospect. Step
 - `CRM_DRY_RUN` defaults to on even after sequences are enabled. Simulated rows advance the enrolment so the cadence can be checked. The sequence screen shows that banner.
 - Sender is `CRM_MAIL_FROM`, or the company sender when that constant is empty.
 
+## E-mail drafts
+
+A draft is the planned agenda event itself (`AC_EMAIL`, `percent` < 100): label = subject, note = suggested text. It counts as a next step, shows on the deal card, in Activities and in the home "Overdue" list once due, each with a "Write / send" link to `email_compose.php`. A planned e-mail created by hand with the "E-mail" kind of the next-step form is the same object, with an empty text. The page lets the salesperson edit the To, subject and text, then:
+
+- **Save draft**: keeps the edits (`CrmEmailDraft::save`).
+- **Send from here**: confirmation, then `crmSendMail()` with the deal tracking id and the archive copy; the draft is replaced by a done `AC_EMAIL` event holding the full text and the Message-ID.
+- **Open in my mail client** / **Copy text**: a `mailto:` link built in the browser from the current fields, with the archive address as Cc or Bcc, or the text on the clipboard. The salesperson keeps the subject, which carries the deal reference, and keeps the archive address in copy.
+- **E-mail sent manually**: confirmation, then the draft is replaced by a done `AC_EMAIL` event with no Message-ID, which marks "sent, waiting for the importer".
+- **Discard**: deletes the draft.
+
+Replacing means "create the done event, then delete the draft": `ActionComm::update` does not write the e-mail columns, so the module never updates them in place and never writes them by SQL.
+
+When the collector later reads the copy, `CrmMailArchive::record()` recognises the message by the deal reference in the subject, and replaces the pending event instead of adding a second one. The pending event is, in this order of preference: a done e-mail event of the deal with no Message-ID (registered by hand, last 30 days) whose subject matches, else the oldest such event; or a planned e-mail event of the deal whose subject matches, which covers a message sent from a mail client without pressing the button. A subject matches when it is equal once `Re:`/`Fwd:` prefixes, case and spacing are ignored. Only outgoing messages are matched this way.
+
 ## E-mail history
 
-The full exchange with a customer is kept as agenda events on the deal, not in a table of the module. A message is one done event (`percent` 100, so it is never counted as a next step) with `elementtype = 'opportunity@crm'`, the plain-text body in the note, and Dolibarr's own e-mail columns (`email_msgid`, from, to, cc, subject). Code `AC_EMAIL` for a message we sent, `AC_EMAIL_IN` for one we received; the event type is the active one chosen by `CrmActivity::typeCode()`.
+The full exchange with a customer is kept as agenda events on the deal, not in a table of the module. A message is one done event (`percent` 100, so it is never counted as a next step) with `elementtype = 'opportunity@crm'`, the plain-text body in the note, and Dolibarr's own e-mail columns (`email_msgid`, from, to, cc, subject). Code `AC_EMAIL` for a message we sent, `AC_EMAIL_IN` for one we received; the event type is chosen by `CrmActivity::typeCode()` (the same code, `AC_EMAIL` or `AC_EMAIL_IN`).
 
 Sending. Every customer e-mail sent for a deal goes through `crmSendMail($to, $subject, $body, $dealId)`. It gives the message the tracking id `crm<dealId>`, so the Message-ID is `<unique>.<transport>-dolibarr-crm<dealId>@<host>`, and copies it to `CRM_ARCHIVE_MAILBOX` as Bcc (default) or Cc (`CRM_ARCHIVE_COPY`). The event is written at send time with that Message-ID. Owner reminders carry no deal, no tracking id and no copy.
 
 Reading. The module has no IMAP code. The Dolibarr **e-mail collector** (core module) reads the archive mailbox. The module adds an operation to the collector, "CRM: record the e-mail on its deal" (`hookcrmrecordemail`), through the hooks `addMoreActionsEmailCollector` (context `emailcollectorcard`) and `doCollectImapOneCollector` (context `emailcollector`), both in `ActionsCrm`. The operation goes to `CrmMailArchive::record()`. A message is kept only when:
 
 1. its Message-ID, In-Reply-To or References carries `dolibarr-crm<dealId>@` (the copy of what the module sent, or an answer that threads on it); or
+1b. its subject carries a deal reference in square brackets, `[OPP2026-0001]`, which the module puts in the subject of every draft, so a message written in a mail client from a draft, and the customer's reply to it, are recognised even when the threading headers are lost; or
 2. one of those ids is the Message-ID of a message already recorded on a deal. This catches a salesperson who answers from their own mail client, quoting the exchange, with the archive mailbox in copy.
 
 Anything else is ignored without error, so the mailbox is not a general inbox and the other operations of the collector are not disturbed. A message already recorded (same Message-ID) is skipped, which is how the Bcc copy of a module e-mail does not create a second event. The direction is "sent" when the sender is the module sender, an address in `MAIL_FROM_EMAILS_TO_CONSIDER_SENDING`, or a Dolibarr user's e-mail, otherwise "received". A received message stops the running enrolments of the deal whose sequence has `stop_on_reply`.
@@ -170,7 +186,7 @@ Opportunity columns: `ref` (`OPP` + year + sequence), `label`, `fk_soc`, `fk_soc
 
 Seed, only when that entity has no pipeline yet: one pipeline, six stages (New 10% pipeline, Qualified 25% pipeline, Proposal sent 50% upside, Negotiation 75% commit, Won 100% won, Lost 0% lost), six sources (website, referral, inbound call, event, partner, prospecting), the four qualification items, and loss reasons (price, no budget, competitor, timing, no decision, no answer). Re-enabling does not insert them again.
 
-Constants: `CRM_ROTTING_DAYS` (15, default for a new stage), `CRM_FORECAST_MONTHS` (3), `CRM_MAX_EMAILS_PER_RUN` (50), `CRM_MAIL_FROM`, `CRM_SEQUENCES_ON` (0), `CRM_DRY_RUN` (1), `CRM_REMINDERS_ON` (1), `CRM_REMINDER_DRY_RUN` (1), `CRM_REQUIRE_NEXT_STEP` (1), `CRM_ARCHIVE_MAILBOX` (empty: no copy), `CRM_ARCHIVE_COPY` (`bcc` or `cc`), `MAIN_MODULE_CRM_ICON` (read by the theme).
+Constants: `CRM_ROTTING_DAYS` (15, default for a new stage), `CRM_FORECAST_MONTHS` (3), `CRM_MAX_EMAILS_PER_RUN` (50), `CRM_MAIL_FROM`, `CRM_SEQUENCES_ON` (0), `CRM_SEQUENCE_EMAIL_MODE` (`draft`), `CRM_DRY_RUN` (1), `CRM_REMINDERS_ON` (1), `CRM_REMINDER_DRY_RUN` (1), `CRM_REQUIRE_NEXT_STEP` (1), `CRM_ARCHIVE_MAILBOX` (empty: no copy), `CRM_ARCHIVE_COPY` (`bcc` or `cc`), `MAIN_MODULE_CRM_ICON` (read by the theme).
 
 ## MCP
 
@@ -241,6 +257,7 @@ No purge button in v1. A later action can drop only `llx_crm_*` and `CRM_*` cons
 ├── class/
 │   ├── actions_crm.class.php          # addMcpTools, e-mail collector operation
 │   ├── crmmailarchive.class.php       # e-mail to deal matching and recording
+│   ├── crmemaildraft.class.php        # review, send, register or discard a planned e-mail
 │   ├── opportunity.class.php
 │   ├── pipeline.class.php
 │   ├── stage.class.php
@@ -262,6 +279,7 @@ No purge button in v1. A later action can drop only `llx_crm_*` and `CRM_*` cons
 ├── opportunity_list.php
 ├── opportunity_card.php
 ├── activity_list.php
+├── email_compose.php
 ├── sequence_list.php
 ├── sequence_card.php
 ├── report.php
@@ -297,7 +315,7 @@ Kanban drag and drop posts to `pipeline.php` with a CSRF token. No third-party s
 
 ## Decisions kept
 
-1. Customer sequences ship disabled, with dry-run on. Owner reminders ship enabled, also dry-run until that is turned off.
+1. Customer sequences ship disabled, with dry-run on, and their e-mail steps are drafts for the salesperson, not automatic sends. Owner reminders ship enabled, also dry-run until that is turned off.
 2. Calls and meetings are agenda events and are kept after the module is disabled.
 3. An open deal cannot change stage until it has a future next step (`CRM_REQUIRE_NEXT_STEP`, default on).
 4. Owners in MCP are numeric user ids. There is no `crm_list_users`.

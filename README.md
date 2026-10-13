@@ -48,7 +48,7 @@ A job can also be started by hand from Scheduled jobs ("Execute now"), which is 
 Two hourly jobs are registered by CRM and left enabled. What they send is controlled by the switches:
 
 - Owner reminders are on. `CRM_REMINDER_DRY_RUN` defaults to on, so the first runs only write `llx_crm_reminder_log`. One digest per owner per day.
-- Customer sequences are off (`CRM_SEQUENCES_ON`). `CRM_DRY_RUN` defaults to on. Mail goes to the deal contact, never to the company address.
+- Customer sequences are off (`CRM_SEQUENCES_ON`). Their e-mail steps are **drafts** by default (`CRM_SEQUENCE_EMAIL_MODE`, setting "Sequence e-mail steps"): a due step creates a planned e-mail on the deal with the suggested text, and nothing is sent until the salesperson sends it. Dry-run does not apply to drafts. Choose "Send automatically" to let the job send; then `CRM_DRY_RUN` defaults to on, and mail goes to the deal contact, never to the company address.
 
 Turn dry-run off in CRM → Setup when the journal looks right. Sender is `CRM_MAIL_FROM`, otherwise the company sender.
 
@@ -162,7 +162,17 @@ Moving is allowed to any open stage, forward or back, as long as the deal has a 
 
 **Customer e-mails.** If your administrator has set up the archive mailbox, e-mails sent by the tool are stored on the deal with their full text. When you answer a customer from your own mail program, answer **in the same thread** and put the archive address in copy: the message is then added to the deal too. A new message written from scratch cannot be recognised. An answer from the customer is recorded the same way, and it stops any automatic sequence on the deal, so the customer is not chased after they replied.
 
-**Automatic sequences.** Your manager may enrol deals in a sequence: a planned series of reminders, calls and e-mails sent after a set number of days. It saves you from forgetting, but it does not replace a real conversation. Calls and tasks of a sequence appear as next steps on the deal. If a contact answers you by another way, ask whoever manages sequences to use **Mark replied** on the sequence so that it stops (it needs the sequence right).
+**Automatic sequences.** Your manager may enrol deals in a sequence: a planned series of reminders, calls and e-mails after a set number of days. It saves you from forgetting, but it does not replace a real conversation. Calls and tasks of a sequence appear as next steps on the deal.
+
+**E-mails suggested by a sequence.** By default the tool does not send anything by itself. When an e-mail step is due, it appears on the deal as a planned e-mail (in the Next step list, in CRM → Activities and, once late, on Home), with the suggested text already filled in. Click **Write / send** to open it. Read it, change it, and choose:
+
+- **Send from here**: Dolibarr sends it to the address shown (the deal's contact by default) after a confirmation. It is recorded on the deal and the draft disappears.
+- **Open in my mail client**: your mail program opens with the recipient, subject and text filled in, and the archive address in copy. Send it from there. **Keep the subject**: it contains the deal reference in square brackets, such as `[OPP2026-0001]`, which is how the message finds its deal again. **Keep the archive address in copy.** Then come back and press **E-mail sent manually**, so the step is closed. If the text is too long for your mail program, use **Copy text** and paste it.
+- **E-mail sent manually**: registers the e-mail as sent now. A few minutes later, when the archive mailbox is read, the real message (with its exact text and date) replaces this entry, so the history does not show it twice. If you forgot to press the button, the real message still replaces the draft, as long as the subject is the same.
+- **Discard**: throws the draft away, if you do not want to send it.
+- **Save draft**: keeps your changes for later.
+
+The customer's reply is recognised by the same reference in the subject, so it is added to the deal when it reaches the archive mailbox. If a contact answers you by another way, ask whoever manages sequences to use **Mark replied** on the sequence so that it stops (it needs the sequence right).
 
 ### Step 6. Close the deal
 
@@ -173,6 +183,8 @@ Moving is allowed to any open stage, forward or back, as long as the deal has a 
 Do not leave a dead deal open "just in case". If the prospect may come back later, close it as lost with the right reason and open a new deal when they do.
 
 ### Your daily and weekly routine
+
+**Finding a deal.** The general search box at the top of Dolibarr has an entry "CRM opportunities" (shortcut `O`): type a reference, a title, an account name or a contact name, and choose it. The list then shows matches in every status. It only shows deals you may see.
 
 **Every day, ten minutes: CRM → Home.** Each list is work to do:
 

@@ -81,7 +81,7 @@ print load_fiche_titre($langs->trans('CrmPipeline'), '', 'fa-handshake');
 print '<form method="GET" action="'.$_SERVER['PHP_SELF'].'">';
 print $langs->trans('CrmPipeline').' <select name="pipelineid" class="minwidth200">';
 foreach ($pipelines as $pipeline) {
-	print '<option value="'.((int) $pipeline->id).'"'.($pipeline->id === $pipelineId ? ' selected' : '').'>'.dol_escape_htmltag($pipeline->label).'</option>';
+	print '<option value="'.((int) $pipeline->id).'"'.($pipeline->id === $pipelineId ? ' selected' : '').'>'.dol_escape_htmltag(crmDictLabel((string) $pipeline->label)).'</option>';
 }
 print '</select> ';
 if ($user->hasRight('crm', 'readall')) {

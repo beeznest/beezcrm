@@ -74,6 +74,9 @@ foreach ($rows as $row) {
 	print '<td><a href="'.$url.'">'.dol_escape_htmltag((string) $row->ref).'</a></td>';
 	print '<td>'.dol_escape_htmltag((string) $row->label).'</td>';
 	print '<td>'.dol_escape_htmltag((string) $row->soc_name).'</td><td>';
+	if (CrmActivity::isPlannedEmail((string) $row->event_code, (int) $row->percent)) {
+		print '<a href="'.dol_buildpath('/crm/email_compose.php', 1).'?id='.(int) $row->rowid.'">'.$langs->trans('CrmWriteSend').'</a> ';
+	}
 	if ($user->hasRight('crm', 'activity') && (int) $row->percent < 100) {
 		print '<a href="'.$_SERVER['PHP_SELF'].'?scope='.$scope.'&action=complete&eventid='.(int) $row->rowid.'&token='.newToken().'">'.$langs->trans('CrmComplete').'</a>';
 	}

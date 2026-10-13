@@ -36,13 +36,13 @@ require_once __DIR__.'/class/qualification.class.php';
 crmStartPage();
 
 $status = GETPOST('status', 'aZ09');
-$search = GETPOST('search', 'alphanohtml');
+$search = GETPOST('search_all', 'alphanohtml') !== '' ? GETPOST('search_all', 'alphanohtml') : GETPOST('search', 'alphanohtml');
 $ownerId = GETPOSTINT('userid');
-if (!in_array($status, array('open', 'won', 'lost'), true)) {
+if (!in_array($status, array('open', 'won', 'lost', 'all'), true)) {
 	$status = 'open';
 }
 
-$deals = (new Opportunity($db))->fetchList($user, $status, 0, $ownerId, $search, 200);
+$deals = (new Opportunity($db))->fetchList($user, $status === 'all' ? '' : $status, 0, $ownerId, $search, 200);
 $qual = new Qualification($db);
 
 $newUrl = '';
@@ -55,7 +55,7 @@ print load_fiche_titre($langs->trans('CrmOpportunities'), $newUrl, 'fa-handshake
 
 print '<form method="GET" action="'.$_SERVER['PHP_SELF'].'">';
 print $langs->trans('CrmStatus').' <select name="status">';
-foreach (array('open' => 'CrmOpen', 'won' => 'CrmWon', 'lost' => 'CrmLost') as $code => $key) {
+foreach (array('open' => 'CrmOpen', 'won' => 'CrmWon', 'lost' => 'CrmLost', 'all' => 'All') as $code => $key) {
 	print '<option value="'.$code.'"'.($status === $code ? ' selected' : '').'>'.$langs->trans($key).'</option>';
 }
 print '</select> ';

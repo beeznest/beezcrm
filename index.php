@@ -80,7 +80,11 @@ if (count($hygiene['overdue']) === 0) {
 		$url = dol_buildpath('/crm/opportunity_card.php', 1).'?id='.(int) $row->fk_element;
 		print '<tr class="oddeven">';
 		print '<td><a href="'.$url.'">'.dol_escape_htmltag((string) $row->ref).'</a></td>';
-		print '<td>'.dol_escape_htmltag((string) $row->label).'</td>';
+		print '<td>'.dol_escape_htmltag((string) $row->label);
+		if (CrmActivity::isPlannedEmail((string) $row->event_code, (int) $row->percent)) {
+			print ' <a href="'.dol_buildpath('/crm/email_compose.php', 1).'?id='.(int) $row->rowid.'">'.$langs->trans('CrmWriteSend').'</a>';
+		}
+		print '</td>';
 		print '<td>'.dol_print_date($db->jdate($row->datep), 'dayhour').'</td>';
 		print '</tr>';
 	}

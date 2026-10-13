@@ -47,7 +47,7 @@ if ($action === 'addstep') {
 	if (!in_array($kind, array('email', 'call', 'task'), true)) {
 		$kind = 'email';
 	}
-	if ($sequence->addStep($kind, GETPOSTINT('delay_days'), GETPOST('subject', 'alphanohtml'), GETPOST('body', 'restricthtml')) <= 0) {
+	if ($sequence->addStep($kind, GETPOSTINT('delay_days'), GETPOST('subject', 'nohtml'), GETPOST('body', 'nohtml')) <= 0) {
 		setEventMessages($sequence->error, null, 'errors');
 	}
 	header('Location: '.$back);
@@ -120,7 +120,7 @@ if ($user->hasRight('crm', 'sequence')) {
 	print '<select name="stepaction"><option value="email">'.$langs->trans('CrmEmail').'</option><option value="call">'.$langs->trans('CrmCall').'</option><option value="task">'.$langs->trans('CrmTask').'</option></select> ';
 	print '<input type="number" name="delay_days" value="0" min="0" class="width50"> '.$langs->trans('CrmDays').' ';
 	print '<input name="subject" class="minwidth200" placeholder="'.dol_escape_htmltag($langs->trans('CrmSubject')).'"> ';
-	print '<input name="body" class="minwidth300" placeholder="'.dol_escape_htmltag($langs->trans('CrmBody')).'"> ';
+	print '<textarea name="body" class="minwidth300" rows="4" placeholder="'.dol_escape_htmltag($langs->trans('CrmBody')).'"></textarea> ';
 	print '<input type="submit" class="button" value="'.$langs->trans('CrmAddStep').'">';
 	print '</form>';
 }

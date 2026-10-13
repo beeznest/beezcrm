@@ -32,23 +32,42 @@ class CrmActivity
 	}
 
 	/**
-	 * Map a CRM step kind to an active agenda type. E-mail falls back to AC_OTH when AC_EMAIL is inactive.
+	 * Map a CRM step kind to an agenda type. Call and meeting need an active type and fall back to AC_OTH.
+	 * E-mail kinds use AC_EMAIL and AC_EMAIL_IN whether or not the type is active, as Dolibarr core does when it
+	 * logs a message sent from a proposal or an invoice: ActionComm looks the type up by code and the active flag
+	 * only hides it from the manual pick-lists. They fall back to AC_OTH only when the type row does not exist.
+	 *
+	 * @param string $kind call|meeting|task|email|email_in
 	 */
 	public static function typeCode(DoliDB $db, string $kind): string
 	{
 		$wanted = 'AC_OTH';
+		$needActive = true;
 		if ($kind === 'call') {
 			$wanted = 'AC_TEL';
 		} elseif ($kind === 'meeting') {
 			$wanted = 'AC_RDV';
 		} elseif ($kind === 'email') {
 			$wanted = 'AC_EMAIL';
+			$needActive = false;
+		} elseif ($kind === 'email_in') {
+			$wanted = 'AC_EMAIL_IN';
+			$needActive = false;
 		}
 		$actionType = new CActionComm($db);
-		if ($actionType->fetch($wanted) > 0 && (int) $actionType->active === 1) {
+		if ($actionType->fetch($wanted) > 0 && (!$needActive || (int) $actionType->active === 1)) {
 			return $wanted;
 		}
 		return 'AC_OTH';
+	}
+
+	/**
+	 * True for a planned e-mail step: an e-mail event that is not done. Its label is the subject and its note the
+	 * suggested text, so it can be reviewed and sent from email_compose.php.
+	 */
+	public static function isPlannedEmail(?string $eventCode, int $percent): bool
+	{
+		return $eventCode === 'AC_EMAIL' && $percent < 100;
 	}
 
 	/**
@@ -95,13 +114,17 @@ class CrmActivity
 	 * @param string $label  Event label
 	 * @param int    $datep  Start timestamp
 	 * @param int    $percentage 0 for a next step, 100 for a logged send
+	 * @param string $note   Text kept on the event. For an e-mail step it is the suggested message.
 	 * @return int Event id, or -1
 	 */
-	public function create(User $user, int $opportunityId, int $socId, int $contactId, int $ownerId, string $kind, string $label, int $datep, int $percentage = 0): int
+	public function create(User $user, int $opportunityId, int $socId, int $contactId, int $ownerId, string $kind, string $label, int $datep, int $percentage = 0, string $note = ''): int
 	{
 		$event = new ActionComm($this->db);
 		$event->type_code = self::typeCode($this->db, $kind);
 		$event->label = $label;
+		if ($note !== '') {
+			$event->note_private = $note;
+		}
 		$event->datep = $datep;
 		$event->datef = $datep + 3600;
 		$event->percentage = $percentage;
@@ -153,7 +176,7 @@ class CrmActivity
 		crmLoadLangs();
 		$incoming = ($direction === 'in');
 		$event = new ActionComm($this->db);
-		$event->type_code = self::typeCode($this->db, 'email');
+		$event->type_code = self::typeCode($this->db, $incoming ? 'email_in' : 'email');
 		$event->code = $incoming ? 'AC_EMAIL_IN' : 'AC_EMAIL';
 		$event->label = $langs->transnoentities($incoming ? 'CrmEmailReceived' : 'CrmEmailSent').' - '.$subject;
 		$event->note_private = $body;
@@ -235,7 +258,7 @@ class CrmActivity
 		global $conf;
 		$today = crmTodayStart();
 		$tomorrow = $today + 86400;
-		$sql = 'SELECT a.id as rowid, a.label, a.datep, a.percent, a.fk_user_action, a.fk_element, o.ref, o.label as deal_label, o.fk_soc, o.fk_user_resp, s.nom as soc_name';
+		$sql = 'SELECT a.id as rowid, a.label, a.datep, a.percent, a.fk_user_action, a.fk_element, a.code as event_code, o.ref, o.label as deal_label, o.fk_soc, o.fk_user_resp, s.nom as soc_name';
 		$sql .= ' FROM '.$this->db->prefix().'actioncomm as a';
 		$sql .= ' INNER JOIN '.$this->db->prefix().'crm_opportunity as o ON o.rowid = a.fk_element';
 		$sql .= ' LEFT JOIN '.$this->db->prefix().'societe as s ON s.rowid = o.fk_soc';

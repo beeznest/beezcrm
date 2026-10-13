@@ -245,16 +245,17 @@ class Sequence
 	}
 
 	/**
-	 * Run due steps. At most one step per enrolment per call. E-mails count toward the cap.
+	 * Run due steps. At most one step per enrolment per call. E-mails sent or simulated count toward the cap;
+	 * drafts do not, since nothing leaves the server.
 	 *
 	 * @param User $user Cron or MCP user, used as the author of created events
 	 * @param int  $max  Maximum e-mails, simulated ones included
-	 * @return array{emails:int,steps:int,errors:int}
+	 * @return array{emails:int,drafts:int,steps:int,errors:int}
 	 */
 	public function runDue(User $user, int $max): array
 	{
 		global $conf;
-		$stats = array('emails' => 0, 'steps' => 0, 'errors' => 0);
+		$stats = array('emails' => 0, 'drafts' => 0, 'steps' => 0, 'errors' => 0);
 		if (!getDolGlobalInt('CRM_SEQUENCES_ON')) {
 			return $stats;
 		}
@@ -293,11 +294,15 @@ class Sequence
 				continue;
 			}
 			if ((string) $step->action === 'email') {
-				if ($stats['emails'] >= $max) {
+				if (!crmSequenceDraftMode() && $stats['emails'] >= $max) {
 					break;
 				}
 				$emailStatus = $this->runEmailStep($user, $obj, $step, $dry);
-				$stats['emails']++;
+				if ($emailStatus === 'draft') {
+					$stats['drafts']++;
+				} else {
+					$stats['emails']++;
+				}
 				if ($emailStatus === 'error') {
 					$stats['errors']++;
 					$this->postpone((int) $obj->enrol_id);
@@ -334,7 +339,18 @@ class Sequence
 		$email = trim((string) $enrol->contact_email);
 		$status = 'sent';
 		$error = '';
-		if ($email === '') {
+		if (crmSequenceDraftMode()) {
+			// Nothing leaves the server. The step becomes a planned e-mail on the deal for the salesperson to review
+			// and send from email_compose.php, or from a mail client. Dry-run does not apply: it only guards sending.
+			$activity = new CrmActivity($this->db);
+			$draftId = $activity->create($user, (int) $enrol->fk_opportunity, (int) $enrol->fk_soc, (int) $enrol->fk_socpeople, (int) $enrol->fk_user_resp, 'email', crmSubjectWithRef($subject, (string) $enrol->ref), dol_now(), 0, $body);
+			if ($draftId <= 0) {
+				$status = 'error';
+				$error = $activity->error;
+			} else {
+				$status = 'draft';
+			}
+		} elseif ($email === '') {
 			$status = 'error';
 			$error = 'No e-mail address on the contact';
 		} elseif ($dry) {

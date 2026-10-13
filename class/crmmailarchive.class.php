@@ -18,7 +18,10 @@ require_once __DIR__.'/sequence.class.php';
  * A message is kept only when it can be tied to a deal:
  * 1. a Message-ID, In-Reply-To or References entry carries the deal tracking id the module puts on what it sends;
  * 2. or one of those ids is the Message-ID of a message already recorded on a deal, which covers a person
- *    who answers a customer answer from their own mail client and quotes the exchange.
+ *    who answers a customer answer from their own mail client and quotes the exchange;
+ * 3. or the subject carries the reference of a deal in square brackets, "[OPP2026-0001]". The module puts it in the
+ *    subject of the e-mails it suggests, so a message written in a mail client from such a suggestion, and the
+ *    customer's answer to it, are recognised even when the mail client drops the threading headers.
  * Anything else is ignored: the mailbox is not a general inbox.
  */
 class CrmMailArchive
@@ -42,8 +45,9 @@ class CrmMailArchive
 	 * Deal this thread belongs to, or 0.
 	 *
 	 * @param string[] $messageIds Message-ID, In-Reply-To and References entries, without angle brackets
+	 * @param string   $subject    Subject, searched for a deal reference in square brackets when the ids give nothing
 	 */
-	public function findDeal(array $messageIds): int
+	public function findDeal(array $messageIds, string $subject = ''): int
 	{
 		global $conf;
 		foreach ($messageIds as $messageId) {
@@ -52,9 +56,21 @@ class CrmMailArchive
 				return $dealId;
 			}
 		}
-		if (count($messageIds) === 0) {
-			return 0;
+		if (count($messageIds) > 0) {
+			$dealId = $this->findDealByThread($messageIds);
+			if ($dealId > 0) {
+				return $dealId;
+			}
 		}
+		return $this->findDealBySubject($subject);
+	}
+
+	/**
+	 * @param string[] $messageIds Message-IDs to look for among the messages already recorded on a deal
+	 */
+	private function findDealByThread(array $messageIds): int
+	{
+		global $conf;
 		$quoted = array();
 		foreach ($messageIds as $messageId) {
 			$quoted[] = "'".$this->db->escape($messageId)."'";
@@ -68,6 +84,29 @@ class CrmMailArchive
 		$resql = $this->db->query($sql);
 		if ($resql && ($obj = $this->db->fetch_object($resql))) {
 			return (int) $obj->fk_element;
+		}
+		return 0;
+	}
+
+	/**
+	 * Deal whose reference appears in square brackets in the subject.
+	 */
+	private function findDealBySubject(string $subject): int
+	{
+		global $conf;
+		$quoted = array();
+		foreach (crmDealRefsInSubject($subject) as $ref) {
+			$quoted[] = "'".$this->db->escape($ref)."'";
+		}
+		if (count($quoted) === 0) {
+			return 0;
+		}
+		$sql = 'SELECT rowid FROM '.$this->db->prefix().'crm_opportunity';
+		$sql .= ' WHERE entity = '.((int) $conf->entity).' AND ref IN ('.implode(',', $quoted).')';
+		$sql .= $this->db->plimit(1, 0);
+		$resql = $this->db->query($sql);
+		if ($resql && ($obj = $this->db->fetch_object($resql))) {
+			return (int) $obj->rowid;
 		}
 		return 0;
 	}
@@ -112,7 +151,7 @@ class CrmMailArchive
 				}
 			}
 		}
-		$dealId = $this->findDeal($ids);
+		$dealId = $this->findDeal($ids, (string) ($mail['subject'] ?? ''));
 		if ($dealId <= 0) {
 			return array('status' => 'ignored', 'deal' => 0, 'event' => 0);
 		}
@@ -138,6 +177,19 @@ class CrmMailArchive
 		}
 
 		$activity = new CrmActivity($this->db);
+		if ($msgid !== '') {
+			$existing = new ActionComm($this->db);
+			if ($existing->fetch(0, '', '', $msgid) > 0) {
+				return array('status' => 'duplicate', 'deal' => $dealId, 'event' => 0);
+			}
+		}
+		if ($direction === 'out') {
+			// A message we said we were sending, or sent by hand, is replaced by the real one rather than doubled.
+			$pending = $this->findPendingOutgoing($dealId, $subject);
+			if ($pending) {
+				$pending->delete($user);
+			}
+		}
 		$eventId = $activity->createEmail(
 			$user,
 			$dealId,
@@ -166,6 +218,46 @@ class CrmMailArchive
 			(new Sequence($this->db))->stopOnReply($dealId);
 		}
 		return array('status' => 'recorded', 'deal' => $dealId, 'event' => $eventId);
+	}
+
+	/**
+	 * The event this outgoing message stands for, when the deal already has one:
+	 * an e-mail registered as sent by hand that no real message has replaced yet (oldest first, same subject first),
+	 * or a planned e-mail step with the same subject that was sent from a mail client without being registered.
+	 *
+	 * @return ActionComm|null
+	 */
+	private function findPendingOutgoing(int $dealId, string $subject)
+	{
+		$wanted = crmNormalizeSubject($subject);
+		$sql = 'SELECT a.id, a.label, a.percent, a.email_subject, a.datep FROM '.$this->db->prefix().'actioncomm as a';
+		$sql .= " WHERE a.elementtype = '".$this->db->escape(CrmActivity::ELEMENT_TYPE)."' AND a.fk_element = ".((int) $dealId);
+		$sql .= " AND a.code = 'AC_EMAIL' AND ((a.percent >= 100 AND (a.email_msgid IS NULL OR a.email_msgid = ''))";
+		$sql .= " OR a.percent < 100)";
+		$sql .= " AND a.datep >= '".$this->db->idate(dol_now() - (30 * 86400))."'";
+		$sql .= ' ORDER BY a.datep ASC';
+		$resql = $this->db->query($sql);
+		if (!$resql) {
+			return null;
+		}
+		$firstManual = 0;
+		$matchId = 0;
+		while ($obj = $this->db->fetch_object($resql)) {
+			$candidate = ((int) $obj->percent >= 100) ? (string) $obj->email_subject : (string) $obj->label;
+			if ($candidate !== '' && crmNormalizeSubject($candidate) === $wanted) {
+				$matchId = (int) $obj->id;
+				break;
+			}
+			if ($firstManual === 0 && (int) $obj->percent >= 100) {
+				$firstManual = (int) $obj->id;
+			}
+		}
+		$id = $matchId > 0 ? $matchId : $firstManual;
+		if ($id <= 0) {
+			return null;
+		}
+		$event = new ActionComm($this->db);
+		return ($event->fetch($id) > 0) ? $event : null;
 	}
 
 	/**

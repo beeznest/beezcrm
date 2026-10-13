@@ -17,18 +17,37 @@ function crmLoadLangs(): void
 }
 
 /**
- * Label of a built-in stage in the current language. A renamed or custom stage stays as stored.
+ * Label of a built-in entry (pipeline, stage, source, loss reason, qualification item) in the current language.
+ * The match is on the English label the seed inserted, so an entry an administrator renamed or created stays as stored.
  */
-function crmStageLabel(string $label): string
+function crmDictLabel(string $label): string
 {
 	global $langs;
 	$map = array(
+		'Commercial pipeline' => 'CrmPipelineCommercial',
 		'New' => 'CrmStageNew',
 		'Qualified' => 'CrmStageQualified',
 		'Proposal sent' => 'CrmStageProposalSent',
 		'Negotiation' => 'CrmStageNegotiation',
 		'Won' => 'CrmStageWon',
 		'Lost' => 'CrmStageLost',
+		'Website' => 'CrmSourceWeb',
+		'Referral' => 'CrmSourceReferral',
+		'Inbound call' => 'CrmSourceCall',
+		'Event' => 'CrmSourceEvent',
+		'Partner' => 'CrmSourcePartner',
+		'Prospecting' => 'CrmSourceProspecting',
+		'Inbound e-mail' => 'CrmSourceInboundEmail',
+		'Price' => 'CrmReasonPrice',
+		'No budget' => 'CrmReasonNoBudget',
+		'Competitor' => 'CrmReasonCompetitor',
+		'Timing' => 'CrmReasonTiming',
+		'No decision' => 'CrmReasonNoDecision',
+		'No answer' => 'CrmReasonNoAnswer',
+		'Need confirmed' => 'CrmQualNeed',
+		'Budget confirmed' => 'CrmQualBudget',
+		'Decision maker identified' => 'CrmQualDecision',
+		'Timeline confirmed' => 'CrmQualTimeline',
 	);
 	if (!isset($map[$label])) {
 		return $label;
@@ -39,6 +58,14 @@ function crmStageLabel(string $label): string
 		return $label;
 	}
 	return $translated;
+}
+
+/**
+ * Label of a built-in stage in the current language. A renamed or custom stage stays as stored.
+ */
+function crmStageLabel(string $label): string
+{
+	return crmDictLabel($label);
 }
 
 /**
@@ -115,6 +142,15 @@ function crmSender(): string
 }
 
 /**
+ * True when a sequence e-mail step is turned into a draft for the salesperson instead of being sent by the cron.
+ * Anything other than "send" means draft, so a missing or mistyped value never sends mail by itself.
+ */
+function crmSequenceDraftMode(): bool
+{
+	return getDolGlobalString('CRM_SEQUENCE_EMAIL_MODE') !== 'send';
+}
+
+/**
  * Send one plain-text message through Dolibarr.
  *
  * With a deal id the message carries the deal tracking id (see crmTrackId) and is copied to the archive
@@ -165,6 +201,7 @@ function crmEnsureConstants(DoliDB $db): void
 		'CRM_REMINDERS_ON' => '1',
 		'CRM_REMINDER_DRY_RUN' => '1',
 		'CRM_REQUIRE_NEXT_STEP' => '1',
+		'CRM_SEQUENCE_EMAIL_MODE' => 'draft',
 		'CRM_ARCHIVE_MAILBOX' => '',
 		'CRM_ARCHIVE_COPY' => 'bcc',
 		// Read by the theme: without it the top menu icon is overridden by a generic glyph.

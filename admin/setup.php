@@ -50,6 +50,7 @@ $constants = array(
 	'CRM_MAX_EMAILS_PER_RUN' => 'CrmMaxEmails',
 	'CRM_MAIL_FROM' => 'CrmMailFrom',
 	'CRM_SEQUENCES_ON' => 'CrmSequencesOn',
+	'CRM_SEQUENCE_EMAIL_MODE' => 'CrmSequenceEmailMode',
 	'CRM_DRY_RUN' => 'CrmDryRun',
 	'CRM_REMINDERS_ON' => 'CrmRemindersOn',
 	'CRM_REMINDER_DRY_RUN' => 'CrmReminderDryRun',
@@ -158,6 +159,13 @@ if ($tab === 'parameters') {
 	print '<table class="noborder centpercent">';
 	foreach ($constants as $name => $label) {
 		print '<tr class="oddeven"><td>'.$langs->trans($label).'</td>';
+		if ($name === 'CRM_SEQUENCE_EMAIL_MODE') {
+			$mode = crmSequenceDraftMode() ? 'draft' : 'send';
+			print '<td><select name="'.$name.'"><option value="draft"'.($mode === 'draft' ? ' selected' : '').'>'.$langs->trans('CrmSequenceEmailModeDraft').'</option>';
+			print '<option value="send"'.($mode === 'send' ? ' selected' : '').'>'.$langs->trans('CrmSequenceEmailModeSend').'</option></select>';
+			print '<br><span class="opacitymedium">'.$langs->trans('CrmSequenceEmailModeHelp').'</span></td></tr>';
+			continue;
+		}
 		if ($name === 'CRM_ARCHIVE_COPY') {
 			$copy = (getDolGlobalString($name) === 'cc') ? 'cc' : 'bcc';
 			print '<td><select name="'.$name.'"><option value="bcc"'.($copy === 'bcc' ? ' selected' : '').'>'.$langs->trans('CrmArchiveCopyBcc').'</option>';
@@ -182,7 +190,7 @@ if ($tab === 'stages') {
 	print '<form method="GET" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="tab" value="stages">';
 	print '<select name="pipelineid">';
 	foreach ($pipelines as $pipeline) {
-		print '<option value="'.((int) $pipeline->id).'"'.($pipeline->id === $pipelineId ? ' selected' : '').'>'.dol_escape_htmltag($pipeline->label).'</option>';
+		print '<option value="'.((int) $pipeline->id).'"'.($pipeline->id === $pipelineId ? ' selected' : '').'>'.dol_escape_htmltag(crmDictLabel((string) $pipeline->label)).'</option>';
 	}
 	print '</select> <input type="submit" class="button" value="'.$langs->trans('CrmFilter').'"></form>';
 	print '<table class="noborder centpercent"><tr class="liste_titre"><td>'.$langs->trans('CrmLabel').'</td><td>'.$langs->trans('CrmPosition').'</td><td>'.$langs->trans('CrmProbability').'</td><td>'.$langs->trans('CrmForecastCategory').'</td><td></td></tr>';
@@ -221,7 +229,7 @@ if ($tab === 'stages') {
 if ($tab === 'qualification') {
 	print '<table class="noborder centpercent"><tr class="liste_titre"><td>'.$langs->trans('CrmCode').'</td><td>'.$langs->trans('CrmLabel').'</td><td>'.$langs->trans('CrmPoints').'</td></tr>';
 	foreach ((new Qualification($db))->fetchItems() as $item) {
-		print '<tr class="oddeven"><td>'.dol_escape_htmltag((string) $item->code).'</td><td>'.dol_escape_htmltag((string) $item->label).'</td><td>'.(int) $item->points.'</td></tr>';
+		print '<tr class="oddeven"><td>'.dol_escape_htmltag((string) $item->code).'</td><td>'.dol_escape_htmltag(crmDictLabel((string) $item->label)).'</td><td>'.(int) $item->points.'</td></tr>';
 	}
 	print '</table>';
 	print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'?tab=qualification">';
@@ -239,7 +247,7 @@ if ($tab === 'reasons' || $tab === 'sources') {
 	$which = ($tab === 'reasons') ? 'loss_reason' : 'source';
 	print '<table class="noborder centpercent"><tr class="liste_titre"><td>'.$langs->trans('CrmCode').'</td><td>'.$langs->trans('CrmLabel').'</td></tr>';
 	foreach (crmFetchDictionary($db, $which, false) as $row) {
-		print '<tr class="oddeven"><td>'.dol_escape_htmltag((string) $row->code).'</td><td>'.dol_escape_htmltag((string) $row->label).'</td></tr>';
+		print '<tr class="oddeven"><td>'.dol_escape_htmltag((string) $row->code).'</td><td>'.dol_escape_htmltag(crmDictLabel((string) $row->label)).'</td></tr>';
 	}
 	print '</table>';
 	print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'">';

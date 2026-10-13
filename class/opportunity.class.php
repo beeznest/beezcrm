@@ -352,7 +352,7 @@ class Opportunity extends CommonObject
 	 * @param string $status     open|won|lost or empty for every status
 	 * @param int    $pipelineId Pipeline filter, 0 for all
 	 * @param int    $ownerId    Owner filter, ignored when the caller cannot see that owner
-	 * @param string $search     Ref or title fragment
+	 * @param string $search     Fragment of the ref, title, account name, or contact name or e-mail
 	 * @param int    $limit      0 keeps every row
 	 * @return array<int,object>
 	 */
@@ -383,8 +383,9 @@ class Opportunity extends CommonObject
 			$sql .= ' AND o.fk_user_resp = '.((int) $ownerId);
 		}
 		if ($search !== '') {
-			$like = '%'.$this->db->escape($search).'%';
-			$sql .= " AND (o.ref LIKE '".$like."' OR o.label LIKE '".$like."')";
+			$like = '%'.$this->db->escape($this->db->escapeforlike($search)).'%';
+			$sql .= " AND (o.ref LIKE '".$like."' OR o.label LIKE '".$like."' OR s.nom LIKE '".$like."'";
+			$sql .= " OR sp.lastname LIKE '".$like."' OR sp.firstname LIKE '".$like."' OR sp.email LIKE '".$like."')";
 		}
 		$sql .= ' ORDER BY o.ref DESC';
 		if ($limit > 0) {

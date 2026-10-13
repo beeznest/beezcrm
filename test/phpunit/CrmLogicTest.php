@@ -145,4 +145,42 @@ class CrmLogicTest extends TestCase
 		$this->assertSame(array(), crmMessageIds('no id here'));
 		$this->assertSame(array('ada@example.com', 'bob@example.com'), crmAddressesIn('Ada <Ada@Example.com>, bob@example.com; ADA@example.com'));
 	}
+
+	/**
+	 * The deal reference is found between square brackets, in replies as well, and added only once.
+	 *
+	 * @return void
+	 */
+	public function testDealReferenceInSubject()
+	{
+		$this->assertSame(array('OPP2026-0001'), crmDealRefsInSubject('Re: Offer [OPP2026-0001]'));
+		$this->assertSame(array('OPP2026-0001', 'ABC-12'), crmDealRefsInSubject('[OPP2026-0001] Fwd: [ABC-12] [OPP2026-0001]'));
+		$this->assertSame(array(), crmDealRefsInSubject('Offer (OPP2026-0001) [x]'));
+		$this->assertSame('Offer [OPP2026-0001]', crmSubjectWithRef('Offer', 'OPP2026-0001'));
+		$this->assertSame('Offer [OPP2026-0001]', crmSubjectWithRef('Offer [OPP2026-0001]', 'OPP2026-0001'));
+		$this->assertSame('Offer', crmSubjectWithRef('Offer', ''));
+	}
+
+	/**
+	 * Reply and forward prefixes, case and spacing do not make two subjects different.
+	 *
+	 * @return void
+	 */
+	public function testNormalizeSubject()
+	{
+		$this->assertSame('offer [opp2026-0001]', crmNormalizeSubject('RE:  Fwd: Offer   [OPP2026-0001]'));
+		$this->assertSame(crmNormalizeSubject('Offer'), crmNormalizeSubject('re: OFFER'));
+		$this->assertSame('reply to me', crmNormalizeSubject('Reply to me'));
+	}
+
+	/**
+	 * The mailto link carries the archive copy, the subject and a CRLF body, all encoded.
+	 *
+	 * @return void
+	 */
+	public function testMailtoUrl()
+	{
+		$url = crmMailtoUrl('c@d.com', 'Offer [OPP1]', "Hi\nBye", '', 'crm@x.com');
+		$this->assertSame('mailto:c%40d.com?bcc=crm%40x.com&subject=Offer%20%5BOPP1%5D&body=Hi%0D%0ABye', $url);
+	}
 }

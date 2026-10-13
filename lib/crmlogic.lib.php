@@ -149,3 +149,64 @@ function crmAddressesIn(string $list): array
 	}
 	return $addresses;
 }
+
+/**
+ * Deal references written between square brackets in a subject, in order: "Re: Offer [OPP2026-0001]".
+ * The module puts one in the subject of the e-mails it suggests, so a message written in a mail client and
+ * the customer's answer to it can be tied back to the deal. Candidates only: the caller checks they exist.
+ *
+ * @return string[]
+ */
+function crmDealRefsInSubject(string $subject): array
+{
+	$refs = array();
+	if (preg_match_all('/\[([A-Za-z0-9][A-Za-z0-9_\-]{2,31})\]/', $subject, $matches)) {
+		foreach ($matches[1] as $ref) {
+			if (!in_array($ref, $refs, true)) {
+				$refs[] = $ref;
+			}
+		}
+	}
+	return $refs;
+}
+
+/**
+ * Subject reduced for comparison: reply and forward prefixes removed, case and spaces ignored.
+ */
+function crmNormalizeSubject(string $subject): string
+{
+	$subject = trim($subject);
+	while (preg_match('/^(re|fw|fwd|tr|aw|wg)\s*:\s*/i', $subject, $reg)) {
+		$subject = substr($subject, strlen($reg[0]));
+	}
+	return strtolower(trim((string) preg_replace('/\s+/', ' ', $subject)));
+}
+
+/**
+ * Subject with the deal reference appended when it is not already in it.
+ */
+function crmSubjectWithRef(string $subject, string $ref): string
+{
+	$subject = trim($subject);
+	if ($ref === '' || strpos($subject, '['.$ref.']') !== false) {
+		return $subject;
+	}
+	return trim($subject.' ['.$ref.']');
+}
+
+/**
+ * mailto: link with recipients, subject and body filled. Line breaks are CRLF, as mail clients expect.
+ */
+function crmMailtoUrl(string $to, string $subject, string $body, string $cc = '', string $bcc = ''): string
+{
+	$query = array();
+	if ($cc !== '') {
+		$query[] = 'cc='.rawurlencode($cc);
+	}
+	if ($bcc !== '') {
+		$query[] = 'bcc='.rawurlencode($bcc);
+	}
+	$query[] = 'subject='.rawurlencode($subject);
+	$query[] = 'body='.rawurlencode(str_replace(array("\r\n", "\r", "\n"), "\r\n", $body));
+	return 'mailto:'.rawurlencode($to).'?'.implode('&', $query);
+}
