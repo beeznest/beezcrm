@@ -282,3 +282,5 @@ CrmErrorSequenceNotFound=Séquence introuvable.
 CrmErrorSequenceLabelRequired=Un libellé est obligatoire.
 CrmErrorSequenceRefInvalid=La référence est obligatoire : lettres, chiffres, tiret bas ou tiret, 32 caractères au plus.
 CrmErrorSequenceRefExists=Une autre séquence utilise déjà cette référence.
+CrmStepHtml=HTML
+CrmStepFormatHelp=Le texte de l'e-mail, mis en forme (HTML) ou brut. Les jetons __DEAL__, __REF__, __AMOUNT__, __CONTACT__ et __CUSTOMER__ fonctionnent dans les deux cas ; en HTML ils sont insérés comme du texte.

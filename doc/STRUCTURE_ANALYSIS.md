@@ -185,7 +185,7 @@ One file, `sql/llx_crm.sql`. Indexes are inside each `CREATE TABLE`. There is no
 | `llx_crm_qualification` | Checklist definition |
 | `llx_crm_opportunity_qualification` | Answers |
 | `llx_crm_sequence` | Label, active, stop flags |
-| `llx_crm_sequence_step` | Position, action, delay days, subject, body, send mode |
+| `llx_crm_sequence_step` | Position, action, delay days, subject, body (plain text or HTML, recognised by `crmLooksLikeHtml`), send mode |
 | `llx_crm_sequence_enrol` | Deal, current step, next run, status, stop reason |
 | `llx_crm_sequence_log` | Recipient, subject, date, `sent` / `simulated` / `error` |
 | `llx_crm_reminder_log` | Owner reminder journal |

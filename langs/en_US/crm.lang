@@ -282,3 +282,5 @@ CrmErrorSequenceNotFound=Sequence not found.
 CrmErrorSequenceLabelRequired=A label is required.
 CrmErrorSequenceRefInvalid=The reference is required: letters, digits, underscore or dash, 32 characters at most.
 CrmErrorSequenceRefExists=Another sequence already uses this reference.
+CrmStepHtml=HTML
+CrmStepFormatHelp=The text of the e-mail, formatted (HTML) or plain. The placeholders __DEAL__, __REF__, __AMOUNT__, __CONTACT__ and __CUSTOMER__ work in both; in HTML they are inserted as text.

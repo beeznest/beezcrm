@@ -385,7 +385,16 @@ class Sequence
 			'CUSTOMER' => (string) $enrol->soc_name,
 		);
 		$subject = crmReplacePlaceholders((string) $step->subject, $vars);
-		$body = crmReplacePlaceholders((string) $step->body, $vars);
+		// The text of a step is plain or HTML. In HTML the values are inserted as text, so a name with a "<" or a "&"
+		// cannot add markup to the message.
+		$isHtml = crmLooksLikeHtml((string) $step->body);
+		$bodyVars = $vars;
+		if ($isHtml) {
+			foreach ($bodyVars as $key => $value) {
+				$bodyVars[$key] = htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+			}
+		}
+		$body = crmReplacePlaceholders((string) $step->body, $bodyVars);
 		$email = trim((string) $enrol->contact_email);
 		$status = 'sent';
 		$error = '';
@@ -406,7 +415,7 @@ class Sequence
 		} elseif ($dry) {
 			$status = 'simulated';
 		} else {
-			$result = crmSendMail($email, $subject, $body, (int) $enrol->fk_opportunity);
+			$result = crmSendMail($email, $subject, $body, (int) $enrol->fk_opportunity, $isHtml);
 			if (!$result['ok']) {
 				$status = 'error';
 				$error = $result['error'];
