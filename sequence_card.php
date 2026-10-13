@@ -47,7 +47,7 @@ if ($action === 'addstep') {
 	if (!in_array($kind, array('email', 'call', 'task'), true)) {
 		$kind = 'email';
 	}
-	if ($sequence->addStep($kind, GETPOSTINT('delay_days'), GETPOST('subject', 'nohtml'), GETPOST('body', 'nohtml')) <= 0) {
+	if ($sequence->addStep($kind, GETPOSTINT('delay_days'), GETPOST('subject', 'nohtml'), GETPOST('body', 'nohtml'), GETPOST('send_mode', 'aZ09')) <= 0) {
 		setEventMessages($sequence->error, null, 'errors');
 	}
 	header('Location: '.$back);
@@ -98,13 +98,23 @@ print '<p class="opacitymedium">'.$langs->trans('CrmPlaceholders').'</p>';
 print '<h2>'.$langs->trans('CrmSteps').'</h2>';
 print '<p class="opacitymedium">'.$langs->trans('CrmStepsHelp').'</p>';
 print '<table class="noborder centpercent">';
-print '<tr class="liste_titre"><td>#</td><td>'.$langs->trans('CrmKind').'</td><td>'.$langs->trans('CrmDelayDays').'</td><td>'.$langs->trans('CrmSubject').'</td><td></td></tr>';
+print '<tr class="liste_titre"><td>#</td><td>'.$langs->trans('CrmKind').'</td><td>'.$langs->trans('CrmDelayDays').'</td><td>'.$langs->trans('CrmSubject').'</td><td>'.$langs->trans('CrmStepMode').'</td><td></td></tr>';
 foreach ($steps as $step) {
 	print '<tr class="oddeven">';
 	print '<td>'.(int) $step->position.'</td>';
 	print '<td>'.dol_escape_htmltag((string) $step->action).'</td>';
 	print '<td>'.(int) $step->delay_days.'</td>';
-	print '<td>'.dol_escape_htmltag((string) $step->subject).'</td><td>';
+	print '<td>'.dol_escape_htmltag((string) $step->subject).'</td>';
+	print '<td>';
+	if ((string) $step->action === 'email') {
+		$stepMode = (string) ($step->send_mode ?? '');
+		if ($stepMode === 'draft' || $stepMode === 'send') {
+			print $langs->trans($stepMode === 'send' ? 'CrmStepModeSend' : 'CrmStepModeDraft');
+		} else {
+			print '<span class="opacitymedium">'.$langs->trans('CrmStepModeDefault', $langs->transnoentitiesnoconv(crmSequenceDraftMode() ? 'CrmStepModeDraft' : 'CrmStepModeSend')).'</span>';
+		}
+	}
+	print '</td><td>';
 	if ($user->hasRight('crm', 'sequence')) {
 		print '<a href="'.$back.'&action=delstep&stepid='.(int) $step->rowid.'&token='.newToken().'">'.$langs->trans('Delete').'</a>';
 	}
@@ -119,6 +129,11 @@ if ($user->hasRight('crm', 'sequence')) {
 	print '<input type="hidden" name="id" value="'.((int) $sequence->id).'">';
 	print '<select name="stepaction"><option value="email">'.$langs->trans('CrmEmail').'</option><option value="call">'.$langs->trans('CrmCall').'</option><option value="task">'.$langs->trans('CrmTask').'</option></select> ';
 	print '<input type="number" name="delay_days" value="0" min="0" class="width50"> '.$langs->trans('CrmDays').' ';
+	if (crmStepModeSupported($db)) {
+		print '<select name="send_mode" title="'.dol_escape_htmltag($langs->trans('CrmStepModeHelp')).'">';
+		print '<option value="">'.$langs->trans('CrmStepModeDefault', $langs->transnoentitiesnoconv(crmSequenceDraftMode() ? 'CrmStepModeDraft' : 'CrmStepModeSend')).'</option>';
+		print '<option value="draft">'.$langs->trans('CrmStepModeDraft').'</option><option value="send">'.$langs->trans('CrmStepModeSend').'</option></select> ';
+	}
 	print '<input name="subject" class="minwidth200" placeholder="'.dol_escape_htmltag($langs->trans('CrmSubject')).'"> ';
 	print '<textarea name="body" class="minwidth300" rows="4" placeholder="'.dol_escape_htmltag($langs->trans('CrmBody')).'"></textarea> ';
 	print '<input type="submit" class="button" value="'.$langs->trans('CrmAddStep').'">';

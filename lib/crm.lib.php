@@ -152,6 +152,53 @@ function crmSequenceDraftMode(): bool
 }
 
 /**
+ * Whether one e-mail step is a draft for the salesperson (true) or is sent by the job (false). A step can force its own
+ * mode with 'draft' or 'send'; any other value, the empty string included, follows the global setting.
+ */
+function crmStepDraftMode(string $stepMode): bool
+{
+	if ($stepMode === 'send') {
+		return false;
+	}
+	if ($stepMode === 'draft') {
+		return true;
+	}
+	return crmSequenceDraftMode();
+}
+
+/**
+ * Bring the tables of an existing installation up to the current schema. There is no migration mechanism in the module:
+ * the tables are created at the first enable only, so a column added later is added here, on every enable, when missing.
+ */
+function crmEnsureSchema(DoliDB $db): void
+{
+	$table = $db->prefix().'crm_sequence_step';
+	$resql = $db->DDLDescTable($table, 'send_mode');
+	if ($resql && $db->fetch_object($resql)) {
+		return;
+	}
+	// DDLAddField cannot write DEFAULT '' (it skips an empty default), so the statement is written here.
+	$sql = 'ALTER TABLE '.$table." ADD COLUMN send_mode varchar(8) DEFAULT '' NOT NULL".($db->type === 'pgsql' ? '' : ' AFTER body');
+	if (!$db->query($sql)) {
+		dol_syslog('CRM: could not add the column send_mode to '.$table.': '.$db->lasterror(), LOG_ERR);
+	}
+}
+
+/**
+ * True when the step table has its send_mode column, so a page or a tool can still work on an installation where the
+ * module has not been re-enabled since the column was added.
+ */
+function crmStepModeSupported(DoliDB $db): bool
+{
+	static $supported = null;
+	if ($supported === null) {
+		$resql = $db->DDLDescTable($db->prefix().'crm_sequence_step', 'send_mode');
+		$supported = ($resql && $db->fetch_object($resql)) ? true : false;
+	}
+	return $supported;
+}
+
+/**
  * Send one plain-text message through Dolibarr.
  *
  * With a deal id the message carries the deal tracking id (see crmTrackId) and is copied to the archive

@@ -231,7 +231,9 @@ An enrolment stops by itself when the deal is won or lost, when someone presses 
 - **`draft` (the default).** Nothing is sent by the job. The step becomes a **planned e-mail** on the deal, owned by the deal owner, with the subject (the deal reference is appended in square brackets) and the suggested text. It appears in the deal's next steps, in CRM → Activities and on Home. The salesperson opens it, edits it, and sends it from Dolibarr, or from a mail client, then registers it. See the user guide, "E-mails suggested by a sequence". Dry-run does not apply to drafts, since nothing is sent; drafts do not count toward the per-run cap.
 - **`send`.** The job sends the e-mail itself to the deal contact, copies the archive mailbox if one is set, and records the e-mail on the deal. Dry-run applies. Any value other than `send` means draft, so a typo never sends mail.
 
-Start in `draft`. Move to `send` only for sequences whose text needs no human review, after a dry-run period whose journal you checked.
+**The mode of each e-mail step.** The global setting is only the default. When you add an e-mail step, the **E-mail mode** list of the form lets you choose **Default** (follow the global setting), **Draft for the salesperson**, or **Send automatically** for that step alone. The steps table shows each step's mode, and "Default (draft)" or "Default (send)" for the ones that follow the global setting. This lets one sequence mix a reminder that is sent by itself and a long message that a person must review. A call or task step has no mode. The MCP tool `crm_add_sequence_step` takes the same choice (`send_mode`: empty, `draft` or `send`), and `crm_get_sequence` returns it. A step whose mode is "send" is subject to dry-run and to the cap of e-mails per run; drafts are not. The mode of an existing step cannot be changed: delete the step and add it again.
+
+Start every step in `draft`. Move a step to `send` only when its text needs no human review, after a dry-run period whose journal you checked.
 
 ## E-mail history
 
@@ -348,7 +350,7 @@ The tools cover pipelines, stages, sources, loss reasons and qualification items
 
 **After an update of the module.** Copy or `git pull` the new files; they are live at once. Then, if the update touched the descriptor (menus, rights, hooks, cron jobs, home box, the icon), **disable and re-enable the module** in Home → Setup → Modules. This is safe: tables, deals, constants and agenda events are kept, and nothing is seeded twice. Without it, new hooks (e-mail collector operation, search box entry) and new rights are not registered.
 
-**Database changes.** There is no migration mechanism: tables are created at the first enable only. A release that adds a column needs the matching `ALTER TABLE` run by hand; the release notes say so.
+**Database changes.** The tables are created at the first enable. A column added by a later release is added **when the module is re-enabled** (`crmEnsureSchema()`), which is safe to repeat. Until then the module keeps working without the new feature: for the e-mail mode of a step, the list is simply absent from the add-step form. There is no other migration mechanism: a change that cannot be done by adding a column is described in the release notes.
 
 **Disabling the module** removes the menus, rights, home box and the two scheduled jobs. It does **not** drop the `llx_crm_*` tables, does not delete agenda events (calls, meetings, e-mails stay in the agenda, but no longer link back to the deal while the module is off), and does not touch third parties, contacts, proposals or users. Enabling it again finds everything.
 

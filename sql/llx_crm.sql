@@ -141,6 +141,7 @@ CREATE TABLE llx_crm_sequence_step (
 	delay_days integer DEFAULT 0 NOT NULL,
 	subject varchar(255) DEFAULT NULL,
 	body text,
+	send_mode varchar(8) DEFAULT '' NOT NULL,
 	KEY idx_crm_step_seq (fk_sequence)
 ) ENGINE=innodb;
 

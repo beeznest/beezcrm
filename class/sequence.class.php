@@ -118,20 +118,25 @@ class Sequence
 	}
 
 	/**
-	 * @param string $action email|call|task
+	 * @param string $action   email|call|task
+	 * @param string $sendMode For an e-mail step: draft or send to force its mode, empty to follow the global setting
 	 * @return int Row id, or -1
 	 */
-	public function addStep(string $action, int $delayDays, string $subject, string $body): int
+	public function addStep(string $action, int $delayDays, string $subject, string $body, string $sendMode = ''): int
 	{
+		if ($action !== 'email' || !in_array($sendMode, array('draft', 'send'), true)) {
+			$sendMode = '';
+		}
 		$sqlPos = 'SELECT MAX(position) as mx FROM '.$this->db->prefix().'crm_sequence_step WHERE fk_sequence = '.((int) $this->id);
 		$resPos = $this->db->query($sqlPos);
 		$position = 1;
 		if ($resPos && ($objPos = $this->db->fetch_object($resPos)) && $objPos->mx !== null) {
 			$position = ((int) $objPos->mx) + 1;
 		}
-		$sql = 'INSERT INTO '.$this->db->prefix().'crm_sequence_step (fk_sequence, position, action, delay_days, subject, body) VALUES (';
+		$withMode = crmStepModeSupported($this->db);
+		$sql = 'INSERT INTO '.$this->db->prefix().'crm_sequence_step (fk_sequence, position, action, delay_days, subject, body'.($withMode ? ', send_mode' : '').') VALUES (';
 		$sql .= ((int) $this->id).', '.$position.", '".$this->db->escape($action)."', ".((int) $delayDays);
-		$sql .= ", '".$this->db->escape($subject)."', '".$this->db->escape($body)."')";
+		$sql .= ", '".$this->db->escape($subject)."', '".$this->db->escape($body)."'".($withMode ? ", '".$this->db->escape($sendMode)."'" : '').')';
 		if (!$this->db->query($sql)) {
 			$this->error = $this->db->lasterror();
 			return -1;
@@ -294,10 +299,13 @@ class Sequence
 				continue;
 			}
 			if ((string) $step->action === 'email') {
-				if (!crmSequenceDraftMode() && $stats['emails'] >= $max) {
-					break;
+				// Each e-mail step is a draft or a send by its own setting, else by the global one. Only sends count toward the
+				// cap; a send step over the cap waits for the next run while the other enrolments go on.
+				$draftStep = crmStepDraftMode((string) ($step->send_mode ?? ''));
+				if (!$draftStep && $stats['emails'] >= $max) {
+					continue;
 				}
-				$emailStatus = $this->runEmailStep($user, $obj, $step, $dry);
+				$emailStatus = $this->runEmailStep($user, $obj, $step, $dry, $draftStep);
 				if ($emailStatus === 'draft') {
 					$stats['drafts']++;
 				} else {
@@ -321,9 +329,10 @@ class Sequence
 	 * @param object $enrol Enrolment row with deal columns
 	 * @param object $step  Step row
 	 * @param int    $dry   1 to journal without sending
+	 * @param bool   $draftStep True when this step is a draft for the salesperson, false when it is sent
 	 * @return string sent|simulated|error
 	 */
-	private function runEmailStep(User $user, $enrol, $step, int $dry): string
+	private function runEmailStep(User $user, $enrol, $step, int $dry, bool $draftStep): string
 	{
 		global $conf;
 		$contact = trim((string) $enrol->firstname.' '.(string) $enrol->lastname);
@@ -339,7 +348,7 @@ class Sequence
 		$email = trim((string) $enrol->contact_email);
 		$status = 'sent';
 		$error = '';
-		if (crmSequenceDraftMode()) {
+		if ($draftStep) {
 			// Nothing leaves the server. The step becomes a planned e-mail on the deal for the salesperson to review
 			// and send from email_compose.php, or from a mail client. Dry-run does not apply: it only guards sending.
 			$activity = new CrmActivity($this->db);

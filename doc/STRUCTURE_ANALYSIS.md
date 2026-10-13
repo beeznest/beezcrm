@@ -122,7 +122,7 @@ One message per owner per day. It lists overdue next steps, deals with no next s
 
 A sequence is an explicit cadence on a deal, not a blast to every prospect. Steps are `email`, `call`, or `task`, delayed D+n from enrolment.
 
-- **E-mail steps have two modes** (`CRM_SEQUENCE_EMAIL_MODE`). `draft` (default, and the behaviour for any value other than `send`): the step creates a planned e-mail event on the deal, owned by the deal owner, with the subject as label (deal reference appended in square brackets) and the suggested text as note, and the journal row is `draft`. Nothing is sent, dry-run does not apply, and drafts do not count toward `CRM_MAX_EMAILS_PER_RUN`. See "E-mail drafts". `send`: the cron sends as described below.
+- **E-mail steps have two modes**, set globally (`CRM_SEQUENCE_EMAIL_MODE`) and overridable per step (`llx_crm_sequence_step.send_mode`: empty follows the global setting, `draft` or `send` forces it; `crmStepDraftMode()`). `draft` (default, and the behaviour for any value other than `send`): the step creates a planned e-mail event on the deal, owned by the deal owner, with the subject as label (deal reference appended in square brackets) and the suggested text as note, and the journal row is `draft`. Nothing is sent, dry-run does not apply, and drafts do not count toward `CRM_MAX_EMAILS_PER_RUN`. See "E-mail drafts". `send`: the cron sends as described below.
 - In send mode, e-mail goes to `fk_socpeople` on the deal. No address: log `error` and do not spin. The company address is not a fallback.
 - Placeholders `__DEAL__`, `__REF__`, `__AMOUNT__`, `__CONTACT__`, `__CUSTOMER__`. An unknown token is left as written.
 - `call` and `task` create an agenda event for the owner. They do not send mail.
@@ -185,7 +185,7 @@ One file, `sql/llx_crm.sql`. Indexes are inside each `CREATE TABLE`. There is no
 | `llx_crm_qualification` | Checklist definition |
 | `llx_crm_opportunity_qualification` | Answers |
 | `llx_crm_sequence` | Label, active, stop flags |
-| `llx_crm_sequence_step` | Position, action, delay days, subject, body |
+| `llx_crm_sequence_step` | Position, action, delay days, subject, body, send mode |
 | `llx_crm_sequence_enrol` | Deal, current step, next run, status, stop reason |
 | `llx_crm_sequence_log` | Recipient, subject, date, `sent` / `simulated` / `error` |
 | `llx_crm_reminder_log` | Owner reminder journal |

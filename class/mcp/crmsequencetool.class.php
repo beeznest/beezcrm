@@ -52,6 +52,7 @@ class CrmSequenceTool extends CrmMcpTool
 				'delay_days' => array('type' => 'integer'),
 				'subject' => array('type' => 'string'),
 				'body' => array('type' => 'string', 'description' => 'Placeholders: __DEAL__ __REF__ __AMOUNT__ __CONTACT__ __CUSTOMER__'),
+				'send_mode' => array('type' => 'string', 'enum' => array('', 'draft', 'send'), 'description' => 'E-mail steps only. draft: the step becomes a planned e-mail for the salesperson to review and send. send: the job sends it (dry-run applies). Empty: follow the global setting CRM_SEQUENCE_EMAIL_MODE.'),
 			), array('id', 'action')),
 			$this->definition('crm_delete_sequence_step', 'Delete one step.', array(
 				'id' => array('type' => 'integer'),
@@ -156,7 +157,7 @@ class CrmSequenceTool extends CrmMcpTool
 			if (!in_array($action, array('email', 'call', 'task'), true)) {
 				return $this->fail('Step action must be email, call or task');
 			}
-			$stepId = $sequence->addStep($action, $this->argInt($args, 'delay_days'), $this->argString($args, 'subject'), $this->argString($args, 'body'));
+			$stepId = $sequence->addStep($action, $this->argInt($args, 'delay_days'), $this->argString($args, 'subject'), $this->argString($args, 'body'), $this->argString($args, 'send_mode'));
 			if ($stepId <= 0) {
 				return $this->fail($sequence->error !== '' ? $sequence->error : 'Could not add the step');
 			}
@@ -207,6 +208,7 @@ class CrmSequenceTool extends CrmMcpTool
 				'delay_days' => (int) $step->delay_days,
 				'subject' => (string) $step->subject,
 				'body' => (string) $step->body,
+				'send_mode' => (string) ($step->send_mode ?? ''),
 			);
 		}
 		$enrolments = array();
