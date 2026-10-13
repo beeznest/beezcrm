@@ -109,6 +109,47 @@ class Sequence
 	}
 
 	/**
+	 * Save the reference, the label, the active flag and the stop rules of a loaded sequence. Steps and enrolments are
+	 * not touched: a running enrolment goes on, and one on an inactive sequence waits until it is active again.
+	 *
+	 * @return int 1 if OK, -1 on error with a language key in ->error
+	 */
+	public function update(): int
+	{
+		global $conf;
+		if ($this->id <= 0) {
+			$this->error = 'CrmErrorSequenceNotFound';
+			return -1;
+		}
+		$this->label = trim($this->label);
+		if ($this->label === '') {
+			$this->error = 'CrmErrorSequenceLabelRequired';
+			return -1;
+		}
+		$this->ref = strtoupper((string) preg_replace('/[^A-Za-z0-9_\-]/', '', $this->ref));
+		if ($this->ref === '' || strlen($this->ref) > 32) {
+			$this->error = 'CrmErrorSequenceRefInvalid';
+			return -1;
+		}
+		$sqlDup = 'SELECT rowid FROM '.$this->db->prefix().'crm_sequence WHERE entity = '.((int) $conf->entity);
+		$sqlDup .= " AND ref = '".$this->db->escape($this->ref)."' AND rowid <> ".((int) $this->id);
+		$resDup = $this->db->query($sqlDup);
+		if ($resDup && $this->db->num_rows($resDup) > 0) {
+			$this->error = 'CrmErrorSequenceRefExists';
+			return -1;
+		}
+		$sql = 'UPDATE '.$this->db->prefix()."crm_sequence SET ref = '".$this->db->escape($this->ref)."', label = '".$this->db->escape($this->label)."'";
+		$sql .= ', active = '.($this->active ? 1 : 0).', stop_on_reply = '.($this->stop_on_reply ? 1 : 0);
+		$sql .= ', stop_on_won = '.($this->stop_on_won ? 1 : 0).', stop_on_lost = '.($this->stop_on_lost ? 1 : 0);
+		$sql .= ' WHERE rowid = '.((int) $this->id).' AND entity = '.((int) $conf->entity);
+		if (!$this->db->query($sql)) {
+			$this->error = $this->db->lasterror();
+			return -1;
+		}
+		return 1;
+	}
+
+	/**
 	 * @return array<int,object>
 	 */
 	public function fetchSteps(): array

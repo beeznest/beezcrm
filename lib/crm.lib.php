@@ -411,14 +411,16 @@ function crmNextOpportunityRef(DoliDB $db): string
 function crmNextSequenceRef(DoliDB $db): string
 {
 	global $conf;
-	$sql = "SELECT ref FROM ".$db->prefix()."crm_sequence WHERE entity = ".((int) $conf->entity)." ORDER BY ref DESC";
-	$sql .= $db->plimit(1, 0);
+	// A sequence can be renamed with any reference, so only the generated ones (SEQ + digits) give the next number.
+	$sql = "SELECT ref FROM ".$db->prefix()."crm_sequence WHERE entity = ".((int) $conf->entity)." AND ref LIKE 'SEQ%'";
 	$resql = $db->query($sql);
 	$next = 1;
 	if ($resql) {
-		$obj = $db->fetch_object($resql);
-		if ($obj && !empty($obj->ref)) {
-			$next = ((int) substr((string) $obj->ref, 3)) + 1;
+		while ($obj = $db->fetch_object($resql)) {
+			$suffix = substr((string) $obj->ref, 3);
+			if (ctype_digit($suffix) && ((int) $suffix) >= $next) {
+				$next = ((int) $suffix) + 1;
+			}
 		}
 	}
 	return 'SEQ'.sprintf('%04d', $next);

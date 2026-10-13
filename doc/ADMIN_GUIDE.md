@@ -175,7 +175,7 @@ A short note on what the module keeps in Dolibarr and what disabling it leaves b
 
 ### CRM → Sequences
 
-Not in the Setup screen, but it is configuration, and it needs "Manage customer sequences". The list (reference, label, active, number of steps) has a form to create a sequence: **label** and **Active** checkbox. The reference is generated. Open a sequence to manage its steps, enrolments and journal: see [Sequences](#sequences). A sequence's Active flag is set when you create it; an inactive sequence runs nothing.
+Not in the Setup screen, but it is configuration, and it needs "Manage customer sequences". The list (reference, label, active, number of steps) has a form to create a sequence: **label** and **Active** checkbox. The reference is generated at first (`SEQ0001`, `SEQ0002`…) and can be changed later. Open a sequence to change it (reference, label, active, stop rules), manage its steps and enrolments and read its journal: see [Sequences](#sequences). An inactive sequence runs nothing.
 
 ### Other places that carry module settings
 
@@ -219,7 +219,7 @@ Dry-run keeps the first runs harmless: with dry-run on, a run only writes the jo
 
 A sequence is an explicit follow-up plan for a **deal**, not a mass mailing. CRM → Sequences (needs "Manage customer sequences").
 
-1. Create the sequence (label, active). Open it.
+1. Create the sequence (label, active). Open it. At the top of the card, a form lets you **change it later** with the **Update** button: the reference (short code, unique, letters, digits, underscore and dash, 32 characters at most; the generated `SEQ0001`-style reference can be replaced by a meaningful one), the label, the **Active** flag, and the three **stop rules** (stop an enrolment when the contact replies, when the deal is won, when the deal is lost). Changing these does not touch the steps or the enrolments: a running enrolment goes on under the new rules, and the enrolments of a sequence made inactive simply wait, then resume when it is active again (steps already due then run at the next job run). The MCP tool `crm_update_sequence` does the same.
 2. Add **steps** in the order they should run. Each step has a kind (**e-mail**, **call**, **task**), a **delay in days after enrolment** (not after the previous step), a subject and a body. Subject and body accept the placeholders `__DEAL__`, `__REF__`, `__AMOUNT__`, `__CONTACT__`, `__CUSTOMER__`; an unknown placeholder stays as written. Subject and body are used for e-mail steps; a call or a task creates an agenda event for the deal owner with the subject as title and sends nothing.
 3. **Enrol** a deal by choosing it in the list under "Enrolments": it is a searchable list, type part of the reference, the title or the account name to filter it. The list offers the open deals you may see (up to 1 000) that are not already running on this sequence. The sequence needs at least one step, and a deal cannot be running twice on the same sequence.
 4. Turn the master switch on: `CRM_SEQUENCES_ON` = 1.

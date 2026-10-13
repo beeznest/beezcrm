@@ -41,6 +41,23 @@ if ($sequence->fetch($id) <= 0) {
 }
 $back = $_SERVER['PHP_SELF'].'?id='.$id;
 
+if ($action === 'updatesequence') {
+	crmRequireRight('sequence');
+	$sequence->ref = GETPOST('ref', 'nohtml');
+	$sequence->label = GETPOST('label', 'nohtml');
+	$sequence->active = GETPOSTINT('active') ? 1 : 0;
+	$sequence->stop_on_reply = GETPOSTINT('stop_on_reply') ? 1 : 0;
+	$sequence->stop_on_won = GETPOSTINT('stop_on_won') ? 1 : 0;
+	$sequence->stop_on_lost = GETPOSTINT('stop_on_lost') ? 1 : 0;
+	if ($sequence->update() <= 0) {
+		setEventMessages(crmErrorText($sequence->error !== '' ? $sequence->error : 'Error'), null, 'errors');
+	} else {
+		setEventMessages($langs->trans('RecordSaved'), null);
+		header('Location: '.$back);
+		exit;
+	}
+}
+
 if ($action === 'addstep') {
 	crmRequireRight('sequence');
 	$kind = GETPOST('stepaction', 'aZ09');
@@ -91,7 +108,27 @@ $log = $sequence->fetchLog();
 
 llxHeader('', $sequence->ref, '', '', 0, 0, '', array('/crm/css/crm.css'));
 print load_fiche_titre($sequence->ref.' — '.$sequence->label, '', 'fa-handshake');
-print '<p>'.$langs->trans('CrmActive').': '.((int) $sequence->active ? $langs->trans('Yes') : $langs->trans('No')).'</p>';
+if ($user->hasRight('crm', 'sequence')) {
+	print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'">';
+	print '<input type="hidden" name="token" value="'.newToken().'">';
+	print '<input type="hidden" name="action" value="updatesequence">';
+	print '<input type="hidden" name="id" value="'.((int) $sequence->id).'">';
+	print '<table class="border centpercent">';
+	print '<tr><td class="titlefield">'.$langs->trans('Ref').'</td><td><input name="ref" class="minwidth200" maxlength="32" value="'.dol_escape_htmltag($sequence->ref).'" required></td></tr>';
+	print '<tr><td>'.$langs->trans('CrmLabel').'</td><td><input name="label" class="minwidth300" value="'.dol_escape_htmltag($sequence->label).'" required></td></tr>';
+	print '<tr><td>'.$langs->trans('CrmActive').'</td><td><label><input type="checkbox" name="active" value="1"'.($sequence->active ? ' checked' : '').'> '.$langs->trans('CrmSequenceActiveHelp').'</label></td></tr>';
+	print '<tr><td>'.$langs->trans('CrmStopRules').'</td><td>';
+	print '<label><input type="checkbox" name="stop_on_reply" value="1"'.($sequence->stop_on_reply ? ' checked' : '').'> '.$langs->trans('CrmStopOnReply').'</label><br>';
+	print '<label><input type="checkbox" name="stop_on_won" value="1"'.($sequence->stop_on_won ? ' checked' : '').'> '.$langs->trans('CrmStopOnWon').'</label><br>';
+	print '<label><input type="checkbox" name="stop_on_lost" value="1"'.($sequence->stop_on_lost ? ' checked' : '').'> '.$langs->trans('CrmStopOnLost').'</label>';
+	print '</td></tr>';
+	print '</table>';
+	print '<div class="center"><input type="submit" class="button" value="'.$langs->trans('Update').'"></div>';
+	print '</form>';
+	print '<p class="opacitymedium">'.$langs->trans('CrmSequenceUpdateHelp').'</p>';
+} else {
+	print '<p>'.$langs->trans('CrmActive').': '.((int) $sequence->active ? $langs->trans('Yes') : $langs->trans('No')).'</p>';
+}
 print '<p class="opacitymedium">'.$langs->trans('CrmSequenceIntro').'</p>';
 print '<p class="opacitymedium">'.$langs->trans('CrmPlaceholders').'</p>';
 

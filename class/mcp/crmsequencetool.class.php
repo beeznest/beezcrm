@@ -46,6 +46,15 @@ class CrmSequenceTool extends CrmMcpTool
 				'stop_on_won' => array('type' => 'integer'),
 				'stop_on_lost' => array('type' => 'integer'),
 			), array('label')),
+			$this->definition('crm_update_sequence', 'Change the reference, label, active flag or stop rules of a sequence. Only the fields given are changed. Steps and enrolments are untouched: a running enrolment goes on, and one on an inactive sequence waits until the sequence is active again.', array(
+				'id' => array('type' => 'integer'),
+				'ref' => array('type' => 'string', 'description' => 'Letters, digits, underscore, dash; unique; stored in capitals.'),
+				'label' => array('type' => 'string'),
+				'active' => array('type' => 'integer'),
+				'stop_on_reply' => array('type' => 'integer'),
+				'stop_on_won' => array('type' => 'integer'),
+				'stop_on_lost' => array('type' => 'integer'),
+			), array('id')),
 			$this->definition('crm_add_sequence_step', 'Add a step. delay_days is counted from the enrolment date, not from the previous step.', array(
 				'id' => array('type' => 'integer', 'description' => 'Sequence id'),
 				'action' => array('type' => 'string', 'enum' => array('email', 'call', 'task')),
@@ -92,6 +101,9 @@ class CrmSequenceTool extends CrmMcpTool
 		}
 		if ($toolName === 'crm_create_sequence') {
 			return 'Create CRM sequence "'.$this->argString($args, 'label').'".';
+		}
+		if ($toolName === 'crm_update_sequence') {
+			return 'Update CRM sequence '.$this->argInt($args, 'id').'.';
 		}
 		if ($toolName === 'crm_enrol_sequence') {
 			return 'Enrol CRM deal '.$this->argInt($args, 'opportunity_id').' on sequence '.$this->argInt($args, 'id').'.';
@@ -151,6 +163,23 @@ class CrmSequenceTool extends CrmMcpTool
 		}
 		if ($sequence->fetch($this->argInt($args, 'id')) <= 0 && $toolName !== 'crm_stop_sequence' && $toolName !== 'crm_mark_replied') {
 			return $this->fail('Sequence not found');
+		}
+		if ($toolName === 'crm_update_sequence') {
+			if (isset($args['ref'])) {
+				$sequence->ref = $this->argString($args, 'ref');
+			}
+			if (isset($args['label'])) {
+				$sequence->label = $this->argString($args, 'label');
+			}
+			foreach (array('active', 'stop_on_reply', 'stop_on_won', 'stop_on_lost') as $flag) {
+				if (isset($args[$flag])) {
+					$sequence->$flag = $this->argInt($args, $flag) ? 1 : 0;
+				}
+			}
+			if ($sequence->update() <= 0) {
+				return $this->fail(crmErrorText($sequence->error !== '' ? $sequence->error : 'Error'));
+			}
+			return array($this->detail($sequence));
 		}
 		if ($toolName === 'crm_add_sequence_step') {
 			$action = $this->argString($args, 'action');
