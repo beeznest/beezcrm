@@ -70,13 +70,25 @@ if ($action === 'setconst') {
 
 if ($action === 'addpipeline') {
 	$pipeline = new Pipeline($db);
-	$pipeline->ref = GETPOST('ref', 'aZ09');
-	$pipeline->label = GETPOST('label', 'alphanohtml');
-	$pipeline->active = 1;
-	if ($pipeline->ref === '' || $pipeline->create($user) <= 0) {
-		setEventMessages($pipeline->error !== '' ? $pipeline->error : $langs->trans('Error'), null, 'errors');
+	$newId = $pipeline->save($user, 0, GETPOST('ref', 'aZ09'), GETPOST('label', 'nohtml'), 1, GETPOSTINT('copyfrom'));
+	if ($newId <= 0) {
+		setEventMessages(crmErrorText($pipeline->error !== '' ? $pipeline->error : 'Error'), null, 'errors');
+	} else {
+		setEventMessages($langs->trans('RecordSaved'), null);
 	}
-	header('Location: '.$_SERVER['PHP_SELF'].'?tab=stages');
+	header('Location: '.$_SERVER['PHP_SELF'].'?tab=stages'.($newId > 0 ? '&pipelineid='.$newId : ''));
+	exit;
+}
+
+if ($action === 'savepipeline') {
+	$pipeline = new Pipeline($db);
+	$pipelineId = GETPOSTINT('pipelineid');
+	if ($pipeline->save($user, $pipelineId, '', GETPOST('label', 'nohtml'), GETPOSTINT('active') ? 1 : 0) <= 0) {
+		setEventMessages(crmErrorText($pipeline->error !== '' ? $pipeline->error : 'Error'), null, 'errors');
+	} else {
+		setEventMessages($langs->trans('RecordSaved'), null);
+	}
+	header('Location: '.$_SERVER['PHP_SELF'].'?tab=stages&pipelineid='.$pipelineId);
 	exit;
 }
 
@@ -216,14 +228,38 @@ if ($tab === 'stages') {
 	print '<label><input type="checkbox" name="is_lost" value="1"> '.$langs->trans('CrmLostStage').'</label> ';
 	print '<input type="submit" class="button" value="'.$langs->trans('CrmAdd').'">';
 	print '</form>';
-	print '<h2>'.$langs->trans('CrmPipeline').'</h2>';
+	if ($pipelineId > 0) {
+		$selected = new Pipeline($db);
+		if ($selected->fetch($pipelineId) > 0) {
+			print '<h2>'.$langs->trans('CrmEditPipeline').'</h2>';
+			if (!$selected->hasOpenStage()) {
+				print '<div class="warning">'.$langs->trans('CrmPipelineNoOpenStage').'</div>';
+			}
+			print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'">';
+			print '<input type="hidden" name="token" value="'.newToken().'">';
+			print '<input type="hidden" name="action" value="savepipeline">';
+			print '<input type="hidden" name="pipelineid" value="'.((int) $selected->id).'">';
+			print dol_escape_htmltag($selected->ref).' <input name="label" class="minwidth200" value="'.dol_escape_htmltag($selected->label).'" required> ';
+			print '<label><input type="checkbox" name="active" value="1"'.($selected->active ? ' checked' : '').'> '.$langs->trans('CrmActive').'</label> ';
+			print '<input type="submit" class="button" value="'.$langs->trans('Save').'">';
+			print '</form>';
+			print '<p class="opacitymedium">'.$langs->trans('CrmEditPipelineHelp').'</p>';
+		}
+	}
+	print '<h2>'.$langs->trans('CrmNewPipeline').'</h2>';
 	print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'">';
 	print '<input type="hidden" name="token" value="'.newToken().'">';
 	print '<input type="hidden" name="action" value="addpipeline">';
 	print '<input name="ref" placeholder="'.dol_escape_htmltag($langs->trans('Ref')).'" required> ';
-	print '<input name="label" placeholder="'.dol_escape_htmltag($langs->trans('CrmLabel')).'" required> ';
+	print '<input name="label" class="minwidth200" placeholder="'.dol_escape_htmltag($langs->trans('CrmLabel')).'" required> ';
+	print $langs->trans('CrmCopyStagesFrom').' <select name="copyfrom"><option value="0">'.$langs->trans('CrmCopyNothing').'</option>';
+	foreach ($pipelines as $pipeline) {
+		print '<option value="'.((int) $pipeline->id).'"'.($pipeline->id === $pipelineId ? ' selected' : '').'>'.dol_escape_htmltag(crmDictLabel((string) $pipeline->label)).'</option>';
+	}
+	print '</select> ';
 	print '<input type="submit" class="button" value="'.$langs->trans('Create').'">';
 	print '</form>';
+	print '<p class="opacitymedium">'.$langs->trans('CrmNewPipelineHelp').'</p>';
 }
 
 if ($tab === 'qualification') {

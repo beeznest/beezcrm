@@ -207,7 +207,7 @@ CRM tools:
 | Tool | Writes |
 | --- | --- |
 | `crm_list_pipelines`, `crm_list_stages`, `crm_list_sources`, `crm_list_loss_reasons`, `crm_list_qualifications` | no |
-| `crm_upsert_stage`, `crm_delete_stage`, `crm_upsert_source`, `crm_upsert_loss_reason`, `crm_upsert_qualification` | yes |
+| `crm_upsert_pipeline`, `crm_upsert_stage`, `crm_delete_stage`, `crm_upsert_source`, `crm_upsert_loss_reason`, `crm_upsert_qualification` | yes |
 | `crm_list_opportunities`, `crm_get_opportunity`, `crm_list_stage_history` | no |
 | `crm_create_opportunity`, `crm_update_opportunity`, `crm_move_opportunity` | yes |
 | `crm_mark_won`, `crm_mark_lost`, `crm_delete_opportunity` | yes |

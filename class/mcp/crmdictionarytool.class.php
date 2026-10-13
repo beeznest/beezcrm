@@ -42,6 +42,13 @@ class CrmDictionaryTool extends CrmMcpTool
 			$this->definition('crm_list_sources', 'List deal sources. Source ids are the values accepted as source_id when creating or updating a deal.', array()),
 			$this->definition('crm_list_loss_reasons', 'List loss reasons. A reason id is required when marking a deal lost.', array()),
 			$this->definition('crm_list_qualifications', 'List the active qualification checklist (id, code, label, points). Ids are the keys used by crm_set_qualification.', array()),
+			$this->definition('crm_upsert_pipeline', 'Create a pipeline, or rename and activate or deactivate one. The ref is fixed at creation. A new pipeline is empty unless copy_stages_from names a pipeline to copy the stages from; it needs an open, a won and a lost stage before deals can be created in it. The last active pipeline cannot be deactivated.', array(
+				'id' => array('type' => 'integer', 'description' => 'Pipeline id. Omit to create.'),
+				'ref' => array('type' => 'string', 'description' => 'Reference, required when creating: letters, digits, underscore, dash.'),
+				'label' => array('type' => 'string'),
+				'active' => array('type' => 'integer', 'description' => '1 active (default), 0 inactive. Only used when updating.'),
+				'copy_stages_from' => array('type' => 'integer', 'description' => 'When creating: id of the pipeline whose stages are copied.'),
+			), array('label')),
 			$this->definition('crm_upsert_stage', 'Create or update a pipeline stage. Probability lives on the stage.', array(
 				'id' => array('type' => 'integer', 'description' => 'Stage id. Omit to create.'),
 				'pipeline_id' => array('type' => 'integer'),
@@ -74,7 +81,7 @@ class CrmDictionaryTool extends CrmMcpTool
 	 */
 	public function getRequiredRights(string $toolName)
 	{
-		$writes = array('crm_upsert_stage', 'crm_delete_stage', 'crm_upsert_source', 'crm_upsert_loss_reason', 'crm_upsert_qualification');
+		$writes = array('crm_upsert_pipeline', 'crm_upsert_stage', 'crm_delete_stage', 'crm_upsert_source', 'crm_upsert_loss_reason', 'crm_upsert_qualification');
 		if (in_array($toolName, $writes, true)) {
 			return array(array('crm', 'setup'));
 		}
@@ -88,6 +95,10 @@ class CrmDictionaryTool extends CrmMcpTool
 	{
 		if (strpos($toolName, 'crm_list_') === 0) {
 			return self::NO_WRITE;
+		}
+		if ($toolName === 'crm_upsert_pipeline') {
+			$id = $this->argInt($args, 'id');
+			return ($id > 0 ? 'Update CRM pipeline '.$id : 'Create CRM pipeline "'.$this->argString($args, 'ref').'"').' with label "'.$this->argString($args, 'label').'".';
 		}
 		if ($toolName === 'crm_delete_stage') {
 			return 'Delete CRM stage '.$this->argInt($args, 'id').'. Refused when the stage still contains deals.';
@@ -134,6 +145,14 @@ class CrmDictionaryTool extends CrmMcpTool
 				$rows[] = array('id' => (int) $one->rowid, 'code' => (string) $one->code, 'label' => (string) $one->label, 'points' => (int) $one->points, 'position' => (int) $one->position);
 			}
 			return $rows;
+		}
+		if ($toolName === 'crm_upsert_pipeline') {
+			$pipeline = new Pipeline($this->db);
+			$id = $pipeline->save($this->user, $this->argInt($args, 'id'), $this->argString($args, 'ref'), $this->argString($args, 'label'), isset($args['active']) ? $this->argInt($args, 'active') : 1, $this->argInt($args, 'copy_stages_from'));
+			if ($id <= 0) {
+				return $this->fail(crmErrorText($pipeline->error !== '' ? $pipeline->error : 'Error'));
+			}
+			return array(array('id' => $id, 'ref' => $pipeline->ref, 'label' => $pipeline->label, 'active' => (int) $pipeline->active));
 		}
 		if ($toolName === 'crm_upsert_stage') {
 			return $this->saveStage($args);

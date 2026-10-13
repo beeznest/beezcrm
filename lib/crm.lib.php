@@ -6,6 +6,7 @@ declare(strict_types=1);
  */
 
 require_once __DIR__.'/crmlogic.lib.php';
+require_once DOL_DOCUMENT_ROOT.'/core/lib/date.lib.php';
 
 /**
  * Load the module language.
@@ -363,6 +364,7 @@ function crmErrorText(string $error): string
 	if ($error === '') {
 		return '';
 	}
+	crmLoadLangs();
 	$translated = $langs->trans($error);
 	return ($translated === '' ? $error : $translated);
 }

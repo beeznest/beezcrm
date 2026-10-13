@@ -194,7 +194,8 @@ if ($action === 'create' && $object->id <= 0 && (GETPOSTISSET('socid') || GETPOS
 
 if ($action === 'create' && !GETPOSTISSET('datecloseyear') && (int) $object->date_close_expected <= 0) {
 	$todayParts = dol_getdate(dol_now());
-	$object->date_close_expected = (int) dol_mktime(0, 0, 0, (int) $todayParts['mon'] + 1, (int) $todayParts['mday'], (int) $todayParts['year']);
+	// A month from today. dol_mktime() refuses month 13 and a day such as 31 February, dol_time_plus_duree() does not.
+	$object->date_close_expected = (int) dol_time_plus_duree((int) dol_mktime(0, 0, 0, (int) $todayParts['mon'], (int) $todayParts['mday'], (int) $todayParts['year']), 1, 'm');
 }
 
 if ($action === 'create' || $action === 'edit') {

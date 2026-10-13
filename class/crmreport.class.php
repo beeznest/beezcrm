@@ -79,7 +79,9 @@ class CrmReport
 			$months = 3;
 		}
 		$parts = dol_getdate(dol_now());
-		$windowEnd = (int) dol_mktime(0, 0, 0, (int) $parts['mon'] + $months, 1, (int) $parts['year']);
+		// dol_mktime() refuses a month above 12, so the window end is the first of this month plus N months.
+		$firstOfMonth = (int) dol_mktime(0, 0, 0, (int) $parts['mon'], 1, (int) $parts['year']);
+		$windowEnd = (int) dol_time_plus_duree($firstOfMonth, $months, 'm');
 		$today = crmTodayStart();
 		$empty = array('amount' => 0.0, 'weighted' => 0.0);
 		$categories = array('pipeline', 'upside', 'commit');

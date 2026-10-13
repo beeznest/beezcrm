@@ -33,6 +33,8 @@ Then, as an administrator:
    An MCP tool is only listed for a user who has the matching right.
 3. The first enable creates `llx_crm_*` and, when the entity has no pipeline, seeds one commercial pipeline, its stages, sources, qualification items and loss reasons. A later enable does not seed again and does not reset constants.
 
+**Pipelines.** A pipeline is a separate sales process with its own stages and probabilities (new customers, renewals, partners). Manage them in CRM → Setup → Stages: pick one in the list to edit its stages, rename it, or deactivate it; at the bottom, "New pipeline" creates one, optionally copying the stages of an existing pipeline so it is usable at once. A new pipeline without a copy is empty and needs an open, a won and a lost stage before deals can be created in it. An inactive pipeline is no longer offered for new deals or on the board; its deals stay in the lists and reports, and the last active pipeline cannot be deactivated. The MCP tool `crm_upsert_pipeline` does the same.
+
 Disabling removes menus, rights, the home box and the two cron jobs. It does not drop `llx_crm_*`, does not delete agenda events, and does not touch third parties, contacts, proposals or users.
 
 ## Cron
@@ -169,7 +171,7 @@ Moving is allowed to any open stage, forward or back, as long as the deal has a 
 - **Send from here**: Dolibarr sends it to the address shown (the deal's contact by default) after a confirmation. It is recorded on the deal and the draft disappears.
 - **Open in my mail client**: your mail program opens with the recipient, subject and text filled in, and the archive address in copy. Send it from there. **Keep the subject**: it contains the deal reference in square brackets, such as `[OPP2026-0001]`, which is how the message finds its deal again. **Keep the archive address in copy.** Then come back and press **E-mail sent manually**, so the step is closed. If the text is too long for your mail program, use **Copy text** and paste it.
 - **E-mail sent manually**: registers the e-mail as sent now. A few minutes later, when the archive mailbox is read, the real message (with its exact text and date) replaces this entry, so the history does not show it twice. If you forgot to press the button, the real message still replaces the draft, as long as the subject is the same.
-- **Discard**: throws the draft away, if you do not want to send it.
+- **Delete this step**: removes the planned e-mail from the deal completely. Use it only if you no longer want that step; to come back to it later, use the link back to the deal instead.
 - **Save draft**: keeps your changes for later.
 
 The customer's reply is recognised by the same reference in the subject, so it is added to the deal when it reaches the archive mailbox. If a contact answers you by another way, ask whoever manages sequences to use **Mark replied** on the sequence so that it stops (it needs the sequence right).
