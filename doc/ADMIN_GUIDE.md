@@ -2,7 +2,7 @@
 
 For the person who installs the CRM module, configures it, and keeps it running. Salespeople use [the user guide](USER_GUIDE.md). The design reasons behind the rules are in [STRUCTURE_ANALYSIS.md](STRUCTURE_ANALYSIS.md).
 
-Contents: [Requirements](#requirements) · [Dolibarr settings the module relies on](#dolibarr-settings-the-module-relies-on) · [Install](#install) · [Rights](#rights) · [Module setup, page by page](#module-setup-page-by-page) · [Scheduled jobs](#scheduled-jobs) · [Sending e-mail](#sending-e-mail) · [Sequences](#sequences) · [E-mail history](#e-mail-history) · [MCP](#mcp) · [Maintenance](#maintenance) · [Settings reference](#settings-reference) · [Troubleshooting](#troubleshooting)
+Contents: [Requirements](#requirements) · [Dolibarr settings the module relies on](#dolibarr-settings-the-module-relies-on) · [Install](#install) · [Rights](#rights) · [Module setup, page by page](#module-setup-page-by-page) · [Scheduled jobs](#scheduled-jobs) · [Sending e-mail](#sending-e-mail) · [Sequences](#sequences) · [E-mail history](#e-mail-history) · [HTML e-mail](#html-e-mail) · [AI reply suggestions](#ai-reply-suggestions) · [MCP](#mcp) · [Maintenance](#maintenance) · [Settings reference](#settings-reference) · [Troubleshooting](#troubleshooting)
 
 ## Requirements
 
@@ -23,7 +23,8 @@ The module works only if these global Dolibarr settings are in place. Go through
 | **Scheduled jobs** (module `cron`) | The sequence job, the owner reminders and the e-mail collector. Without it Dolibarr never runs a scheduled job, whatever the system cron does |
 | **Proposals** | Linking a proposal to a deal. Without it the Proposals section of the deal is simply absent |
 | **E-mail collector** | Reading the archive mailbox (e-mail history). Not needed if you do not archive e-mails |
-| **AI** | The MCP tools. Not needed for the screens |
+| **WYSIWYG editor** (module `fckeditor`) | The formatted (HTML) mode of the e-mail editor. Without it the HTML tab is a plain box where the HTML source must be typed |
+| **AI** | The MCP tools, and the "Suggest a reply with AI" block of the e-mail editor. Not needed for the screens |
 
 **E-mail sending** (Home → Setup → Emails). Needed for reminders and for any real send from a sequence or from the "Send from here" button.
 
@@ -126,6 +127,8 @@ One text field per setting; press **Save** once for the whole tab. For an on/off
 | Owner reminders enabled | `CRM_REMINDERS_ON` (1) | The daily digest e-mail to each deal owner: overdue next steps, deals with no next step, deals past their expected close. At most one per owner per day |
 | Reminder dry-run | `CRM_REMINDER_DRY_RUN` (1) | Journal only for the reminders. Switch to 0 when the journal looks right |
 | Require a future next step before an open stage change | `CRM_REQUIRE_NEXT_STEP` (1) | While 1, a deal cannot be moved from one open stage to another unless it has an unfinished agenda event dated today or later. Moving to Won or Lost never needs it. Set 0 to allow free moves |
+| AI assistant in the e-mail editor | `CRM_AI_EMAIL_ASSIST` (0) | **Off by default**, because the exchange goes to an external provider. `1` shows the "Suggest a reply with AI" block in the e-mail editor when the AI module is enabled; `0` hides it. See [AI reply suggestions](#ai-reply-suggestions) |
+| Default AI prompt | `CRM_AI_EMAIL_PROMPT` (empty) | A text area. The prompt offered to salespeople, who can edit it for each request. Empty uses the built-in prompt (English or French by the user's language) |
 | Archive mailbox address | `CRM_ARCHIVE_MAILBOX` (empty) | The dedicated address copied on every customer e-mail sent for a deal. Empty: no copy |
 | Copy mode for the archive mailbox | `CRM_ARCHIVE_COPY` (`bcc`) | A drop-down: **Hidden copy (Bcc)** or **Visible copy (Cc)** |
 
@@ -258,6 +261,60 @@ Any other message in the mailbox is **ignored**, without error: the mailbox is n
 - The events follow the Dolibarr agenda's visibility rules, not the CRM's rules, and they are personal data: decide how long you keep them.
 - Anyone who writes a deal reference in a subject can attach a message to that deal, if it reaches the archive mailbox. Keep the address out of public lists.
 
+## HTML e-mail
+
+The e-mail editor (Write / send, on a planned e-mail) can send **plain text** or **formatted (HTML)** messages. Dolibarr's mail library supports both, and the module uses it.
+
+**What the salesperson sees.** A **Format** choice (formatted HTML with a plain-text version, or plain text only) and two tabs. In HTML format the first tab is a WYSIWYG editor (Dolibarr's own, CKEditor, with its e-mail toolbar: bold, italic, lists, links, colours, tables) and the second tab shows the **plain-text version, read-only and automatic**. In plain-text format the second tab is the editor. Switching to HTML turns the text into paragraphs; switching back to plain text asks for confirmation, because the formatting is lost. A draft keeps its format: a draft written in HTML opens in HTML.
+
+**Why one message in two forms, and not two texts.** The standard practice is a `multipart/alternative` message: a plain-text part and an HTML part. Dolibarr's mail library builds the plain part itself from the HTML; it has no way to take a separately written text. Letting a person edit both would also let them disagree. So the module makes the plain version from the HTML, and shows it in the tab so nobody is surprised. To keep it readable, the module adds line feeds after paragraphs, line breaks and list items in the HTML it sends: this changes nothing on screen, but lets the plain version keep its paragraphs. A **link address is not repeated** in the plain version: tell users to write an address in the text when it matters.
+
+**What is sent.** The message goes out as `multipart/alternative` with the plain part first and the HTML part second, wrapped in the usual Dolibarr HTML page (which carries Dolibarr's e-mail CSS). The Dolibarr send methods "mail" and "SMTP socket library" add the alternative part only when the constant `MAIN_MAIL_USE_MULTI_PART` is set; Swift Mailer always adds it. Dolibarr sets that constant to 1 by default unless an administrator overrides it, and the module also sets it **in memory for each HTML message** and restores it afterwards, so an instance where it was switched off still sends the plain part. Nothing has to be changed. Reply-to, tracking id, archive copy and the e-mail history work as for plain text.
+
+**What is stored.** The text of the e-mail is kept in the note of the agenda event, as HTML for a formatted message, which Dolibarr's agenda displays properly. The AI assistant and the e-mail history read it as text.
+
+**Safety.** What a user types is cleaned by Dolibarr (scripts and event attributes are removed) before it is saved or sent; the editor also restricts what can be entered.
+
+**Limits.**
+
+- **No images.** There is no upload or inline-image feature in the module's editor. Images can only be remote links, which many mail programs block by default. Keep to text and links.
+- "**Open in my mail client**" can only pre-fill plain text (a limit of the `mailto:` link). For a formatted message, **Copy text** puts the formatted version in the clipboard, to paste into the mail client.
+- The e-mail collector stores a received HTML message as plain text.
+- If the WYSIWYG module is off, the HTML tab is a box showing the HTML source.
+
+## AI reply suggestions
+
+In the e-mail editor of a planned e-mail (Write / send), an **AI assistant** block lets a salesperson ask the AI service of Dolibarr to read the exchange so far and propose the next e-mail. The module has no AI client of its own: it uses the provider, key, model and privacy settings of Dolibarr's **AI module**.
+
+**What has to be in place**
+
+1. The **AI** module is enabled (Home → Setup → Modules), and a text generation service is configured on its setup page (Home → Setup → AI: service, API key or URL, model). Test it there first. A service that needs a key and has none answers with an error, which the editor shows.
+2. `CRM_AI_EMAIL_ASSIST` is set to 1 in CRM → Setup → Parameters (it is 0 by default, so nothing leaves until an administrator decides). The block shows for users who may write e-mail steps ("Create and complete next steps"); no separate AI right is needed.
+
+**How it behaves**
+
+- The salesperson sees a text area with the **default prompt**, which they can edit for this request, a **Suggest a reply with AI** button, and **Restore the default prompt**. The proposal replaces the text of the e-mail in the editor. **Nothing is saved or sent**: the person reads it, edits it, and uses the usual buttons. Reloading the page brings back the saved draft.
+- A notice under the block names the service that will receive the text, for example "Custom (api.x.ai, grok-4.7)", and says whether names are masked.
+- The prompt you set as default (`CRM_AI_EMAIL_PROMPT`) should say what you expect: tone, length, what never to promise, signature, language. The built-in one asks for a polite, concise, concrete reply in the language of the prospect's last message that answers every question, invents no price, date or commitment, and proposes a dated next step.
+- Dolibarr's own AI settings still apply on top: a custom pre-prompt for "e-mail text generation" set in the AI module (Custom prompt tab) is added by the AI module to every call.
+
+**What is sent to the AI service** (and nothing else)
+
+- The prompt as written or edited by the salesperson.
+- A summary of the deal: reference, title, account, contact name, stage and probability, amount, expected close date, owner's name, and the notes of the deal (up to 1000 characters).
+- The e-mails already recorded on the deal: the latest 10, oldest first, each marked "WE SENT" or "THE CUSTOMER WROTE" with date and subject, quoted lines (starting with `>`) removed and each cut to 1500 characters, 10 000 characters in total (the oldest are dropped first).
+- The current text and subject of the draft, and a rule asking for the body of the e-mail only, in plain text.
+
+Attachments and everything else in the agenda or the mailbox are never sent. The deal's e-mails reach the deal through the [e-mail history](#e-mail-history): without it, only e-mails sent from Dolibarr are there to read.
+
+**Privacy.** The exchange contains personal data and may contain confidential information, and it goes to an external provider. Decide before you leave the block on:
+
+- Check the provider's terms and where it processes data, and tell your users.
+- Turn on the AI module's **privacy redaction** (`AI_PRIVACY_REDACTION`, on the Assistant tab of the AI setup, which shows only when `MAIN_FEATURES_LEVEL` is 1 or more): the module then replaces names, e-mail addresses, phone numbers and references by placeholders before the call and puts the real values back in the answer. The editor notice says it is on. With it on, check that the proposals read well on your provider.
+- Or leave `CRM_AI_EMAIL_ASSIST` at 0, its default, so the block stays hidden.
+
+**Limits.** The proposal is only as good as the model and the history it can read; it can be wrong, so every text is read and edited by a person before sending. Each use costs a call to the provider. A very short or empty history gives a generic proposal.
+
 ## MCP
 
 The module adds tools named `crm_*` to Dolibarr's MCP server, so an AI assistant can read and act on deals within the user's rights. Screens work whether or not the AI module is on.
@@ -310,6 +367,8 @@ The tools cover pipelines, stages, sources, loss reasons and qualification items
 | `CRM_REMINDERS_ON` | 1 | Owner reminders on or off |
 | `CRM_REMINDER_DRY_RUN` | 1 | Reminders: journal only |
 | `CRM_REQUIRE_NEXT_STEP` | 1 | Refuse a stage change without a future next step |
+| `CRM_AI_EMAIL_ASSIST` | 0 | Show the AI reply suggestion block in the e-mail editor (needs the AI module) |
+| `CRM_AI_EMAIL_PROMPT` | empty | Default AI prompt; empty uses the built-in one |
 | `CRM_ARCHIVE_MAILBOX` | empty | Archive mailbox address; empty means no copy |
 | `CRM_ARCHIVE_COPY` | `bcc` | `bcc` or `cc` |
 | `SEARCHFORM_POSITION_CRM` | 42 | Position of "CRM opportunities" in the general search box (optional, set in Other setup) |
@@ -331,6 +390,8 @@ The tools cover pipelines, stages, sources, loss reasons and qualification items
 | The same e-mail appears twice | Rare: a message registered by hand and a real one with a very different subject | Delete the entry registered by hand |
 | The forecast is empty | No open deal with an amount and an expected close inside the window; won and lost deals are never forecast | Check the deals and `CRM_FORECAST_MONTHS` |
 | The top menu shows a generic icon | `MAIN_MODULE_CRM_ICON` missing | Set it to `fa-handshake` and reload with a cleared cache |
+| The AI block is missing from the e-mail editor | The AI module is off, `CRM_AI_EMAIL_ASSIST` is 0 (the default), or the user cannot write e-mail steps | Enable the module, set the constant to 1, check the user's rights |
+| "The AI service did not answer" | The AI module has no key, URL or model, or the provider refused the call | Fix it in Home → Setup → AI and test there; the message gives the provider's reason |
 | The MCP tabs are missing | `MAIN_FEATURES_LEVEL` is 0 | Set it to 1, or open `ai/admin/server_mcp.php` directly |
 | An MCP client gets "MCP Server Disabled" | The AI module or `AI_MCP_ENABLED` is off | Enable them |
 | An MCP tool is not listed | The user lacks the right, or the tool is not in the allowed list | Check the user's CRM rights and the tool access control |

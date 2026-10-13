@@ -183,4 +183,65 @@ class CrmLogicTest extends TestCase
 		$url = crmMailtoUrl('c@d.com', 'Offer [OPP1]', "Hi\nBye", '', 'crm@x.com');
 		$this->assertSame('mailto:c%40d.com?bcc=crm%40x.com&subject=Offer%20%5BOPP1%5D&body=Hi%0D%0ABye', $url);
 	}
+
+	/**
+	 * Quoted lines are dropped, blank runs collapsed, and a long text is cut with a marker.
+	 *
+	 * @return void
+	 */
+	public function testCompactMessage()
+	{
+		$text = "Thanks.\n\n\n\n> On Monday you wrote:\n> the quote\nSee you.   ";
+		$this->assertSame("Thanks.\n\nSee you.", crmCompactMessage($text, 0));
+		$this->assertSame("abcde\n[...]", crmCompactMessage('abcdefghij', 5));
+	}
+
+	/**
+	 * The thread keeps the latest messages when it is too long, and says that older ones were left out.
+	 *
+	 * @return void
+	 */
+	public function testThreadTextDropsTheOldestFirst()
+	{
+		$messages = array(
+			array('date' => 'd1', 'direction' => 'out', 'subject' => 'Offer', 'body' => str_repeat('a', 50)),
+			array('date' => 'd2', 'direction' => 'in', 'subject' => 'Re: Offer', 'body' => str_repeat('b', 50)),
+			array('date' => 'd3', 'direction' => 'out', 'subject' => 'Re: Offer', 'body' => str_repeat('c', 50)),
+		);
+		$all = crmThreadText($messages, 100, 10000, 'WE', 'THEY', 'OMITTED');
+		$this->assertSame(1, preg_match('/^--- d1 \| WE \| Offer\n/', $all));
+		$this->assertSame(1, preg_match('/--- d2 \| THEY \| Re: Offer\n/', $all));
+		$short = crmThreadText($messages, 100, 150, 'WE', 'THEY', 'OMITTED');
+		$this->assertSame(0, preg_match('/d1/', $short));
+		$this->assertSame(1, preg_match('/^OMITTED\n/', $short));
+		$this->assertSame(1, preg_match('/d3/', $short));
+		$this->assertSame('', crmThreadText(array(), 100, 100, 'WE', 'THEY', 'OMITTED'));
+	}
+
+	/**
+	 * Blocks and line breaks are followed by a line feed so the stripped version keeps its paragraphs.
+	 *
+	 * @return void
+	 */
+	public function testHtmlToTextKeepsParagraphs()
+	{
+		$html = '<p>Hello <strong>Ada</strong>,</p><p>Our offer:<br>20 licences &amp; support</p><ul><li>One</li><li>Two</li></ul>';
+		$this->assertSame("Hello Ada,\n\nOur offer:\n20 licences & support\n\nOne\nTwo", crmHtmlToText($html));
+		$this->assertSame('', crmHtmlToText(''));
+		$this->assertSame("a\nb", crmHtmlToText("<div>a<br />b</div>"));
+	}
+
+	/**
+	 * Plain text becomes escaped paragraphs, and what looks like HTML is recognised.
+	 *
+	 * @return void
+	 */
+	public function testTextToHtmlAndDetection()
+	{
+		$this->assertSame("<p>Hi &lt;Ada&gt;,<br>\nline two</p>\n<p>Bye &amp; thanks</p>", crmTextToHtml("Hi <Ada>,\nline two\n\nBye & thanks"));
+		$this->assertSame('', crmTextToHtml("  \n "));
+		$this->assertTrue(crmLooksLikeHtml('<p>x</p>'));
+		$this->assertTrue(crmLooksLikeHtml('Hello<br>there'));
+		$this->assertFalse(crmLooksLikeHtml("Plain text with a < b and c > d, and R&D"));
+	}
 }

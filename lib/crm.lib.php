@@ -157,11 +157,14 @@ function crmSequenceDraftMode(): bool
  * With a deal id the message carries the deal tracking id (see crmTrackId) and is copied to the archive
  * mailbox, when one is set. Messages without a deal, such as owner reminders, are never copied.
  *
- * @param int $dealId Deal the message belongs to, 0 for none
+ * @param int  $dealId Deal the message belongs to, 0 for none
+ * @param bool $html   True when $body is HTML. It is then sent as multipart/alternative: the HTML and a plain-text
+ *                     version made from it, so a client that shows no HTML still reads the message
  * @return array{ok:bool,error:string,msgid:string,from:string}
  */
-function crmSendMail(string $to, string $subject, string $body, int $dealId = 0): array
+function crmSendMail(string $to, string $subject, string $body, int $dealId = 0, bool $html = false): array
 {
+	global $conf;
 	require_once DOL_DOCUMENT_ROOT.'/core/class/CMailFile.class.php';
 	$from = crmSender();
 	if ($from === '' || $to === '') {
@@ -178,8 +181,25 @@ function crmSendMail(string $to, string $subject, string $body, int $dealId = 0)
 		}
 	}
 	$trackId = ($dealId > 0) ? crmTrackId($dealId) : '';
-	$mail = new CMailFile($subject, $to, $from, $body, array(), array(), array(), $cc, $bcc, 0, 0, '', '', $trackId);
-	if ($mail->sendfile()) {
+	if ($html) {
+		$body = crmHtmlForMail($body);
+	}
+	// With the "mail" send method Dolibarr adds the plain-text alternative only when this constant is set. It is forced
+	// for this message alone, in memory: the other send methods always add it, and nothing is saved.
+	$previousMultiPart = $conf->global->MAIN_MAIL_USE_MULTI_PART ?? null;
+	if ($html) {
+		$conf->global->MAIN_MAIL_USE_MULTI_PART = 1;
+	}
+	$mail = new CMailFile($subject, $to, $from, $body, array(), array(), array(), $cc, $bcc, 0, $html ? 1 : 0, '', '', $trackId);
+	$sent = $mail->sendfile();
+	if ($html) {
+		if ($previousMultiPart === null) {
+			unset($conf->global->MAIN_MAIL_USE_MULTI_PART);
+		} else {
+			$conf->global->MAIN_MAIL_USE_MULTI_PART = $previousMultiPart;
+		}
+	}
+	if ($sent) {
 		return array('ok' => true, 'error' => '', 'msgid' => (string) $mail->msgid, 'from' => $from);
 	}
 	return array('ok' => false, 'error' => (string) $mail->error, 'msgid' => '', 'from' => $from);
@@ -203,6 +223,8 @@ function crmEnsureConstants(DoliDB $db): void
 		'CRM_REMINDER_DRY_RUN' => '1',
 		'CRM_REQUIRE_NEXT_STEP' => '1',
 		'CRM_SEQUENCE_EMAIL_MODE' => 'draft',
+		'CRM_AI_EMAIL_ASSIST' => '0',
+		'CRM_AI_EMAIL_PROMPT' => '',
 		'CRM_ARCHIVE_MAILBOX' => '',
 		'CRM_ARCHIVE_COPY' => 'bcc',
 		// Read by the theme: without it the top menu icon is overridden by a generic glyph.

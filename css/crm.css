@@ -145,3 +145,34 @@
 		grid-template-columns: 1fr;
 	}
 }
+
+.crm-tabs {
+	margin-bottom: 4px;
+}
+
+.crm-tab {
+	border: 1px solid var(--colortopbordertitle1, #bbb);
+	background: transparent;
+	color: inherit;
+	padding: 4px 12px;
+	margin-right: 4px;
+	cursor: pointer;
+	border-radius: 4px 4px 0 0;
+}
+
+.crm-tab-on {
+	font-weight: bold;
+	border-bottom-width: 3px;
+}
+
+.crm-tab:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+
+/* A pane that is off stays laid out off screen, not display:none: the WYSIWYG editor does not initialise inside a hidden box in every browser. */
+.crm-pane-off {
+	position: absolute;
+	left: -10000px;
+	width: 90%;
+}

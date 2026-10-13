@@ -145,6 +145,14 @@ Replacing means "create the done event, then delete the draft": `ActionComm::upd
 
 When the collector later reads the copy, `CrmMailArchive::record()` recognises the message by the deal reference in the subject, and replaces the pending event instead of adding a second one. The pending event is, in this order of preference: a done e-mail event of the deal with no Message-ID (registered by hand, last 30 days) whose subject matches, else the oldest such event; or a planned e-mail event of the deal whose subject matches, which covers a message sent from a mail client without pressing the button. A subject matches when it is equal once `Re:`/`Fwd:` prefixes, case and spacing are ignored. Only outgoing messages are matched this way.
 
+## HTML e-mail
+
+`email_compose.php` sends plain text or HTML. The format is chosen with a radio (`format`) and, for a saved draft, detected from the note (`crmLooksLikeHtml`). The HTML tab is Dolibarr's `DolEditor` (CKEditor, toolbar `dolibarr_mailings`); its content is read with the `restricthtml` filter. The message exists in one form only: the plain version of an HTML message is derived, never written separately, because `CMailFile` builds the alternative part itself (swiftmailer: `addPart(strip_tags)`; mail and smtps methods: the alternative is added when `MAIN_MAIL_USE_MULTI_PART` is set, which Dolibarr turns on by default and `crmSendMail()` also sets in memory for an HTML message and restores) and has no parameter for a hand-written one. `crmHtmlForMail()` adds a line feed after block ends and `<br>`, invisible in HTML, so that the stripped alternative keeps its paragraphs; `crmHtmlToText()` produces the same text for the "plain-text version" tab, through the ajax action `previewtext` of the page (it defines `NOTOKENRENEWAL` first, so the open form keeps its CSRF token). `crmSendMail(..., $html = true)` calls `CMailFile` with `msgishtml = 1`. The note of the sent or registered event holds the HTML. Readers of event notes that need text (the AI assistant) convert with `crmHtmlToText()`.
+
+## AI reply suggestions
+
+`email_compose.php` offers, when the AI module is on and an administrator has set `CRM_AI_EMAIL_ASSIST` to 1 (it is 0 by default), a block with a pre-recorded prompt the salesperson can edit and a button. The action `aisuggest` calls `CrmAiReply::suggest()`, which builds one text (the prompt, a deal summary, the latest 10 e-mails of the deal oldest first with quoted lines removed, each at most 1500 characters and 10 000 in all with the oldest dropped first, the current draft, output rules) and hands it to Dolibarr's `Ai::generateContent()` with the function `textgenerationemail`. The module has no AI client: provider, key, model, custom pre-prompt and its other settings are the AI module's. When `AI_PRIVACY_REDACTION` is on, the text is masked with the AI module's `PrivacyGuard` (including the account, contact and owner names) and the answer is unmasked. The answer is cleaned to plain text and put in the text box of the page; nothing is saved or sent by this action. The default prompt is `CRM_AI_EMAIL_PROMPT`, else the language key `CrmAiDefaultPrompt`. The thread is read from the done `AC_EMAIL` / `AC_EMAIL_IN` events of the deal (`CrmActivity::fetchEmailThread`), so what the AI sees is what the e-mail history recorded.
+
 ## E-mail history
 
 The full exchange with a customer is kept as agenda events on the deal, not in a table of the module. A message is one done event (`percent` 100, so it is never counted as a next step) with `elementtype = 'opportunity@crm'`, the plain-text body in the note, and Dolibarr's own e-mail columns (`email_msgid`, from, to, cc, subject). Code `AC_EMAIL` for a message we sent, `AC_EMAIL_IN` for one we received; the event type is chosen by `CrmActivity::typeCode()` (the same code, `AC_EMAIL` or `AC_EMAIL_IN`).
@@ -258,6 +266,7 @@ No purge button in v1. A later action can drop only `llx_crm_*` and `CRM_*` cons
 │   ├── actions_crm.class.php          # addMcpTools, e-mail collector operation
 │   ├── crmmailarchive.class.php       # e-mail to deal matching and recording
 │   ├── crmemaildraft.class.php        # review, send, register or discard a planned e-mail
+│   ├── crmaireply.class.php           # prompt and call for an AI-proposed reply
 │   ├── opportunity.class.php
 │   ├── pipeline.class.php
 │   ├── stage.class.php

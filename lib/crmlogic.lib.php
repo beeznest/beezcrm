@@ -210,3 +210,103 @@ function crmMailtoUrl(string $to, string $subject, string $body, string $cc = ''
 	$query[] = 'body='.rawurlencode(str_replace(array("\r\n", "\r", "\n"), "\r\n", $body));
 	return 'mailto:'.rawurlencode($to).'?'.implode('&', $query);
 }
+
+/**
+ * Message text without the quoted lines of earlier messages (lines starting with ">"), blank runs collapsed,
+ * cut to a length with an ellipsis. Used to keep what is sent to an AI service short.
+ */
+function crmCompactMessage(string $text, int $max): string
+{
+	$kept = array();
+	foreach (preg_split('/\r\n|\r|\n/', $text) ?: array() as $line) {
+		if (preg_match('/^\s*>/', $line)) {
+			continue;
+		}
+		$kept[] = rtrim($line);
+	}
+	$text = trim((string) preg_replace("/\n{3,}/", "\n\n", implode("\n", $kept)));
+	if ($max > 0 && strlen($text) > $max) {
+		$text = rtrim(substr($text, 0, $max))."\n[...]";
+	}
+	return $text;
+}
+
+/**
+ * Exchange as plain text for a prompt, oldest first. When it does not fit in the total length, the oldest messages
+ * are dropped, never the latest ones, and a line says so.
+ *
+ * @param array<int,array{date:string,direction:string,subject:string,body:string}> $messages Oldest first; direction is out or in
+ * @param string $weLabel       Label of a message we sent
+ * @param string $theyLabel     Label of a message the customer sent
+ * @param string $omittedLabel  Line used when older messages were left out
+ */
+function crmThreadText(array $messages, int $perMessage, int $total, string $weLabel, string $theyLabel, string $omittedLabel): string
+{
+	$blocks = array();
+	foreach ($messages as $message) {
+		$who = ($message['direction'] === 'out') ? $weLabel : $theyLabel;
+		$blocks[] = '--- '.$message['date'].' | '.$who.' | '.trim($message['subject'])."\n".crmCompactMessage($message['body'], $perMessage);
+	}
+	$kept = array();
+	$length = 0;
+	for ($i = count($blocks) - 1; $i >= 0; $i--) {
+		$length += strlen($blocks[$i]) + 2;
+		if ($length > $total && count($kept) > 0) {
+			array_unshift($kept, $omittedLabel);
+			break;
+		}
+		array_unshift($kept, $blocks[$i]);
+	}
+	return implode("\n\n", $kept);
+}
+
+/**
+ * HTML ready to be sent. Line feeds are added after the end of each block, which changes nothing on screen (HTML
+ * ignores them) but lets a mail library that builds the plain-text alternative by stripping the tags, as Dolibarr's
+ * does, produce readable paragraphs and lines instead of one run-on line.
+ */
+function crmHtmlForMail(string $html): string
+{
+	$html = trim(str_replace(array("\r\n", "\r"), "\n", $html));
+	$html = (string) preg_replace('#(<br\s*/?>)(?!\n)#i', "$1\n", $html);
+	$html = (string) preg_replace('#(</(?:p|div|h[1-6]|blockquote|pre|table|ul|ol)>)(?!\n)#i', "$1\n\n", $html);
+	$html = (string) preg_replace('#(</(?:li|tr)>)(?!\n)#i', "$1\n", $html);
+	return trim($html);
+}
+
+/**
+ * The plain-text version of an HTML message, built the way the mail library does (tags stripped, entities decoded),
+ * from the HTML prepared by crmHtmlForMail. Paragraph breaks are kept, blank runs collapsed. Link addresses are not
+ * repeated: an address that matters has to be written in the text.
+ */
+function crmHtmlToText(string $html): string
+{
+	$text = html_entity_decode(strip_tags(crmHtmlForMail($html)), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+	$text = str_replace("\xc2\xa0", ' ', $text);
+	$text = (string) preg_replace("/[ \t]+\n/", "\n", $text);
+	return trim((string) preg_replace("/\n{3,}/", "\n\n", $text));
+}
+
+/**
+ * A plain text turned into simple HTML: escaped, blank lines make paragraphs, other line breaks make <br>.
+ */
+function crmTextToHtml(string $text): string
+{
+	$text = trim(str_replace(array("\r\n", "\r"), "\n", $text));
+	if ($text === '') {
+		return '';
+	}
+	$paragraphs = array();
+	foreach (preg_split("/\n{2,}/", $text) ?: array() as $block) {
+		$paragraphs[] = '<p>'.str_replace("\n", "<br>\n", htmlspecialchars($block, ENT_QUOTES, 'UTF-8')).'</p>';
+	}
+	return implode("\n", $paragraphs);
+}
+
+/**
+ * True when the text is HTML as the editor writes it: it contains a tag of a common block or inline element.
+ */
+function crmLooksLikeHtml(string $text): bool
+{
+	return (bool) preg_match('#<(p|div|br|ul|ol|li|h[1-6]|table|strong|b|em|i|u|a|span|blockquote)(\s[^>]*)?/?>#i', $text);
+}

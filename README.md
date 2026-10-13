@@ -10,6 +10,8 @@ Sales pipeline module for [Dolibarr](https://www.dolibarr.org). Accounts, contac
 - **Next steps** as Dolibarr agenda events, shown on the deal, on the home page and in a home box.
 - **Reports**: forecast, cohort conversion, win rate, cycle time, loss reasons, by owner and by source.
 - **Sequences** of reminders, calls and e-mails, as drafts for the salesperson to review and send, or sent automatically.
+- An e-mail editor with a **formatted (HTML) mode**, sent with an automatic plain-text version, or plain text.
+- An optional **AI assistant** in the e-mail editor that proposes the next e-mail from the exchange so far, with an editable prompt, using the AI module of Dolibarr.
 - **E-mail history** kept on the deal, read from a dedicated mailbox by Dolibarr's e-mail collector.
 - **MCP tools** (`crm_*`) so an AI assistant can work on deals within the user's rights.
 - An entry in Dolibarr's general **search box**.

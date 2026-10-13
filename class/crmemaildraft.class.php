@@ -112,9 +112,10 @@ class CrmEmailDraft
 	/**
 	 * Send the message through Dolibarr, record it on the deal, remove the draft.
 	 *
+	 * @param bool $html True when the text is HTML: it is sent with a plain-text alternative
 	 * @return int 1 if OK, -1 on error. When the mail left but could not be recorded, error says so.
 	 */
-	public function send(User $user, string $to, string $subject, string $body): int
+	public function send(User $user, string $to, string $subject, string $body, bool $html = false): int
 	{
 		if (!$this->event || !$this->deal) {
 			return -1;
@@ -129,7 +130,7 @@ class CrmEmailDraft
 			$this->error = 'CrmErrorSubjectRequired';
 			return -1;
 		}
-		$result = crmSendMail($to, $subject, $body, (int) $this->deal->rowid);
+		$result = crmSendMail($to, $subject, $body, (int) $this->deal->rowid, $html);
 		if (!$result['ok']) {
 			$this->error = $result['error'] !== '' ? $result['error'] : 'CrmErrorSendFailed';
 			return -1;

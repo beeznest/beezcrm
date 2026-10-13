@@ -55,13 +55,15 @@ $constants = array(
 	'CRM_REMINDERS_ON' => 'CrmRemindersOn',
 	'CRM_REMINDER_DRY_RUN' => 'CrmReminderDryRun',
 	'CRM_REQUIRE_NEXT_STEP' => 'CrmRequireNextStep',
+	'CRM_AI_EMAIL_ASSIST' => 'CrmAiEmailAssist',
+	'CRM_AI_EMAIL_PROMPT' => 'CrmAiEmailPrompt',
 	'CRM_ARCHIVE_MAILBOX' => 'CrmArchiveMailbox',
 	'CRM_ARCHIVE_COPY' => 'CrmArchiveCopy',
 );
 
 if ($action === 'setconst') {
 	foreach ($constants as $name => $label) {
-		dolibarr_set_const($db, $name, GETPOST($name, 'alphanohtml'), 'chaine', 0, '', (int) $conf->entity);
+		dolibarr_set_const($db, $name, GETPOST($name, $name === 'CRM_AI_EMAIL_PROMPT' ? 'nohtml' : 'alphanohtml'), 'chaine', 0, '', (int) $conf->entity);
 	}
 	setEventMessages($langs->trans('RecordSaved'), null);
 	header('Location: '.$_SERVER['PHP_SELF'].'?tab=parameters');
@@ -176,6 +178,16 @@ if ($tab === 'parameters') {
 			print '<td><select name="'.$name.'"><option value="draft"'.($mode === 'draft' ? ' selected' : '').'>'.$langs->trans('CrmSequenceEmailModeDraft').'</option>';
 			print '<option value="send"'.($mode === 'send' ? ' selected' : '').'>'.$langs->trans('CrmSequenceEmailModeSend').'</option></select>';
 			print '<br><span class="opacitymedium">'.$langs->trans('CrmSequenceEmailModeHelp').'</span></td></tr>';
+			continue;
+		}
+		if ($name === 'CRM_AI_EMAIL_PROMPT') {
+			print '<td><textarea class="quatrevingtpercent" name="'.$name.'" rows="5">'.dol_escape_htmltag(getDolGlobalString($name), 0, 1).'</textarea>';
+			print '<br><span class="opacitymedium">'.$langs->trans('CrmAiEmailPromptHelp').'</span></td></tr>';
+			continue;
+		}
+		if ($name === 'CRM_AI_EMAIL_ASSIST') {
+			print '<td><input class="minwidth300" name="'.$name.'" value="'.dol_escape_htmltag((string) getDolGlobalInt($name, 0)).'">';
+			print '<br><span class="opacitymedium">'.$langs->trans('CrmAiEmailAssistHelp').'</span></td></tr>';
 			continue;
 		}
 		if ($name === 'CRM_ARCHIVE_COPY') {

@@ -247,6 +247,26 @@ class CrmActivity
 	}
 
 	/**
+	 * The e-mails already exchanged on a deal, oldest first: done events coded AC_EMAIL (sent) or AC_EMAIL_IN
+	 * (received). Only the most recent ones are returned.
+	 *
+	 * @param int $opportunityId Deal id
+	 * @param int $limit         How many of the latest messages to keep
+	 * @return array<int,object> Rows with datep, code, label, email_subject, note
+	 */
+	public function fetchEmailThread(int $opportunityId, int $limit = 10): array
+	{
+		$sql = 'SELECT a.id as rowid, a.datep, a.code, a.label, a.email_subject, a.note';
+		$sql .= ' FROM '.$this->db->prefix().'actioncomm as a';
+		$sql .= " WHERE a.elementtype = '".$this->db->escape(self::ELEMENT_TYPE)."'";
+		$sql .= ' AND a.fk_element = '.((int) $opportunityId);
+		$sql .= " AND a.code IN ('AC_EMAIL', 'AC_EMAIL_IN') AND a.percent >= 100";
+		$sql .= ' ORDER BY a.datep DESC, a.id DESC';
+		$sql .= $this->db->plimit(max(1, $limit), 0);
+		return array_reverse($this->fetchRows($sql));
+	}
+
+	/**
 	 * Unfinished CRM events visible to the user.
 	 *
 	 * @param string $scope overdue|today|planned|done
