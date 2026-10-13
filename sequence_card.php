@@ -132,7 +132,24 @@ if ($user->hasRight('crm', 'sequence')) {
 	print '<input type="hidden" name="token" value="'.newToken().'">';
 	print '<input type="hidden" name="action" value="enrol">';
 	print '<input type="hidden" name="id" value="'.((int) $sequence->id).'">';
-	print $langs->trans('CrmOpportunity').' <input type="number" name="opportunityid" min="1"> ';
+	// Open deals the caller may see and that are not already running on this sequence, in a searchable list (select2):
+	// typing filters on the reference, the title and the account name.
+	require_once __DIR__.'/class/opportunity.class.php';
+	$running = array();
+	foreach ($enrolments as $enrol) {
+		if ((string) $enrol->status === 'running') {
+			$running[(int) $enrol->fk_opportunity] = true;
+		}
+	}
+	$dealChoices = array();
+	foreach ((new Opportunity($db))->fetchList($user, 'open', 0, 0, '', 1000) as $deal) {
+		if (isset($running[(int) $deal->rowid])) {
+			continue;
+		}
+		$dealChoices[(int) $deal->rowid] = $deal->ref.' — '.$deal->label.($deal->soc_name !== null && $deal->soc_name !== '' ? ' ('.$deal->soc_name.')' : '');
+	}
+	$form = new Form($db);
+	print $langs->trans('CrmOpportunity').' '.$form->selectarray('opportunityid', $dealChoices, '', 1, 0, 0, '', 0, 0, 0, '', 'minwidth400', 1).' ';
 	print '<input type="submit" class="button" value="'.$langs->trans('CrmEnrol').'">';
 	print '</form>';
 }

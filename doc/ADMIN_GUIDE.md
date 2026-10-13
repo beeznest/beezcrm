@@ -221,7 +221,7 @@ A sequence is an explicit follow-up plan for a **deal**, not a mass mailing. CRM
 
 1. Create the sequence (label, active). Open it.
 2. Add **steps** in the order they should run. Each step has a kind (**e-mail**, **call**, **task**), a **delay in days after enrolment** (not after the previous step), a subject and a body. Subject and body accept the placeholders `__DEAL__`, `__REF__`, `__AMOUNT__`, `__CONTACT__`, `__CUSTOMER__`; an unknown placeholder stays as written. Subject and body are used for e-mail steps; a call or a task creates an agenda event for the deal owner with the subject as title and sends nothing.
-3. **Enrol** a deal by entering its id. The sequence needs at least one step, and a deal cannot be running twice on the same sequence.
+3. **Enrol** a deal by choosing it in the list under "Enrolments": it is a searchable list, type part of the reference, the title or the account name to filter it. The list offers the open deals you may see (up to 1 000) that are not already running on this sequence. The sequence needs at least one step, and a deal cannot be running twice on the same sequence.
 4. Turn the master switch on: `CRM_SEQUENCES_ON` = 1.
 
 An enrolment stops by itself when the deal is won or lost, when someone presses **Stop**, when **Mark replied** is pressed, or, if the e-mail history is set up, when the customer's answer is recorded. After the last step it becomes done. The enrolment screen shows the status, the next step and when it is due; the journal lists every e-mail attempt with its result: `sent`, `simulated`, `draft` or `error`.
