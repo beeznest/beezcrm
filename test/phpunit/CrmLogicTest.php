@@ -244,4 +244,15 @@ class CrmLogicTest extends TestCase
 		$this->assertTrue(crmLooksLikeHtml('Hello<br>there'));
 		$this->assertFalse(crmLooksLikeHtml("Plain text with a < b and c > d, and R&D"));
 	}
+
+	/**
+	 * HTML that already has its own line breaks between paragraphs, as an AI model writes it, still gives paragraphs in the text.
+	 *
+	 * @return void
+	 */
+	public function testHtmlToTextWithExistingLineBreaks()
+	{
+		$html = "<p>Bonjour,</p>\n<p>Premier paragraphe<br>\nsuite</p>\n<p>Cordialement,</p>\n";
+		$this->assertSame("Bonjour,\n\nPremier paragraphe\nsuite\n\nCordialement,", crmHtmlToText($html));
+	}
 }

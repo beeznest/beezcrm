@@ -42,6 +42,19 @@ class CrmAiReply
 	}
 
 	/**
+	 * True when the AI service chosen in the AI module can be called: a key for the services that need one, an address
+	 * for the "custom" service. It does not test the connection.
+	 */
+	public static function isConfigured(): bool
+	{
+		$service = getDolGlobalString('AI_API_SERVICE', 'chatgpt');
+		if ($service === 'custom') {
+			return trim(getDolGlobalString('AI_API_CUSTOM_URL')) !== '';
+		}
+		return trim(getDolGlobalString('AI_API_'.strtoupper($service).'_KEY')) !== '';
+	}
+
+	/**
 	 * Prompt offered to the salesperson: the one the administrator saved, else the built-in one.
 	 */
 	public static function defaultPrompt(): string
@@ -235,6 +248,86 @@ class CrmAiReply
 			}
 		}
 		return $text;
+	}
+
+	/**
+	 * Ask the AI service for the text of an e-mail step of a sequence, or to improve the one already typed.
+	 *
+	 * Only the subject and the text of the template are sent: a template holds placeholders, never data about a deal, so
+	 * nothing about a customer leaves and the privacy redaction has nothing to mask.
+	 *
+	 * @param string        $subject   Subject of the step
+	 * @param string        $existing  Text already typed, empty to create a new one (plain text, or HTML when $format is html)
+	 * @param string        $format    html or text, the format the answer must have
+	 * @param callable|null $generator Replaces the call to the AI service, for tests: fn(string): string|array
+	 * @return string|null The text, null on failure with the reason in ->error
+	 */
+	public function suggestStepTemplate(string $subject, string $existing, string $format, ?callable $generator = null): ?string
+	{
+		global $langs;
+		crmLoadLangs();
+		$this->error = '';
+		$html = ($format === 'html');
+		$existingText = $html ? crmHtmlToText($existing) : $existing;
+		$improve = (trim($existingText) !== '');
+
+		$text = $langs->transnoentitiesnoconv('CrmAiStepPrompt')."\n\n";
+		$text .= 'Subject of the e-mail: '.trim($subject)."\n\n";
+		$text .= "Placeholders you can use in the text. They are replaced by the real values when the e-mail is made, so keep them exactly as written, with their two underscores on each side:\n";
+		$text .= "__DEAL__ = title of the deal\n__REF__ = reference of the deal\n__AMOUNT__ = expected amount of the deal\n__CONTACT__ = full name of the contact\n__CUSTOMER__ = name of the customer company\n\n";
+		if ($improve) {
+			$text .= "=== Current text: improve it ===\n".crmCompactMessage($existing, 6000)."\n";
+			$text .= "Keep its meaning, its placeholders and its language. Improve the clarity, the tone and the structure, and correct mistakes. Do not add promises or facts that are not in it.\n\n";
+		} else {
+			$text .= "Write a short template for this e-mail, to be sent to many different prospects: use the placeholders where the real value belongs.\n\n";
+		}
+		$text .= "=== Output rules ===\n";
+		if ($html) {
+			$text .= "Return only the body of the e-mail as an HTML fragment: use simple tags (p, br, strong, em, ul, ol, li, a), no html, head or body tag, no style, no script, no markdown. No subject line and no explanation.\n";
+		} else {
+			$text .= "Return only the body of the e-mail as plain text: no HTML, no markdown, no subject line and no explanation.\n";
+		}
+		$this->lastInstructions = $text;
+
+		if ($generator !== null) {
+			$answer = $generator($text);
+		} else {
+			require_once DOL_DOCUMENT_ROOT.'/ai/class/ai.class.php';
+			$ai = new Ai($this->db);
+			$answer = $ai->generateContent($text, 'auto', 'textgenerationemail', $html ? 'html' : '');
+		}
+		if (is_array($answer)) {
+			$this->error = !empty($answer['message']) ? (string) $answer['message'] : 'CrmErrorAiNoAnswer';
+			return null;
+		}
+		$answer = $html ? $this->cleanHtmlFragment((string) $answer) : $this->clean((string) $answer);
+		if ($answer === '') {
+			$this->error = 'CrmErrorAiNoAnswer';
+			return null;
+		}
+		return $answer;
+	}
+
+	/**
+	 * The answer as an HTML fragment: no code fence, no page wrapper, no script, style or event attribute. An answer
+	 * without any tag is turned into paragraphs.
+	 */
+	private function cleanHtmlFragment(string $answer): string
+	{
+		$answer = (string) preg_replace('/^```[a-z]*\s*|\s*```$/i', '', trim($answer));
+		if (preg_match('#<body[^>]*>(.*)</body>#is', $answer, $match)) {
+			$answer = $match[1];
+		}
+		$answer = (string) preg_replace('#<(head|style|script|title)\b.*?</\1>#is', '', $answer);
+		$answer = trim(dol_htmlwithnojs($answer));
+		// The AI module asks for the HTML inside a section tag: the wrapper is of no use in the editor.
+		if (preg_match('#^\s*<section[^>]*>(.*)</section>\s*$#is', $answer, $match)) {
+			$answer = trim($match[1]);
+		}
+		if ($answer !== '' && !crmLooksLikeHtml($answer)) {
+			$answer = crmTextToHtml($answer);
+		}
+		return $answer;
 	}
 
 	/**

@@ -23,7 +23,7 @@ declare(strict_types=1);
  */
 
 // The plain-text preview of the editor is an ajax call to this page: it must not rotate the CSRF token the open form holds.
-if (isset($_POST['action']) && $_POST['action'] === 'previewtext') {
+if (isset($_POST['action']) && in_array($_POST['action'], array('previewtext', 'aitemplate'), true)) {
 	define('NOTOKENRENEWAL', '1');
 }
 
@@ -36,6 +36,7 @@ require_once __DIR__.'/lib/crm_bootstrap.inc.php';
  */
 
 require_once __DIR__.'/class/sequence.class.php';
+require_once __DIR__.'/class/crmaireply.class.php';
 require_once DOL_DOCUMENT_ROOT.'/core/class/doleditor.class.php';
 crmStartPage();
 
@@ -51,6 +52,34 @@ if ($action === 'previewtext') {
 	// Plain-text version of the HTML in the editor, made by the function that prepares what is sent.
 	top_httphead('application/json');
 	print json_encode(array('text' => crmHtmlToText(GETPOST('html', 'restricthtml'))));
+	exit;
+}
+
+$aiStepAvailable = CrmAiReply::isAvailable() && CrmAiReply::isConfigured() && $user->hasRight('crm', 'sequence');
+
+if ($action === 'aitemplate') {
+	// Ajax: a text for an e-mail step, written or improved by the AI service. Nothing is saved: the page puts the answer in
+	// the text box and the user decides whether to add the step.
+	top_httphead('application/json');
+	$result = array('ok' => false, 'error' => '');
+	if (!$aiStepAvailable) {
+		$result['error'] = $langs->transnoentitiesnoconv('CrmAiStepOff');
+	} else {
+		$aiFormat = (GETPOST('format', 'aZ09') === 'html') ? 'html' : 'text';
+		$aiSubject = trim(GETPOST('subject', 'nohtml'));
+		if ($aiSubject === '') {
+			$result['error'] = $langs->transnoentitiesnoconv('CrmAiStepNeedSubject');
+		} else {
+			$aiReply = new CrmAiReply($db);
+			$aiText = $aiReply->suggestStepTemplate($aiSubject, ($aiFormat === 'html') ? GETPOST('existing', 'restricthtml') : GETPOST('existing', 'nohtml'), $aiFormat);
+			if ($aiText === null) {
+				$result['error'] = (strpos($aiReply->error, 'CrmError') === 0) ? $langs->transnoentitiesnoconv($aiReply->error) : $langs->transnoentitiesnoconv('CrmAiError', $aiReply->error);
+			} else {
+				$result = array('ok' => true, 'text' => $aiText);
+			}
+		}
+	}
+	print json_encode($result);
 	exit;
 }
 
@@ -192,7 +221,7 @@ if ($user->hasRight('crm', 'sequence')) {
 		print '<option value="">'.$langs->trans('CrmStepModeDefault', $langs->transnoentitiesnoconv(crmSequenceDraftMode() ? 'CrmStepModeDraft' : 'CrmStepModeSend')).'</option>';
 		print '<option value="draft">'.$langs->trans('CrmStepModeDraft').'</option><option value="send">'.$langs->trans('CrmStepModeSend').'</option></select> ';
 	}
-	print '<input name="subject" class="minwidth300" placeholder="'.dol_escape_htmltag($langs->trans('CrmSubject')).'">';
+	print '<input name="subject" id="crm-step-subject" class="minwidth300" placeholder="'.dol_escape_htmltag($langs->trans('CrmSubject')).'">';
 	print '</div>';
 	print '<div id="crm-step-body" class="marginbottomonly">';
 	print '<div class="marginbottomonly">'.$langs->trans('CrmFormat').' ';
@@ -207,7 +236,15 @@ if ($user->hasRight('crm', 'sequence')) {
 	print '<div id="crm-pane-plain" class="crm-pane"><textarea name="body" id="crm-body" class="quatrevingtpercent" rows="8" placeholder="'.dol_escape_htmltag($langs->trans('CrmBody')).'"></textarea>';
 	print '<div id="crm-plain-note" class="opacitymedium">'.$langs->trans('CrmPlainAlternativeNote').'</div></div>';
 	print '</div>';
-	print '<div><input type="submit" class="button" value="'.$langs->trans('CrmAddStep').'"></div>';
+	print '<div>';
+	print '<input type="submit" class="button" value="'.$langs->trans('CrmAddStep').'"> ';
+	// Disabled from the start: the script enables it when the kind is e-mail and the subject is filled.
+	print '<button type="button" class="button" id="crm-ai-step" disabled'.($aiStepAvailable ? ' title="'.dol_escape_htmltag($langs->trans('CrmAiStepNeedSubject')).'"' : ' title="'.dol_escape_htmltag($langs->trans('CrmAiStepOff')).'"').'>'.$langs->trans('CrmAiStepSuggest').'</button> ';
+	print '<span id="crm-ai-step-msg" class="opacitymedium"></span>';
+	if ($aiStepAvailable) {
+		print '<br><span class="opacitymedium">'.$langs->trans('CrmAiStepHelp').'</span>';
+	}
+	print '</div>';
 	$stepConfig = array(
 		'formId' => 'crm-step-form', 'kindId' => 'crm-step-kind', 'onlyEmailIds' => array('crm-step-body', 'crm-step-mode'),
 		'radioName' => 'format', 'htmlName' => 'bodyhtml', 'plainId' => 'crm-body',
@@ -215,6 +252,12 @@ if ($user->hasRight('crm', 'sequence')) {
 		'noteId' => 'crm-plain-note', 'format' => 'text', 'id' => (int) $sequence->id, 'url' => $_SERVER['PHP_SELF'], 'token' => newToken(),
 		'tabPlain' => $langs->transnoentities('CrmTabPlain'), 'tabPlainAlt' => $langs->transnoentities('CrmTabPlainAlt'),
 		'confirmToText' => $langs->transnoentities('CrmConfirmToText'),
+		'ai' => array(
+			'enabled' => $aiStepAvailable, 'buttonId' => 'crm-ai-step', 'messageId' => 'crm-ai-step-msg', 'subjectId' => 'crm-step-subject',
+			'suggest' => $langs->transnoentities('CrmAiStepSuggest'), 'improve' => $langs->transnoentities('CrmAiStepImprove'),
+			'waiting' => $langs->transnoentities('CrmAiWaiting'), 'needSubject' => $langs->transnoentities('CrmAiStepNeedSubject'),
+			'needEmail' => $langs->transnoentities('CrmAiStepNeedEmail'), 'failed' => $langs->transnoentities('CrmAiError', '?'),
+		),
 	);
 	print '<script nonce="'.dol_escape_htmltag(getNonce()).'">window.addEventListener("load", function () { CrmFormatEditor.init('.json_encode($stepConfig, JSON_HEX_TAG | JSON_HEX_AMP).'); });</script>';
 	print '</form>';

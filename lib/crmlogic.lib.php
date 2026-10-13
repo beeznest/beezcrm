@@ -268,9 +268,10 @@ function crmThreadText(array $messages, int $perMessage, int $total, string $weL
 function crmHtmlForMail(string $html): string
 {
 	$html = trim(str_replace(array("\r\n", "\r"), "\n", $html));
-	$html = (string) preg_replace('#(<br\s*/?>)(?!\n)#i', "$1\n", $html);
-	$html = (string) preg_replace('#(</(?:p|div|h[1-6]|blockquote|pre|table|ul|ol)>)(?!\n)#i', "$1\n\n", $html);
-	$html = (string) preg_replace('#(</(?:li|tr)>)(?!\n)#i', "$1\n", $html);
+	// Whitespace between blocks means nothing in HTML, so it is replaced by exactly the breaks wanted in the text version.
+	$html = (string) preg_replace('#(<br\s*/?>)[ \t]*\n?#i', "$1\n", $html);
+	$html = (string) preg_replace('#(</(?:p|div|h[1-6]|blockquote|pre|table|ul|ol)>)\s*#i', "$1\n\n", $html);
+	$html = (string) preg_replace('#(</(?:li|tr)>)\s*#i', "$1\n", $html);
 	return trim($html);
 }
 
