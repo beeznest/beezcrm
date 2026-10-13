@@ -160,13 +160,19 @@ class CrmAiReply
 		}
 		$text = $built['text'];
 		$guard = null;
+		$nameMap = array();
 		if (getDolGlobalInt('AI_PRIVACY_REDACTION', 0)) {
 			// The redaction policy of the AI module applies to this call like to every other: names and identifiers
 			// are replaced by placeholders before the text leaves, and put back in the answer.
 			require_once DOL_DOCUMENT_ROOT.'/ai/class/privacy_guard.class.php';
 			$guard = new PrivacyGuard();
 			$text = $guard->mask($text);
-			$text = $guard->maskNames($text, $built['names']);
+			if (method_exists($guard, 'maskNames')) {
+				$text = $guard->maskNames($text, $built['names']);
+			} else {
+				// Dolibarr 24.0.0 has mask() but not maskNames(): the names are masked here, with the same kind of placeholder.
+				$text = $this->maskNamesLocally($text, $built['names'], $nameMap);
+			}
 			if (strpos($text, '[[') !== false) {
 				$text .= "\nTokens such as [[REF_1]] are privacy-masked real values: keep them verbatim in the e-mail.";
 			}
@@ -187,6 +193,9 @@ class CrmAiReply
 		$answer = (string) $answer;
 		if ($guard !== null) {
 			$answer = $guard->unmaskAiResponse($answer);
+			foreach ($nameMap as $token => $original) {
+				$answer = str_replace(array($token, substr($token, 2, -2)), $original, $answer);
+			}
 		}
 		$answer = $this->clean($answer);
 		if ($answer === '') {
@@ -194,6 +203,38 @@ class CrmAiReply
 			return null;
 		}
 		return $answer;
+	}
+
+	/**
+	 * Replace each name by a placeholder, longest first, ignoring case. Names under four characters are left alone,
+	 * as they would shred unrelated words.
+	 *
+	 * @param string               $text    Text to mask
+	 * @param string[]             $names   Names to look for
+	 * @param array<string,string> $map     Receives placeholder => original name
+	 */
+	private function maskNamesLocally(string $text, array $names, array &$map): string
+	{
+		$clean = array();
+		foreach ($names as $name) {
+			$name = trim($name);
+			if (dol_strlen($name) >= 4) {
+				$clean[] = $name;
+			}
+		}
+		usort($clean, static function (string $a, string $b): int {
+			return strlen($b) <=> strlen($a);
+		});
+		$salt = substr(md5(uniqid('', true)), 0, 4);
+		foreach ($clean as $index => $name) {
+			$token = '[[NAME_'.($index + 1).$salt.']]';
+			$count = 0;
+			$text = (string) preg_replace('/'.preg_quote($name, '/').'/iu', $token, $text, -1, $count);
+			if ($count > 0) {
+				$map[$token] = $name;
+			}
+		}
+		return $text;
 	}
 
 	/**

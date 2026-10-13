@@ -83,6 +83,10 @@ class CrmActivityTool extends CrmMcpTool
 	 */
 	public function execute(string $toolName, array $args)
 	{
+		$denied = $this->denyMissingRights($toolName);
+		if ($denied !== null) {
+			return $denied;
+		}
 		require_once __DIR__.'/../crmactivity.class.php';
 		$activity = new CrmActivity($this->db);
 		if ($toolName === 'crm_list_activities') {

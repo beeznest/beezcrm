@@ -394,78 +394,7 @@ if (trim((string) $object->description) !== '') {
 	print '</table>';
 }
 
-if ($user->hasRight('crm', 'write')) {
-	print '<h2>'.$langs->trans('CrmStage').'</h2>';
-	print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'">';
-	print '<input type="hidden" name="token" value="'.newToken().'">';
-	print '<input type="hidden" name="action" value="move">';
-	print '<input type="hidden" name="id" value="'.((int) $object->id).'">';
-	$lostSelected = ($currentStage && (int) $currentStage->is_lost === 1);
-	print '<select name="stageid" id="crm-stageid">';
-	foreach ($stages as $stage) {
-		$selected = ((int) $object->fk_stage === (int) $stage->id) ? ' selected' : '';
-		print '<option value="'.((int) $stage->id).'" data-lost="'.((int) $stage->is_lost).'"'.$selected.'>'.dol_escape_htmltag(crmStageLabel((string) $stage->label)).'</option>';
-	}
-	print '</select> ';
-	print '<span id="crm-loss-reason"'.($lostSelected ? '' : ' style="display:none"').'>';
-	print $langs->trans('CrmLossReason').' <select name="lossreasonid" id="crm-lossreason"'.($lostSelected ? '' : ' disabled').'><option value="0"></option>';
-	foreach ($reasons as $reason) {
-		print '<option value="'.((int) $reason->rowid).'">'.dol_escape_htmltag(crmDictLabel((string) $reason->label)).'</option>';
-	}
-	print '</select></span> ';
-	print '<script nonce="'.dol_escape_htmltag(getNonce()).'">';
-	print '(function () {';
-	print 'var stage = document.getElementById("crm-stageid");';
-	print 'var box = document.getElementById("crm-loss-reason");';
-	print 'var reason = document.getElementById("crm-lossreason");';
-	print 'if (!stage || !box || !reason) { return; }';
-	print 'function sync() {';
-	print 'var option = stage.options[stage.selectedIndex];';
-	print 'var lost = option && option.getAttribute("data-lost") === "1";';
-	print 'box.style.display = lost ? "" : "none";';
-	print 'reason.disabled = !lost;';
-	print '}';
-	print 'stage.addEventListener("change", sync);';
-	print 'sync();';
-	print '}());';
-	print '</script>';
-	print '<input name="lossnote" placeholder="'.dol_escape_htmltag($langs->trans('CrmLossNote')).'" value="'.dol_escape_htmltag((string) $object->loss_note).'"> ';
-	print '<input type="submit" class="button" value="'.$langs->trans('CrmMove').'">';
-	if (getDolGlobalInt('CRM_REQUIRE_NEXT_STEP')) {
-		print '<br><span class="opacitymedium">'.$langs->trans('CrmMoveNextStepHelp').'</span>';
-	}
-	print '</form>';
-}
-
-$qual = new Qualification($db);
-$items = $qual->fetchForOpportunity((int) $object->id);
-$score = $qual->score($items);
-$scoreWidth = max(0, min(100, (int) $score));
-print '<div class="crm-section">';
-print '<div class="crm-section-head"><span>'.$langs->trans('CrmQualification').'</span>';
-print '<span class="crm-score-row"><span class="crm-scorebar"><span style="width:'.$scoreWidth.'%"></span></span> '.$scoreWidth.'</span></div>';
-if (count($qual->missing($items)) > 0) {
-	print '<p class="opacitymedium crm-qual-missing">'.$langs->trans('CrmMissing').': '.dol_escape_htmltag(implode(', ', array_map('crmDictLabel', $qual->missing($items)))).'</p>';
-}
-if ($user->hasRight('crm', 'write')) {
-	print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'">';
-	print '<input type="hidden" name="token" value="'.newToken().'">';
-	print '<input type="hidden" name="action" value="qualify">';
-	print '<input type="hidden" name="id" value="'.((int) $object->id).'">';
-}
-print '<div class="crm-qual-grid">';
-foreach ($items as $item) {
-	$checked = !empty($item['answer']) ? ' checked' : '';
-	print '<label><input type="checkbox" name="qual_'.((int) $item['id']).'" value="1"'.$checked.'> '.dol_escape_htmltag(crmDictLabel((string) $item['label']));
-	print ' <span class="crm-qual-points">'.((int) $item['points']).'</span></label>';
-}
-print '</div>';
-if ($user->hasRight('crm', 'write')) {
-	print '<input type="submit" class="button" value="'.$langs->trans('Save').'">';
-	print '</form>';
-}
-print '</div>';
-
+// Sections, in the order a salesperson works them: next step, qualification, stage, proposals, then the history.
 print '<h2>'.$langs->trans('CrmNextStep').'</h2>';
 if ($user->hasRight('crm', 'activity')) {
 	print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'">';
@@ -512,6 +441,78 @@ foreach ($events as $event) {
 	print '</td></tr>';
 }
 print '</table>';
+
+$qual = new Qualification($db);
+$items = $qual->fetchForOpportunity((int) $object->id);
+$score = $qual->score($items);
+$scoreWidth = max(0, min(100, (int) $score));
+print '<div class="crm-section">';
+print '<div class="crm-section-head"><span>'.$langs->trans('CrmQualification').'</span>';
+print '<span class="crm-score-row"><span class="crm-scorebar"><span style="width:'.$scoreWidth.'%"></span></span> '.$scoreWidth.'</span></div>';
+if (count($qual->missing($items)) > 0) {
+	print '<p class="opacitymedium crm-qual-missing">'.$langs->trans('CrmMissing').': '.dol_escape_htmltag(implode(', ', array_map('crmDictLabel', $qual->missing($items)))).'</p>';
+}
+if ($user->hasRight('crm', 'write')) {
+	print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'">';
+	print '<input type="hidden" name="token" value="'.newToken().'">';
+	print '<input type="hidden" name="action" value="qualify">';
+	print '<input type="hidden" name="id" value="'.((int) $object->id).'">';
+}
+print '<div class="crm-qual-grid">';
+foreach ($items as $item) {
+	$checked = !empty($item['answer']) ? ' checked' : '';
+	print '<label><input type="checkbox" name="qual_'.((int) $item['id']).'" value="1"'.$checked.'> '.dol_escape_htmltag(crmDictLabel((string) $item['label']));
+	print ' <span class="crm-qual-points">'.((int) $item['points']).'</span></label>';
+}
+print '</div>';
+if ($user->hasRight('crm', 'write')) {
+	print '<input type="submit" class="button" value="'.$langs->trans('Save').'">';
+	print '</form>';
+}
+print '</div>';
+
+if ($user->hasRight('crm', 'write')) {
+	print '<h2>'.$langs->trans('CrmStage').'</h2>';
+	print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'">';
+	print '<input type="hidden" name="token" value="'.newToken().'">';
+	print '<input type="hidden" name="action" value="move">';
+	print '<input type="hidden" name="id" value="'.((int) $object->id).'">';
+	$lostSelected = ($currentStage && (int) $currentStage->is_lost === 1);
+	print '<select name="stageid" id="crm-stageid">';
+	foreach ($stages as $stage) {
+		$selected = ((int) $object->fk_stage === (int) $stage->id) ? ' selected' : '';
+		print '<option value="'.((int) $stage->id).'" data-lost="'.((int) $stage->is_lost).'"'.$selected.'>'.dol_escape_htmltag(crmStageLabel((string) $stage->label)).'</option>';
+	}
+	print '</select> ';
+	print '<span id="crm-loss-reason"'.($lostSelected ? '' : ' style="display:none"').'>';
+	print $langs->trans('CrmLossReason').' <select name="lossreasonid" id="crm-lossreason"'.($lostSelected ? '' : ' disabled').'><option value="0"></option>';
+	foreach ($reasons as $reason) {
+		print '<option value="'.((int) $reason->rowid).'">'.dol_escape_htmltag(crmDictLabel((string) $reason->label)).'</option>';
+	}
+	print '</select></span> ';
+	print '<script nonce="'.dol_escape_htmltag(getNonce()).'">';
+	print '(function () {';
+	print 'var stage = document.getElementById("crm-stageid");';
+	print 'var box = document.getElementById("crm-loss-reason");';
+	print 'var reason = document.getElementById("crm-lossreason");';
+	print 'if (!stage || !box || !reason) { return; }';
+	print 'function sync() {';
+	print 'var option = stage.options[stage.selectedIndex];';
+	print 'var lost = option && option.getAttribute("data-lost") === "1";';
+	print 'box.style.display = lost ? "" : "none";';
+	print 'reason.disabled = !lost;';
+	print '}';
+	print 'stage.addEventListener("change", sync);';
+	print 'sync();';
+	print '}());';
+	print '</script>';
+	print '<input name="lossnote" placeholder="'.dol_escape_htmltag($langs->trans('CrmLossNote')).'" value="'.dol_escape_htmltag((string) $object->loss_note).'"> ';
+	print '<input type="submit" class="button" value="'.$langs->trans('CrmMove').'">';
+	if (getDolGlobalInt('CRM_REQUIRE_NEXT_STEP')) {
+		print '<br><span class="opacitymedium">'.$langs->trans('CrmMoveNextStepHelp').'</span>';
+	}
+	print '</form>';
+}
 
 if (isModEnabled('propal')) {
 	print '<h2>'.$langs->trans('CrmProposals').'</h2>';

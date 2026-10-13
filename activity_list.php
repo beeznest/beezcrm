@@ -57,7 +57,8 @@ print load_fiche_titre($langs->trans('CrmActivities'), '', 'fa-handshake');
 
 print '<div class="tabsAction">';
 foreach (array('overdue' => 'CrmOverdue', 'today' => 'CrmToday', 'planned' => 'CrmPlanned', 'done' => 'CrmDone') as $code => $key) {
-	$class = ($scope === $code) ? 'butAction' : 'butActionRefused';
+	// The unselected filters keep the greyed look of butActionRefused, but they are links that work: crm-scope restores the pointer.
+	$class = (($scope === $code) ? 'butAction' : 'butActionRefused').' crm-scope';
 	print '<a class="'.$class.'" href="'.$_SERVER['PHP_SELF'].'?scope='.$code.'">'.$langs->trans($key).'</a>';
 }
 print '</div>';

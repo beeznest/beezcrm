@@ -6,7 +6,7 @@ Contents: [Requirements](#requirements) · [Dolibarr settings the module relies 
 
 ## Requirements
 
-- Dolibarr 21 or later, PHP 8.1 or later.
+- Dolibarr 21 or later, PHP 8.1 or later. The module has been run and tested against the **Dolibarr 24.0.0** core and the **25.0.0 alpha** core (the e-mail drafts and archive, the HTML editor, pipelines, forecast, the AI reply block, the MCP tools). Versions 21 to 23 are accepted by the module descriptor but have **not been tested**. See "Version differences" in [MCP](#mcp) for what 24.0.0 does not offer.
 - The Dolibarr modules **Third parties** and **Agenda** must be enabled: the CRM module depends on them, and Dolibarr will not enable it otherwise.
 - Optional, each for one feature: **Proposals** (to link proposals to a deal), **AI** (MCP tools), **E-mail collector** (e-mail history), working **e-mail sending** (sequences, reminders).
 
@@ -336,6 +336,11 @@ The module adds tools named `crm_*` to Dolibarr's MCP server, so an AI assistant
 6. A client calls `POST /ai/server/mcp_server.php` with `Authorization: Bearer <key>`: `initialize`, then `tools/list`, then `tools/call`.
 
 Keys are secrets: never store them in the project, and regenerate one that was shared.
+
+**Version differences.** The CRM tools work on Dolibarr 24.0.0 and on 25, but the core around them is not the same:
+
+- **24.0.0** has the MCP server, but it authenticates with the **shared key only** (`AI_MCP_API_KEY`, running as the user chosen in `AI_MCP_USER_ID`), does not check the rights a tool declares, and does not ask for a confirmation before a write. To keep the rights of the CRM, the tools check their own rights before running, so a caller who lacks, for example, "Delete deals" or "Configure CRM" is refused. The confirmation step before a write is not there: use a dedicated MCP user with only the rights the assistant needs. The AI setup tabs need `MAIN_FEATURES_LEVEL` at 2 or more.
+- **25.0.0 alpha** adds personal API keys for MCP, the per-tool rights check and the confirmation step before a write, and shows the AI tabs from level 1. Both sets of rights checks apply: the core's and the tool's own.
 
 The tools cover pipelines, stages, sources, loss reasons and qualification items (list and change), deals (list, read, create, update, move, win, lose, delete), proposals links, qualification answers, agenda steps, sequences, reports and settings (`crm_get_settings`, `crm_set_settings`, `crm_run_sequences`, `crm_run_owner_reminders`). Tools that write return a confirmation text that names the record. The tools that change setup need "Configure CRM"; the others follow the matching right. Owners are numeric Dolibarr user ids: there is no user search tool. Searching and editing third parties, contacts, proposals, orders and invoices stays with the core tools.
 

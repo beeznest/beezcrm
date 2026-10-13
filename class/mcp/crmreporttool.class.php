@@ -120,6 +120,10 @@ class CrmReportTool extends CrmMcpTool
 	 */
 	public function execute(string $toolName, array $args)
 	{
+		$denied = $this->denyMissingRights($toolName);
+		if ($denied !== null) {
+			return $denied;
+		}
 		require_once __DIR__.'/../crmreport.class.php';
 		$report = new CrmReport($this->db);
 		if ($toolName === 'crm_get_dashboard') {

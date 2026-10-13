@@ -113,6 +113,31 @@ abstract class CrmMcpTool extends McpTool
 	}
 
 	/**
+	 * Check the rights this tool declares, from inside the tool. Dolibarr 25 checks them before it calls a tool; Dolibarr
+	 * 24.0.0 checks nothing, so a caller authenticated as a user without the CRM right could otherwise run a write tool.
+	 * Done twice, it costs nothing on 25 and closes the gap on 24.
+	 *
+	 * @return array{error:string}|null null when every declared right is held
+	 */
+	protected function denyMissingRights(string $toolName): ?array
+	{
+		$declared = $this->getRequiredRights($toolName);
+		if (!is_array($declared)) {
+			return $this->fail('Permission denied');
+		}
+		foreach ($declared as $right) {
+			$right = (array) $right;
+			$module = (string) ($right[0] ?? '');
+			$perm = (string) ($right[1] ?? '');
+			$subperm = (string) ($right[2] ?? '');
+			if ($module === '' || !$this->user->hasRight($module, $perm, $subperm)) {
+				return $this->fail('Permission denied: the right '.$module.'/'.$perm.($subperm !== '' ? '/'.$subperm : '').' is required');
+			}
+		}
+		return null;
+	}
+
+	/**
 	 * Empty when the caller may see this owner.
 	 */
 	protected function denyOwner(int $ownerId): string

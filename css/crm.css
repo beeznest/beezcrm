@@ -181,3 +181,11 @@
 .crm-toggle .crm-sw-on { display: none; }
 .crm-toggle-on .crm-sw-on { display: inline; }
 .crm-toggle-on .crm-sw-off { display: none; }
+
+/* The theme gives the refused-button look a not-allowed cursor; the filters of the activity list use that look but are working links. */
+a.crm-scope,
+a.crm-scope:hover,
+a.crm-scope:link,
+a.crm-scope:visited {
+	cursor: pointer !important;
+}

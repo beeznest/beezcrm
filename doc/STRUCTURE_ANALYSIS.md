@@ -198,6 +198,8 @@ Constants: `CRM_ROTTING_DAYS` (15, default for a new stage), `CRM_FORECAST_MONTH
 
 ## MCP
 
+Compatibility: the tools run on the Dolibarr 24.0.0 core and on 25. Dolibarr 24.0.0 checks no declared rights and has no write confirmation, so every tool starts with `CrmMcpTool::denyMissingRights()`, which applies `getRequiredRights()` itself; on 25 it is a second check with the same result. `PrivacyGuard::maskNames()` does not exist in 24.0.0: `CrmAiReply` masks the names itself when the method is missing.
+
 `McpHandler` loads external tools through the hook `addMcpTools` in context `aimcp`. The module returns `McpTool` instances. Nothing is added under `htdocs/ai/tools/`.
 
 Screens work with the AI module off. Tools appear when it is on, and they pass through `AI_MCP_SERVER_ALLOWED_TOOLS`. Write tools return `writeConfirmationPreview()`. Read tools return `NO_WRITE`. `getRequiredRights()` matches the permissions below. Without `readall`, every tool only sees deals owned by the caller.

@@ -147,6 +147,10 @@ class CrmOpportunityTool extends CrmMcpTool
 	 */
 	public function execute(string $toolName, array $args)
 	{
+		$denied = $this->denyMissingRights($toolName);
+		if ($denied !== null) {
+			return $denied;
+		}
 		require_once __DIR__.'/../opportunity.class.php';
 		require_once __DIR__.'/../qualification.class.php';
 		if ($toolName === 'crm_list_opportunities') {
