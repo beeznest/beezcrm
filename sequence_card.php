@@ -100,19 +100,41 @@ if ($action === 'updatesequence') {
 	}
 }
 
-if ($action === 'addstep') {
-	crmRequireRight('sequence');
+/**
+ * The fields of the step form: kind, delay, subject, text and mode. The text of an e-mail step is plain or HTML, one or
+ * the other, as the Format choice says; the other kinds have none.
+ *
+ * @return array{kind:string,delay:int,subject:string,body:string,mode:string}
+ */
+$readStepInput = function (): array {
 	$kind = GETPOST('stepaction', 'aZ09');
 	if (!in_array($kind, array('email', 'call', 'task'), true)) {
 		$kind = 'email';
 	}
-	// The text of an e-mail step is plain or HTML, one or the other; the other kinds have none.
-	$stepBody = '';
+	$body = '';
 	if ($kind === 'email') {
-		$stepBody = (GETPOST('format', 'aZ09') === 'html') ? GETPOST('bodyhtml', 'restricthtml') : GETPOST('body', 'nohtml');
+		$body = (GETPOST('format', 'aZ09') === 'html') ? GETPOST('bodyhtml', 'restricthtml') : GETPOST('body', 'nohtml');
 	}
-	if ($sequence->addStep($kind, GETPOSTINT('delay_days'), GETPOST('subject', 'nohtml'), $stepBody, GETPOST('send_mode', 'aZ09')) <= 0) {
+	return array('kind' => $kind, 'delay' => GETPOSTINT('delay_days'), 'subject' => GETPOST('subject', 'nohtml'), 'body' => $body, 'mode' => GETPOST('send_mode', 'aZ09'));
+};
+
+if ($action === 'addstep') {
+	crmRequireRight('sequence');
+	$input = $readStepInput();
+	if ($sequence->addStep($input['kind'], $input['delay'], $input['subject'], $input['body'], $input['mode']) <= 0) {
 		setEventMessages($sequence->error, null, 'errors');
+	}
+	header('Location: '.$back);
+	exit;
+}
+
+if ($action === 'updatestep') {
+	crmRequireRight('sequence');
+	$input = $readStepInput();
+	if ($sequence->updateStep(GETPOSTINT('stepid'), $input['kind'], $input['delay'], $input['subject'], $input['body'], $input['mode']) <= 0) {
+		setEventMessages(crmErrorText($sequence->error !== '' ? $sequence->error : 'Error'), null, 'errors');
+	} else {
+		setEventMessages($langs->trans('RecordSaved'), null);
 	}
 	header('Location: '.$back);
 	exit;
@@ -200,6 +222,7 @@ foreach ($steps as $step) {
 	}
 	print '</td><td>';
 	if ($user->hasRight('crm', 'sequence')) {
+		print '<a href="'.$back.'&action=editstep&stepid='.(int) $step->rowid.'&token='.newToken().'#crm-step-form">'.$langs->trans('Modify').'</a> ';
 		print '<a href="'.$back.'&action=delstep&stepid='.(int) $step->rowid.'&token='.newToken().'">'.$langs->trans('Delete').'</a>';
 	}
 	print '</td></tr>';
@@ -207,49 +230,77 @@ foreach ($steps as $step) {
 print '</table>';
 
 if ($user->hasRight('crm', 'sequence')) {
+	// The same form adds a step or, with action=editstep, changes one: the step keeps its position.
+	$stepEdit = null;
+	if ($action === 'editstep') {
+		$stepEdit = $sequence->fetchStep(GETPOSTINT('stepid'));
+	}
+	$isEdit = ($stepEdit !== null);
+	$pfKind = $isEdit ? (string) $stepEdit->action : 'email';
+	$pfDelay = $isEdit ? (int) $stepEdit->delay_days : 0;
+	$pfMode = $isEdit ? (string) ($stepEdit->send_mode ?? '') : '';
+	$pfSubject = $isEdit ? (string) $stepEdit->subject : '';
+	$pfBody = $isEdit ? (string) $stepEdit->body : '';
+	$pfFormat = crmLooksLikeHtml($pfBody) ? 'html' : 'text';
+	$pfEditorHtml = ($pfFormat === 'html') ? $pfBody : crmTextToHtml($pfBody);
+	$pfPlain = ($pfFormat === 'html') ? crmHtmlToText($pfBody) : $pfBody;
+	if ($isEdit) {
+		print '<h3 id="crm-step-form-title">'.$langs->trans('CrmEditingStep', (int) $stepEdit->position).' &nbsp; <a class="small" href="'.$back.'">'.$langs->trans('Cancel').'</a></h3>';
+	}
 	print '<form method="POST" id="crm-step-form" action="'.$_SERVER['PHP_SELF'].'">';
 	print '<input type="hidden" name="token" value="'.newToken().'">';
-	print '<input type="hidden" name="action" value="addstep">';
+	print '<input type="hidden" name="action" value="'.($isEdit ? 'updatestep' : 'addstep').'">';
 	print '<input type="hidden" name="id" value="'.((int) $sequence->id).'">';
+	if ($isEdit) {
+		print '<input type="hidden" name="stepid" value="'.((int) $stepEdit->rowid).'">';
+	}
 	// First line: the four short fields. Below them, on their own lines: the text of the message (an e-mail step only),
 	// and the button.
 	print '<div class="marginbottomonly">';
-	print '<select name="stepaction" id="crm-step-kind"><option value="email">'.$langs->trans('CrmEmail').'</option><option value="call">'.$langs->trans('CrmCall').'</option><option value="task">'.$langs->trans('CrmTask').'</option></select> ';
-	print '<input type="number" name="delay_days" value="0" min="0" class="width50"> '.$langs->trans('CrmDays').' ';
+	print '<select name="stepaction" id="crm-step-kind">';
+	foreach (array('email' => 'CrmEmail', 'call' => 'CrmCall', 'task' => 'CrmTask') as $kindCode => $kindKey) {
+		print '<option value="'.$kindCode.'"'.($pfKind === $kindCode ? ' selected' : '').'>'.$langs->trans($kindKey).'</option>';
+	}
+	print '</select> ';
+	print '<input type="number" name="delay_days" value="'.$pfDelay.'" min="0" class="width50"> '.$langs->trans('CrmDays').' ';
 	if (crmStepModeSupported($db)) {
 		print '<select name="send_mode" id="crm-step-mode" title="'.dol_escape_htmltag($langs->trans('CrmStepModeHelp')).'">';
-		print '<option value="">'.$langs->trans('CrmStepModeDefault', $langs->transnoentitiesnoconv(crmSequenceDraftMode() ? 'CrmStepModeDraft' : 'CrmStepModeSend')).'</option>';
-		print '<option value="draft">'.$langs->trans('CrmStepModeDraft').'</option><option value="send">'.$langs->trans('CrmStepModeSend').'</option></select> ';
+		print '<option value=""'.($pfMode === '' ? ' selected' : '').'>'.$langs->trans('CrmStepModeDefault', $langs->transnoentitiesnoconv(crmSequenceDraftMode() ? 'CrmStepModeDraft' : 'CrmStepModeSend')).'</option>';
+		print '<option value="draft"'.($pfMode === 'draft' ? ' selected' : '').'>'.$langs->trans('CrmStepModeDraft').'</option>';
+		print '<option value="send"'.($pfMode === 'send' ? ' selected' : '').'>'.$langs->trans('CrmStepModeSend').'</option></select> ';
 	}
-	print '<input name="subject" id="crm-step-subject" class="minwidth300" placeholder="'.dol_escape_htmltag($langs->trans('CrmSubject')).'">';
+	print '<input name="subject" id="crm-step-subject" class="minwidth300" value="'.dol_escape_htmltag($pfSubject).'" placeholder="'.dol_escape_htmltag($langs->trans('CrmSubject')).'">';
 	print '</div>';
 	print '<div id="crm-step-body" class="marginbottomonly">';
 	print '<div class="marginbottomonly">'.$langs->trans('CrmFormat').' ';
-	print '<label><input type="radio" name="format" value="html"> '.$langs->trans('CrmFormatHtml').'</label> &nbsp; ';
-	print '<label><input type="radio" name="format" value="text" checked> '.$langs->trans('CrmFormatText').'</label>';
+	print '<label><input type="radio" name="format" value="html"'.($pfFormat === 'html' ? ' checked' : '').'> '.$langs->trans('CrmFormatHtml').'</label> &nbsp; ';
+	print '<label><input type="radio" name="format" value="text"'.($pfFormat === 'text' ? ' checked' : '').'> '.$langs->trans('CrmFormatText').'</label>';
 	print '<br><span class="opacitymedium">'.$langs->trans('CrmStepFormatHelp').'</span></div>';
 	print '<div class="crm-tabs"><button type="button" id="crm-tab-html" class="crm-tab">'.$langs->trans('CrmTabHtml').'</button><button type="button" id="crm-tab-plain" class="crm-tab">'.$langs->trans('CrmTabPlain').'</button></div>';
 	print '<div id="crm-pane-html" class="crm-pane">';
-	$stepEditor = new DolEditor('bodyhtml', '', '', 260, 'dolibarr_mailings', 'In', true, false, true, 10, '95%');
+	$stepEditor = new DolEditor('bodyhtml', $pfEditorHtml, '', 260, 'dolibarr_mailings', 'In', true, false, true, 10, '95%');
 	$stepEditor->Create(0, '', true);
 	print '</div>';
-	print '<div id="crm-pane-plain" class="crm-pane"><textarea name="body" id="crm-body" class="quatrevingtpercent" rows="8" placeholder="'.dol_escape_htmltag($langs->trans('CrmBody')).'"></textarea>';
+	print '<div id="crm-pane-plain" class="crm-pane"><textarea name="body" id="crm-body" class="quatrevingtpercent" rows="8" placeholder="'.dol_escape_htmltag($langs->trans('CrmBody')).'">'.dol_escape_htmltag($pfPlain, 0, 1).'</textarea>';
 	print '<div id="crm-plain-note" class="opacitymedium">'.$langs->trans('CrmPlainAlternativeNote').'</div></div>';
 	print '</div>';
 	print '<div>';
-	print '<input type="submit" class="button" value="'.$langs->trans('CrmAddStep').'"> ';
+	print '<input type="submit" class="button" value="'.$langs->trans($isEdit ? 'CrmUpdateStep' : 'CrmAddStep').'"> ';
 	// Disabled from the start: the script enables it when the kind is e-mail and the subject is filled.
 	print '<button type="button" class="button" id="crm-ai-step" disabled'.($aiStepAvailable ? ' title="'.dol_escape_htmltag($langs->trans('CrmAiStepNeedSubject')).'"' : ' title="'.dol_escape_htmltag($langs->trans('CrmAiStepOff')).'"').'>'.$langs->trans('CrmAiStepSuggest').'</button> ';
 	print '<span id="crm-ai-step-msg" class="opacitymedium"></span>';
 	if ($aiStepAvailable) {
 		print '<br><span class="opacitymedium">'.$langs->trans('CrmAiStepHelp').'</span>';
 	}
+	if ($isEdit) {
+		print '<br><span class="opacitymedium">'.$langs->trans('CrmEditStepHelp').'</span>';
+	}
 	print '</div>';
 	$stepConfig = array(
 		'formId' => 'crm-step-form', 'kindId' => 'crm-step-kind', 'onlyEmailIds' => array('crm-step-body', 'crm-step-mode'),
 		'radioName' => 'format', 'htmlName' => 'bodyhtml', 'plainId' => 'crm-body',
 		'paneHtmlId' => 'crm-pane-html', 'panePlainId' => 'crm-pane-plain', 'tabHtmlId' => 'crm-tab-html', 'tabPlainId' => 'crm-tab-plain',
-		'noteId' => 'crm-plain-note', 'format' => 'text', 'id' => (int) $sequence->id, 'url' => $_SERVER['PHP_SELF'], 'token' => newToken(),
+		'noteId' => 'crm-plain-note', 'format' => $pfFormat, 'id' => (int) $sequence->id, 'url' => $_SERVER['PHP_SELF'], 'token' => newToken(),
 		'tabPlain' => $langs->transnoentities('CrmTabPlain'), 'tabPlainAlt' => $langs->transnoentities('CrmTabPlainAlt'),
 		'confirmToText' => $langs->transnoentities('CrmConfirmToText'),
 		'ai' => array(

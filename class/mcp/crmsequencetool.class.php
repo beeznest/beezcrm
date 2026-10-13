@@ -63,6 +63,15 @@ class CrmSequenceTool extends CrmMcpTool
 				'body' => array('type' => 'string', 'description' => 'Placeholders: __DEAL__ __REF__ __AMOUNT__ __CONTACT__ __CUSTOMER__'),
 				'send_mode' => array('type' => 'string', 'enum' => array('', 'draft', 'send'), 'description' => 'E-mail steps only. draft: the step becomes a planned e-mail for the salesperson to review and send. send: the job sends it (dry-run applies). Empty: follow the global setting CRM_SEQUENCE_EMAIL_MODE.'),
 			), array('id', 'action')),
+			$this->definition('crm_update_sequence_step', 'Change a step of a sequence. Only the fields given are changed. The step keeps its position. An enrolment already waiting for this step keeps the due date it was given, so a new delay applies to the steps scheduled from now on; the kind, subject, body and send_mode apply the next time the step runs.', array(
+				'id' => array('type' => 'integer', 'description' => 'Sequence id'),
+				'step_id' => array('type' => 'integer'),
+				'action' => array('type' => 'string', 'enum' => array('email', 'call', 'task')),
+				'delay_days' => array('type' => 'integer'),
+				'subject' => array('type' => 'string'),
+				'body' => array('type' => 'string', 'description' => 'Plain text or HTML. Placeholders: __DEAL__ __REF__ __AMOUNT__ __CONTACT__ __CUSTOMER__'),
+				'send_mode' => array('type' => 'string', 'enum' => array('', 'draft', 'send'), 'description' => 'E-mail steps only. Empty follows the global setting.'),
+			), array('id', 'step_id')),
 			$this->definition('crm_delete_sequence_step', 'Delete one step.', array(
 				'id' => array('type' => 'integer'),
 				'step_id' => array('type' => 'integer'),
@@ -104,6 +113,9 @@ class CrmSequenceTool extends CrmMcpTool
 		}
 		if ($toolName === 'crm_update_sequence') {
 			return 'Update CRM sequence '.$this->argInt($args, 'id').'.';
+		}
+		if ($toolName === 'crm_update_sequence_step') {
+			return 'Update step '.$this->argInt($args, 'step_id').' of CRM sequence '.$this->argInt($args, 'id').'.';
 		}
 		if ($toolName === 'crm_enrol_sequence') {
 			return 'Enrol CRM deal '.$this->argInt($args, 'opportunity_id').' on sequence '.$this->argInt($args, 'id').'.';
@@ -191,6 +203,24 @@ class CrmSequenceTool extends CrmMcpTool
 				return $this->fail($sequence->error !== '' ? $sequence->error : 'Could not add the step');
 			}
 			return array(array('step_id' => $stepId, 'sequence_id' => (int) $sequence->id));
+		}
+		if ($toolName === 'crm_update_sequence_step') {
+			$current = $sequence->fetchStep($this->argInt($args, 'step_id'));
+			if ($current === null) {
+				return $this->fail('Step not found');
+			}
+			$result = $sequence->updateStep(
+				(int) $current->rowid,
+				isset($args['action']) ? $this->argString($args, 'action') : (string) $current->action,
+				isset($args['delay_days']) ? $this->argInt($args, 'delay_days') : (int) $current->delay_days,
+				isset($args['subject']) ? $this->argString($args, 'subject') : (string) $current->subject,
+				isset($args['body']) ? $this->argString($args, 'body') : (string) $current->body,
+				isset($args['send_mode']) ? $this->argString($args, 'send_mode') : (string) ($current->send_mode ?? '')
+			);
+			if ($result <= 0) {
+				return $this->fail(crmErrorText($sequence->error !== '' ? $sequence->error : 'Error'));
+			}
+			return array(array('step_id' => (int) $current->rowid, 'sequence_id' => (int) $sequence->id));
 		}
 		if ($toolName === 'crm_delete_sequence_step') {
 			if ($sequence->deleteStep($this->argInt($args, 'step_id')) <= 0) {

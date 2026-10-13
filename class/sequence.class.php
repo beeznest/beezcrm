@@ -186,6 +186,57 @@ class Sequence
 	}
 
 	/**
+	 * One step of this sequence.
+	 *
+	 * @return object|null
+	 */
+	public function fetchStep(int $stepId)
+	{
+		$sql = 'SELECT * FROM '.$this->db->prefix().'crm_sequence_step WHERE rowid = '.((int) $stepId).' AND fk_sequence = '.((int) $this->id);
+		$resql = $this->db->query($sql);
+		return ($resql && ($obj = $this->db->fetch_object($resql))) ? $obj : null;
+	}
+
+	/**
+	 * Change a step of this sequence. The step keeps its position. Enrolments are not touched: one that waits for this step
+	 * keeps the due date already computed, so a new delay applies to the steps that are scheduled from now on. The text,
+	 * the subject and the mode are read when the step runs, so they apply to the next run of every enrolment.
+	 *
+	 * @param string $action   email|call|task
+	 * @param string $sendMode For an e-mail step: draft or send to force its mode, empty to follow the global setting
+	 * @return int 1 if OK, -1 on error with a language key in ->error
+	 */
+	public function updateStep(int $stepId, string $action, int $delayDays, string $subject, string $body, string $sendMode = ''): int
+	{
+		if ($this->fetchStep($stepId) === null) {
+			$this->error = 'CrmErrorStepNotFound';
+			return -1;
+		}
+		if (!in_array($action, array('email', 'call', 'task'), true)) {
+			$this->error = 'CrmErrorStepKind';
+			return -1;
+		}
+		if ($action !== 'email' || !in_array($sendMode, array('draft', 'send'), true)) {
+			$sendMode = '';
+		}
+		if ($action !== 'email') {
+			$body = '';
+		}
+		$sql = 'UPDATE '.$this->db->prefix().'crm_sequence_step SET';
+		$sql .= " action = '".$this->db->escape($action)."', delay_days = ".max(0, (int) $delayDays);
+		$sql .= ", subject = '".$this->db->escape($subject)."', body = '".$this->db->escape($body)."'";
+		if (crmStepModeSupported($this->db)) {
+			$sql .= ", send_mode = '".$this->db->escape($sendMode)."'";
+		}
+		$sql .= ' WHERE rowid = '.((int) $stepId).' AND fk_sequence = '.((int) $this->id);
+		if (!$this->db->query($sql)) {
+			$this->error = $this->db->lasterror();
+			return -1;
+		}
+		return 1;
+	}
+
+	/**
 	 * @return int 1 if deleted, -1 on error
 	 */
 	public function deleteStep(int $stepId): int

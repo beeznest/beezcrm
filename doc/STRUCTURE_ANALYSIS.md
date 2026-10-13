@@ -229,7 +229,7 @@ CRM tools:
 | `crm_list_activities` | no |
 | `crm_create_activity`, `crm_complete_activity` | yes, agenda events |
 | `crm_list_sequences`, `crm_get_sequence` | no |
-| `crm_create_sequence`, `crm_add_sequence_step`, `crm_delete_sequence_step` | yes |
+| `crm_create_sequence`, `crm_update_sequence`, `crm_add_sequence_step`, `crm_update_sequence_step`, `crm_delete_sequence_step` | yes |
 | `crm_enrol_sequence`, `crm_stop_sequence`, `crm_mark_replied` | yes |
 | `crm_get_dashboard`, `crm_get_forecast`, `crm_get_conversion`, `crm_get_loss_reasons` | no |
 | `crm_get_win_rate`, `crm_get_cycle_time`, `crm_get_by_owner`, `crm_get_by_source` | no |
