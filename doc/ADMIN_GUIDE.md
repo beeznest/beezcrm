@@ -113,7 +113,7 @@ Everything the module lets you configure is under **CRM → Setup** (needs "Conf
 
 ### CRM → Setup → Parameters
 
-One text field per setting; press **Save** once for the whole tab. For an on/off setting, type `1` for on and `0` for off. A setting left empty counts as off (or, for the mail sender, as "use the Dolibarr sender").
+The settings that are only on or off are **on/off switches** (the same switches as elsewhere in Dolibarr): click one and it is saved at once, without the Save button, and it is stored as `1` or `0`. Switching **dry-run** off (sequences or reminders) or the **AI assistant** on asks for a confirmation first, because real e-mails will be sent or text will leave for an external service. The other settings are fields; press **Save** once for all of them. Clicking a switch does not save what you typed in the fields, so save those first. A field left empty counts as off or default (for the mail sender: use the Dolibarr sender). Changing a switch needs the "Configure CRM" right, not a Dolibarr administrator.
 
 | Field | Constant | What it does |
 | --- | --- | --- |
@@ -310,7 +310,16 @@ Attachments and everything else in the agenda or the mailbox are never sent. The
 **Privacy.** The exchange contains personal data and may contain confidential information, and it goes to an external provider. Decide before you leave the block on:
 
 - Check the provider's terms and where it processes data, and tell your users.
-- Turn on the AI module's **privacy redaction** (`AI_PRIVACY_REDACTION`, on the Assistant tab of the AI setup, which shows only when `MAIN_FEATURES_LEVEL` is 1 or more): the module then replaces names, e-mail addresses, phone numbers and references by placeholders before the call and puts the real values back in the answer. The editor notice says it is on. With it on, check that the proposals read well on your provider.
+- Turn on **privacy redaction** (`AI_PRIVACY_REDACTION`). The CRM block then replaces names, e-mail addresses, phone numbers and references by placeholders before the call, and puts the real values back in the answer; the editor notice says it is on. The switch is hard to reach, because Dolibarr shows it only on the chat assistant page, itself hidden by default. The steps:
+
+  1. Set the constant `MAIN_FEATURES_LEVEL` to 1 or more (Home → Setup → Other setup). This is temporary, and it also turns on every other experimental Dolibarr feature.
+  2. Open the **Assistant** page of the AI setup (the "Assistant" tab that now appears, or directly `/ai/admin/assistant.php`).
+  3. Switch **"Enable the chat AI assistant"** on (`AI_ASSISTANT_ENABLED` = 1). The other options of the page appear. The chat itself is only offered to users who hold the right "Use the AI Assistant", which nobody has by default (administrator accounts have every right).
+  4. Switch **"Obfuscate Prompt Data"** on (`AI_PRIVACY_REDACTION` = 1).
+  5. If you do not want the chat, switch **"Enable the chat AI assistant"** off again (`AI_ASSISTANT_ENABLED` = 0). This is your choice: `AI_PRIVACY_REDACTION` is an independent constant and **keeps its value of 1**, and the CRM module reads it directly, so the redaction stays in force for the CRM block.
+  6. Put `MAIN_FEATURES_LEVEL` back to its previous value if you do not need the experimental features.
+
+  Open the e-mail editor of a planned e-mail to check: the notice under the AI block should say that names, addresses and references are masked. Dolibarr itself applies this setting only to its chat assistant, its e-mail cleaner and to attachments; the CRM block applies it because the module does it on its own, but Dolibarr's other text generation features do not. With it on, check that the proposals read well on your provider.
 - Or leave `CRM_AI_EMAIL_ASSIST` at 0, its default, so the block stays hidden.
 
 **Limits.** The proposal is only as good as the model and the history it can read; it can be wrong, so every text is read and edited by a person before sending. Each use costs a call to the provider. A very short or empty history gives a generic proposal.
