@@ -222,7 +222,7 @@ if ($tab === 'stages') {
 	print '<input name="position" type="number" value="0" class="width50"> ';
 	print '<input name="color" value="#6c757d" class="width75"> ';
 	print '<input name="probability" type="number" value="10" class="width50">% ';
-	print '<input name="rotting_days" type="number" value="15" class="width50"> ';
+	print '<input name="rotting_days" type="number" min="0" value="'.max(0, getDolGlobalInt('CRM_ROTTING_DAYS', 15)).'" class="width50"> ';
 	print '<select name="forecast_category"><option>pipeline</option><option>upside</option><option>commit</option><option>closed</option><option>lost</option></select> ';
 	print '<label><input type="checkbox" name="is_won" value="1"> '.$langs->trans('CrmWonStage').'</label> ';
 	print '<label><input type="checkbox" name="is_lost" value="1"> '.$langs->trans('CrmLostStage').'</label> ';

@@ -294,7 +294,10 @@ No purge button in v1. A later action can drop only `llx_crm_*` and `CRM_*` cons
 ├── langs/fr_FR/crm.lang
 ├── test/phpunit/CrmLogicTest.php
 ├── README.md
-└── doc/STRUCTURE_ANALYSIS.md
+└── doc/
+    ├── ADMIN_GUIDE.md
+    ├── USER_GUIDE.md
+    └── STRUCTURE_ANALYSIS.md
 ```
 
 Module id: 104801. Rights ids 10480101–10480108.

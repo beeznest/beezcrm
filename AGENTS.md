@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Guidance for AI agents working on the **CRM** external module for Dolibarr. Read this first, then `README.md` (install, cron, MCP overview) and `doc/STRUCTURE_ANALYSIS.md` (design decisions, data model, rationale).
+Guidance for AI agents working on the **CRM** external module for Dolibarr. Read this first, then `README.md` (overview and links), `doc/ADMIN_GUIDE.md` (install, Dolibarr settings, every setup page, cron, e-mail, MCP, maintenance), `doc/USER_GUIDE.md` (what a salesperson does) and `doc/STRUCTURE_ANALYSIS.md` (design decisions, data model, rationale).
 
 ## Environment
 
@@ -107,7 +107,7 @@ Test data created on the dev instance (deals, sequences, agenda events) is real 
 
 ## Known gaps and traps
 
-- `doc/STRUCTURE_ANALYSIS.md` is the design record. When behaviour changes, update it in the same change, together with `README.md` and this file if setup facts move.
+- `doc/STRUCTURE_ANALYSIS.md` is the design record. When behaviour changes, update it in the same change, together with `doc/ADMIN_GUIDE.md` (anything an administrator sets, installs or checks), `doc/USER_GUIDE.md` (anything a salesperson sees or does) and this file if setup facts move. `README.md` stays a short overview: do not grow it again.
 - No schema migrations and no purge action (explicitly deferred in the design doc).
 - Multi-currency is not supported; amounts are in the company currency.
 - Reply detection is manual ("prospect replied" on the card or by MCP); the module never reads a mailbox.
