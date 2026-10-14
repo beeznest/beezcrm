@@ -40,6 +40,7 @@ $forecast = $report->forecast($user);
 
 llxHeader('', $langs->trans('CrmHome'), '', '', 0, 0, '', array('/crm/css/crm.css'));
 print load_fiche_titre($langs->trans('CrmHome'), '', 'fa-handshake');
+print crmSchemaWarning();
 
 /**
  * @param string            $title   Title

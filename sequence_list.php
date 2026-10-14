@@ -41,7 +41,7 @@ if ($action === 'add') {
 	$sequence->active = GETPOSTINT('active') ? 1 : 0;
 	$newId = $sequence->create($user);
 	if ($newId <= 0) {
-		setEventMessages($sequence->error, null, 'errors');
+		setEventMessages(crmErrorText($sequence->error), null, 'errors');
 	} else {
 		header('Location: '.dol_buildpath('/crm/sequence_card.php', 1).'?id='.$newId);
 		exit;

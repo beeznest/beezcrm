@@ -145,7 +145,7 @@ class Opportunity extends CommonObject
 	{
 		global $conf;
 		if ($this->fk_pipeline <= 0 || $this->label === '' || $this->fk_user_resp <= 0) {
-			$this->error = 'Missing pipeline, title or owner';
+			$this->error = 'CrmErrorDealIncomplete';
 			return -1;
 		}
 		$stageId = (int) $this->fk_stage;
@@ -153,7 +153,7 @@ class Opportunity extends CommonObject
 			$stageId = $this->firstOpenStage($this->fk_pipeline);
 		}
 		if ($stageId <= 0) {
-			$this->error = 'Pipeline has no open stage';
+			$this->error = 'CrmErrorPipelineNoOpenStage';
 			return -1;
 		}
 		if ($this->ref === '' || $this->ref === null) {
@@ -200,7 +200,7 @@ class Opportunity extends CommonObject
 	public function update(User $user): int
 	{
 		if ($this->id <= 0) {
-			$this->error = 'Deal not loaded';
+			$this->error = 'CrmErrorDealNotLoaded';
 			return -1;
 		}
 		$sql = 'UPDATE '.$this->db->prefix().'crm_opportunity SET';
@@ -235,12 +235,16 @@ class Opportunity extends CommonObject
 		require_once __DIR__.'/stage.class.php';
 		require_once __DIR__.'/crmactivity.class.php';
 		if ($this->id <= 0) {
-			$this->error = 'Deal not loaded';
+			$this->error = 'CrmErrorDealNotLoaded';
 			return -1;
 		}
 		$stage = new Stage($this->db);
 		if ($stage->fetch($stageId) <= 0 || (int) $stage->fk_pipeline !== (int) $this->fk_pipeline) {
-			$this->error = 'Unknown stage';
+			$this->error = 'CrmErrorUnknownStage';
+			return -1;
+		}
+		if (!$stage->active && (int) $stage->id !== (int) $this->fk_stage) {
+			$this->error = 'CrmErrorStageInactive';
 			return -1;
 		}
 		$current = new Stage($this->db);
@@ -346,26 +350,29 @@ class Opportunity extends CommonObject
 	}
 
 	/**
-	 * Deals visible to the user.
+	 * Columns a list may be sorted on, by the name the pages use.
 	 *
-	 * @param User   $user       Caller
-	 * @param string $status     open|won|lost or empty for every status
-	 * @param int    $pipelineId Pipeline filter, 0 for all
-	 * @param int    $ownerId    Owner filter, ignored when the caller cannot see that owner
-	 * @param string $search     Fragment of the ref, title, account name, or contact name or e-mail
-	 * @param int    $limit      0 keeps every row
-	 * @return array<int,object>
+	 * @var array<string,string>
 	 */
-	public function fetchList(User $user, string $status = '', int $pipelineId = 0, int $ownerId = 0, string $search = '', int $limit = 0): array
+	private const SORT_COLUMNS = array(
+		'ref' => 'o.ref',
+		'label' => 'o.label',
+		'account' => 's.nom',
+		'contact' => 'sp.lastname',
+		'stage' => 'st.position',
+		'amount' => 'o.amount',
+		'close' => 'o.date_close_expected',
+		'owner' => 'u.lastname',
+		'next' => 'next_date',
+	);
+
+	/**
+	 * FROM and WHERE of the deal list, shared by the list and its count.
+	 */
+	private function listFromWhere(User $user, string $status, int $pipelineId, int $ownerId, string $search): string
 	{
 		global $conf;
-		$sql = 'SELECT o.rowid, o.ref, o.label, o.amount, o.status, o.date_close_expected, o.datec, o.fk_soc, o.fk_socpeople, o.fk_stage, o.fk_pipeline, o.fk_user_resp, o.fk_source,';
-		$sql .= ' s.nom as soc_name, sp.firstname, sp.lastname, sp.email as contact_email,';
-		$sql .= ' st.label as stage_label, st.color, st.probability, st.rotting_days, st.is_won, st.is_lost, st.forecast_category,';
-		$sql .= ' u.firstname as owner_firstname, u.lastname as owner_lastname, src.label as source_label,';
-		$sql .= ' (SELECT MIN(a.datep) FROM '.$this->db->prefix().'actioncomm as a';
-		$sql .= " WHERE a.elementtype = '".$this->db->escape(CrmActivity::ELEMENT_TYPE)."' AND a.fk_element = o.rowid AND a.percent < 100) as next_date";
-		$sql .= ' FROM '.$this->db->prefix().'crm_opportunity as o';
+		$sql = ' FROM '.$this->db->prefix().'crm_opportunity as o';
 		$sql .= ' LEFT JOIN '.$this->db->prefix().'societe as s ON s.rowid = o.fk_soc';
 		$sql .= ' LEFT JOIN '.$this->db->prefix().'socpeople as sp ON sp.rowid = o.fk_socpeople';
 		$sql .= ' LEFT JOIN '.$this->db->prefix().'crm_stage as st ON st.rowid = o.fk_stage';
@@ -387,9 +394,49 @@ class Opportunity extends CommonObject
 			$sql .= " AND (o.ref LIKE '".$like."' OR o.label LIKE '".$like."' OR s.nom LIKE '".$like."'";
 			$sql .= " OR sp.lastname LIKE '".$like."' OR sp.firstname LIKE '".$like."' OR sp.email LIKE '".$like."')";
 		}
-		$sql .= ' ORDER BY o.ref DESC';
+		return $sql;
+	}
+
+	/**
+	 * How many deals the same filters select.
+	 */
+	public function countList(User $user, string $status = '', int $pipelineId = 0, int $ownerId = 0, string $search = ''): int
+	{
+		$sql = 'SELECT COUNT(o.rowid) as nb'.$this->listFromWhere($user, $status, $pipelineId, $ownerId, $search);
+		$resql = $this->db->query($sql);
+		if ($resql && ($obj = $this->db->fetch_object($resql))) {
+			return (int) $obj->nb;
+		}
+		return 0;
+	}
+
+	/**
+	 * Deals visible to the user.
+	 *
+	 * @param User   $user       Caller
+	 * @param string $status     open|won|lost or empty for every status
+	 * @param int    $pipelineId Pipeline filter, 0 for all
+	 * @param int    $ownerId    Owner filter, ignored when the caller cannot see that owner
+	 * @param string $search     Fragment of the ref, title, account name, or contact name or e-mail
+	 * @param int    $limit      0 keeps every row
+	 * @param int    $offset     Rows to skip, with a limit
+	 * @param string $sort       ref, label, account, contact, stage, amount, close, owner or next; anything else sorts on ref
+	 * @param string $order      ASC or DESC
+	 * @return array<int,object>
+	 */
+	public function fetchList(User $user, string $status = '', int $pipelineId = 0, int $ownerId = 0, string $search = '', int $limit = 0, int $offset = 0, string $sort = 'ref', string $order = 'DESC'): array
+	{
+		$sql = 'SELECT o.rowid, o.ref, o.label, o.amount, o.status, o.date_close_expected, o.datec, o.fk_soc, o.fk_socpeople, o.fk_stage, o.fk_pipeline, o.fk_user_resp, o.fk_source,';
+		$sql .= ' s.nom as soc_name, sp.firstname, sp.lastname, sp.email as contact_email,';
+		$sql .= ' st.label as stage_label, st.color, st.probability, st.rotting_days, st.is_won, st.is_lost, st.forecast_category,';
+		$sql .= ' u.firstname as owner_firstname, u.lastname as owner_lastname, src.label as source_label,';
+		$sql .= ' (SELECT MIN(a.datep) FROM '.$this->db->prefix().'actioncomm as a';
+		$sql .= " WHERE a.elementtype = '".$this->db->escape(CrmActivity::ELEMENT_TYPE)."' AND a.fk_element = o.rowid AND a.percent < 100) as next_date";
+		$sql .= $this->listFromWhere($user, $status, $pipelineId, $ownerId, $search);
+		$column = self::SORT_COLUMNS[$sort] ?? 'o.ref';
+		$sql .= ' ORDER BY '.$column.' '.(strtoupper($order) === 'ASC' ? 'ASC' : 'DESC').', o.rowid DESC';
 		if ($limit > 0) {
-			$sql .= $this->db->plimit($limit, 0);
+			$sql .= $this->db->plimit($limit, max(0, $offset));
 		}
 		$list = array();
 		$resql = $this->db->query($sql);

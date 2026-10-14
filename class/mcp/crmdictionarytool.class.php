@@ -145,8 +145,8 @@ class CrmDictionaryTool extends CrmMcpTool
 		if ($toolName === 'crm_list_qualifications') {
 			require_once __DIR__.'/../qualification.class.php';
 			$rows = array();
-			foreach ((new Qualification($this->db))->fetchItems() as $one) {
-				$rows[] = array('id' => (int) $one->rowid, 'code' => (string) $one->code, 'label' => (string) $one->label, 'points' => (int) $one->points, 'position' => (int) $one->position);
+			foreach ((new Qualification($this->db))->fetchItems(false) as $one) {
+				$rows[] = array('id' => (int) $one->rowid, 'code' => (string) $one->code, 'label' => (string) $one->label, 'points' => (int) $one->points, 'position' => (int) $one->position, 'active' => (int) $one->active);
 			}
 			return $rows;
 		}
@@ -173,16 +173,16 @@ class CrmDictionaryTool extends CrmMcpTool
 		}
 		if ($toolName === 'crm_upsert_source' || $toolName === 'crm_upsert_loss_reason') {
 			$which = ($toolName === 'crm_upsert_source') ? 'source' : 'loss_reason';
-			$id = crmSaveDictionary($this->db, $which, $this->argInt($args, 'id'), $this->argString($args, 'code'), $this->argString($args, 'label'), $this->argInt($args, 'position'), isset($args['active']) ? $this->argInt($args, 'active') : 1);
+			$id = crmSaveDictionary($this->db, $which, $this->argInt($args, 'id'), $this->argString($args, 'code'), $this->argString($args, 'label'), $this->argInt($args, 'position'), isset($args['active']) ? $this->argInt($args, 'active') : ($this->argInt($args, 'id') > 0 ? -1 : 1));
 			if ($id <= 0) {
-				return $this->fail('Could not save the dictionary entry');
+				return $this->fail($id === -2 ? crmErrorText('CrmErrorCodeExists') : 'Could not save the dictionary entry');
 			}
 			return array(array('id' => $id));
 		}
 		if ($toolName === 'crm_upsert_qualification') {
-			$id = crmSaveQualificationItem($this->db, $this->argInt($args, 'id'), $this->argString($args, 'code'), $this->argString($args, 'label'), $this->argInt($args, 'points'), $this->argInt($args, 'position'), isset($args['active']) ? $this->argInt($args, 'active') : 1);
+			$id = crmSaveQualificationItem($this->db, $this->argInt($args, 'id'), $this->argString($args, 'code'), $this->argString($args, 'label'), $this->argInt($args, 'points'), $this->argInt($args, 'position'), isset($args['active']) ? $this->argInt($args, 'active') : ($this->argInt($args, 'id') > 0 ? -1 : 1));
 			if ($id <= 0) {
-				return $this->fail('Could not save the qualification item');
+				return $this->fail($id === -2 ? crmErrorText('CrmErrorCodeExists') : 'Could not save the qualification item');
 			}
 			return array(array('id' => $id));
 		}

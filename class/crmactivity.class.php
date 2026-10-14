@@ -205,6 +205,34 @@ class CrmActivity
 	}
 
 	/**
+	 * Load an agenda event that is a CRM step the user may see: it must be linked to a deal, the deal must belong to an
+	 * owner the user may read and, when $opportunityId is given, to that deal.
+	 *
+	 * @return ActionComm|null Null with a language key in ->error
+	 */
+	private function loadStep(User $user, int $eventId, int $opportunityId = 0): ?ActionComm
+	{
+		$event = new ActionComm($this->db);
+		if ($eventId <= 0 || $event->fetch($eventId) <= 0) {
+			$this->error = 'CrmErrorEventNotFound';
+			return null;
+		}
+		if ((string) $event->elementtype !== self::ELEMENT_TYPE) {
+			$this->error = 'CrmErrorEventNotStep';
+			return null;
+		}
+		$dealId = (int) $event->fk_element;
+		$sql = 'SELECT fk_user_resp FROM '.$this->db->prefix().'crm_opportunity WHERE rowid = '.$dealId;
+		$resql = $this->db->query($sql);
+		$deal = $resql ? $this->db->fetch_object($resql) : null;
+		if (!$deal || !crmCanReadOwner($user, (int) $deal->fk_user_resp) || ($opportunityId > 0 && $dealId !== $opportunityId)) {
+			$this->error = 'CrmErrorEventNotFound';
+			return null;
+		}
+		return $event;
+	}
+
+	/**
 	 * Mark one CRM event done. Events that are not linked to a deal are refused.
 	 *
 	 * @param User $user User completing the step
@@ -213,13 +241,8 @@ class CrmActivity
 	 */
 	public function complete(User $user, int $eventId): int
 	{
-		$event = new ActionComm($this->db);
-		if ($event->fetch($eventId) <= 0) {
-			$this->error = 'Event not found';
-			return -1;
-		}
-		if ((string) $event->elementtype !== self::ELEMENT_TYPE) {
-			$this->error = 'Event is not a CRM step';
+		$event = $this->loadStep($user, $eventId);
+		if ($event === null) {
 			return -1;
 		}
 		$event->percentage = 100;
@@ -228,6 +251,92 @@ class CrmActivity
 			return -1;
 		}
 		return 1;
+	}
+
+	/**
+	 * Change a planned step: its date and, for a call, a meeting or a task, its kind and title (an empty title keeps the current one). The title of a planned
+	 * e-mail is its subject and is edited in the e-mail editor, so only its date changes here. A done step is history and
+	 * is refused.
+	 *
+	 * @param string $kind call|meeting|task, ignored for an e-mail
+	 * @param int    $opportunityId Deal the step must belong to, 0 to skip that check
+	 * @return int 1 if OK, -1 on error with a language key in ->error
+	 */
+	public function updateStep(User $user, int $eventId, string $kind, string $label, int $datep, int $opportunityId = 0): int
+	{
+		$event = $this->loadStep($user, $eventId, $opportunityId);
+		if ($event === null) {
+			return -1;
+		}
+		if ((int) $event->percentage >= 100) {
+			$this->error = 'CrmErrorEventDone';
+			return -1;
+		}
+		if ($datep <= 0) {
+			$this->error = 'CrmErrorDateRequired';
+			return -1;
+		}
+		$isEmail = ((string) $event->code === 'AC_EMAIL');
+		if (!$isEmail) {
+			// An empty title keeps the current one.
+			$label = trim($label);
+			if ($label !== '') {
+				$event->label = $label;
+			}
+			if (in_array($kind, array('call', 'meeting', 'task'), true)) {
+				$code = self::typeCode($this->db, $kind);
+				$type = new CActionComm($this->db);
+				if ($type->fetch($code) > 0) {
+					$event->type_id = (int) $type->id;
+					$event->type_code = $code;
+					$event->code = $code;
+				}
+			}
+		}
+		$length = max(0, (int) $event->datef - (int) $event->datep);
+		$event->datep = $datep;
+		$event->datef = $datep + $length;
+		if ($event->update($user) < 0) {
+			$this->error = $event->error;
+			return -1;
+		}
+		return 1;
+	}
+
+	/**
+	 * Delete a planned step. A done step is history (the e-mail thread, the stage timeline) and is refused.
+	 *
+	 * @param int $opportunityId Deal the step must belong to, 0 to skip that check
+	 * @return int 1 if OK, -1 on error with a language key in ->error
+	 */
+	public function deleteStep(User $user, int $eventId, int $opportunityId = 0): int
+	{
+		$event = $this->loadStep($user, $eventId, $opportunityId);
+		if ($event === null) {
+			return -1;
+		}
+		if ((int) $event->percentage >= 100) {
+			$this->error = 'CrmErrorEventDone';
+			return -1;
+		}
+		if ($event->delete($user) < 0) {
+			$this->error = (string) $event->error;
+			return -1;
+		}
+		return 1;
+	}
+
+	/**
+	 * One planned step of a deal, for the edit form.
+	 */
+	public function fetchPlanned(int $eventId, int $opportunityId): ?object
+	{
+		foreach ($this->fetchForOpportunity($opportunityId) as $row) {
+			if ((int) $row->rowid === $eventId && (int) $row->percent < 100) {
+				return $row;
+			}
+		}
+		return null;
 	}
 
 	/**
@@ -267,19 +376,14 @@ class CrmActivity
 	}
 
 	/**
-	 * Unfinished CRM events visible to the user.
-	 *
-	 * @param string $scope overdue|today|planned|done
-	 * @param int    $forceOwner When set, ignore readall and keep this owner only
-	 * @return array<int,object>
+	 * FROM and WHERE of the event list, shared by the list and its count.
 	 */
-	public function fetchList(User $user, string $scope, int $forceOwner = 0): array
+	private function listFromWhere(User $user, string $scope, int $forceOwner): string
 	{
 		global $conf;
 		$today = crmTodayStart();
 		$tomorrow = $today + 86400;
-		$sql = 'SELECT a.id as rowid, a.label, a.datep, a.percent, a.fk_user_action, a.fk_element, a.code as event_code, o.ref, o.label as deal_label, o.fk_soc, o.fk_user_resp, s.nom as soc_name';
-		$sql .= ' FROM '.$this->db->prefix().'actioncomm as a';
+		$sql = ' FROM '.$this->db->prefix().'actioncomm as a';
 		$sql .= ' INNER JOIN '.$this->db->prefix().'crm_opportunity as o ON o.rowid = a.fk_element';
 		$sql .= ' LEFT JOIN '.$this->db->prefix().'societe as s ON s.rowid = o.fk_soc';
 		$sql .= " WHERE a.elementtype = '".$this->db->escape(self::ELEMENT_TYPE)."'";
@@ -298,7 +402,41 @@ class CrmActivity
 		} else {
 			$sql .= ' AND a.percent < 100 AND a.datep >= \''.$this->db->idate($today).'\'';
 		}
-		$sql .= ' ORDER BY a.datep ASC';
+		return $sql;
+	}
+
+	/**
+	 * How many events the same filters select.
+	 */
+	public function countList(User $user, string $scope, int $forceOwner = 0): int
+	{
+		$resql = $this->db->query('SELECT COUNT(a.id) as nb'.$this->listFromWhere($user, $scope, $forceOwner));
+		if ($resql && ($obj = $this->db->fetch_object($resql))) {
+			return (int) $obj->nb;
+		}
+		return 0;
+	}
+
+	/**
+	 * CRM events visible to the user.
+	 *
+	 * @param string $scope overdue|today|planned|done
+	 * @param int    $forceOwner When set, ignore readall and keep this owner only
+	 * @param int    $limit      0 keeps every row
+	 * @param int    $offset     Rows to skip, with a limit
+	 * @param string $sort       date, ref, label or account; anything else sorts on date
+	 * @param string $order      ASC or DESC
+	 * @return array<int,object>
+	 */
+	public function fetchList(User $user, string $scope, int $forceOwner = 0, int $limit = 0, int $offset = 0, string $sort = 'date', string $order = 'ASC'): array
+	{
+		$columns = array('date' => 'a.datep', 'ref' => 'o.ref', 'label' => 'o.label', 'account' => 's.nom');
+		$sql = 'SELECT a.id as rowid, a.label, a.datep, a.percent, a.fk_user_action, a.fk_element, a.code as event_code, o.ref, o.label as deal_label, o.fk_soc, o.fk_user_resp, s.nom as soc_name';
+		$sql .= $this->listFromWhere($user, $scope, $forceOwner);
+		$sql .= ' ORDER BY '.($columns[$sort] ?? 'a.datep').' '.(strtoupper($order) === 'DESC' ? 'DESC' : 'ASC').', a.id ASC';
+		if ($limit > 0) {
+			$sql .= $this->db->plimit($limit, max(0, $offset));
+		}
 		return $this->fetchRows($sql);
 	}
 

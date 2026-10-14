@@ -42,7 +42,20 @@ if (!in_array($status, array('open', 'won', 'lost', 'all'), true)) {
 	$status = 'open';
 }
 
-$deals = (new Opportunity($db))->fetchList($user, $status === 'all' ? '' : $status, 0, $ownerId, $search, 200);
+// Sorting and paging, in Dolibarr's usual way: sortfield, sortorder, page and limit.
+$sortField = GETPOST('sortfield', 'aZ09');
+if (!in_array($sortField, array('ref', 'label', 'account', 'contact', 'stage', 'amount', 'close', 'owner', 'next'), true)) {
+	$sortField = 'ref';
+}
+$sortOrder = (GETPOST('sortorder', 'aZ09') === 'asc') ? 'asc' : (GETPOST('sortorder', 'aZ09') === 'desc' ? 'desc' : ($sortField === 'ref' ? 'desc' : 'asc'));
+$limit = GETPOSTINT('limit') > 0 ? GETPOSTINT('limit') : (int) $conf->liste_limit;
+$total = (new Opportunity($db))->countList($user, $status === 'all' ? '' : $status, 0, $ownerId, $search);
+$page = max(0, GETPOSTINT('page'));
+if ($page * $limit >= $total) {
+	$page = 0;
+}
+$deals = (new Opportunity($db))->fetchList($user, $status === 'all' ? '' : $status, 0, $ownerId, $search, $limit, $page * $limit, $sortField, $sortOrder);
+$param = '&status='.urlencode($status).'&search='.urlencode($search).($ownerId > 0 ? '&userid='.$ownerId : '').'&limit='.$limit;
 $qual = new Qualification($db);
 
 $newUrl = '';
@@ -51,9 +64,8 @@ if ($user->hasRight('crm', 'write')) {
 }
 
 llxHeader('', $langs->trans('CrmOpportunities'), '', '', 0, 0, '', array('/crm/css/crm.css'));
-print load_fiche_titre($langs->trans('CrmOpportunities'), $newUrl, 'fa-handshake');
-
 print '<form method="GET" action="'.$_SERVER['PHP_SELF'].'">';
+print '<input type="hidden" name="sortfield" value="'.$sortField.'"><input type="hidden" name="sortorder" value="'.$sortOrder.'">';
 print $langs->trans('CrmStatus').' <select name="status">';
 foreach (array('open' => 'CrmOpen', 'won' => 'CrmWon', 'lost' => 'CrmLost', 'all' => 'All') as $code => $key) {
 	print '<option value="'.$code.'"'.($status === $code ? ' selected' : '').'>'.$langs->trans($key).'</option>';
@@ -65,13 +77,20 @@ if ($user->hasRight('crm', 'readall')) {
 	print $form->select_dolusers($ownerId, 'userid', 1, null, 0, '', '', (string) $conf->entity);
 }
 print ' <input type="submit" class="button" value="'.$langs->trans('CrmFilter').'">';
-print '</form>';
+print_barre_liste($langs->trans('CrmOpportunities'), $page, $_SERVER['PHP_SELF'], $param, $sortField, $sortOrder, '', count($deals), $total, 'fa-handshake', 0, $newUrl, '', $limit);
 
 print '<table class="noborder centpercent">';
 print '<tr class="liste_titre">';
-print '<td>'.$langs->trans('Ref').'</td><td>'.$langs->trans('CrmTitle').'</td><td>'.$langs->trans('CrmAccount').'</td><td>'.$langs->trans('CrmContact').'</td>';
-print '<td>'.$langs->trans('CrmStage').'</td><td class="right">'.$langs->trans('CrmAmount').'</td><td>'.$langs->trans('CrmExpectedClose').'</td>';
-print '<td>'.$langs->trans('CrmOwner').'</td><td>'.$langs->trans('CrmNextStep').'</td><td>'.$langs->trans('CrmMissing').'</td>';
+print_liste_field_titre($langs->trans('Ref'), $_SERVER['PHP_SELF'], 'ref', '', $param, '', $sortField, $sortOrder);
+print_liste_field_titre($langs->trans('CrmTitle'), $_SERVER['PHP_SELF'], 'label', '', $param, '', $sortField, $sortOrder);
+print_liste_field_titre($langs->trans('CrmAccount'), $_SERVER['PHP_SELF'], 'account', '', $param, '', $sortField, $sortOrder);
+print_liste_field_titre($langs->trans('CrmContact'), $_SERVER['PHP_SELF'], 'contact', '', $param, '', $sortField, $sortOrder);
+print_liste_field_titre($langs->trans('CrmStage'), $_SERVER['PHP_SELF'], 'stage', '', $param, '', $sortField, $sortOrder);
+print_liste_field_titre($langs->trans('CrmAmount'), $_SERVER['PHP_SELF'], 'amount', '', $param, 'class="right"', $sortField, $sortOrder);
+print_liste_field_titre($langs->trans('CrmExpectedClose'), $_SERVER['PHP_SELF'], 'close', '', $param, '', $sortField, $sortOrder);
+print_liste_field_titre($langs->trans('CrmOwner'), $_SERVER['PHP_SELF'], 'owner', '', $param, '', $sortField, $sortOrder);
+print_liste_field_titre($langs->trans('CrmNextStep'), $_SERVER['PHP_SELF'], 'next', '', $param, '', $sortField, $sortOrder);
+print_liste_field_titre($langs->trans('CrmMissing'));
 print '</tr>';
 if (count($deals) === 0) {
 	print '<tr class="oddeven"><td colspan="10">'.$langs->trans('CrmNoRows').'</td></tr>';
@@ -96,6 +115,7 @@ foreach ($deals as $deal) {
 	print '</tr>';
 }
 print '</table>';
+print '</form>';
 
 crmHelpToggle();
 llxFooter();

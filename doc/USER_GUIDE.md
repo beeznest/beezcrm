@@ -10,8 +10,8 @@ All menus are under **CRM** in the top bar.
 | --- | --- |
 | **Home** | Your work to do (deals with no next step, overdue steps, past expected close, rotting) and the forecast |
 | **Pipeline** | The board: one column per stage, one card per open deal. Drag a card to move it |
-| **Opportunities** | The list of deals, filtered by status (open, won, lost, all) and by a search text. **New opportunity** is here |
-| **Activities** | Your next steps and history, with filters: overdue, today, planned, done |
+| **Opportunities** | The list of deals, filtered by status (open, won, lost, all) and by a search text, sorted by clicking a column title and split in pages (the number of rows per page is the one of your Dolibarr user settings, changeable above the list). **New opportunity** is here |
+| **Activities** | Your next steps and history, with filters: overdue, today, planned, done; sortable and in pages like the deal list |
 | **Sequences** | Automatic follow-up plans. You only see this one in use if you manage them |
 | **Reports** | Win rate, conversion, loss reasons and more. Needs a right your administrator gives |
 | **Setup** | For administrators only |
@@ -59,6 +59,8 @@ The general search box at the top of Dolibarr also has an entry **CRM opportunit
 
 **How.** On the deal card, section **Next step**: pick the kind (call, meeting, task, e-mail), give it a title and a date, and press Create. For example: "Call to understand the need", tomorrow.
 
+**Change or remove a next step.** In the same list, a planned step has two more icons next to the check mark: **Modify** (the row becomes a small form: kind, title, date and time) and **Delete** (asks for a confirmation). Postponing a call is a change of date, not a new step. A planned e-mail only has its date changed here; its subject and text are edited in the e-mail editor (envelope icon). A step that is done is history and can be neither changed nor deleted. You may only act on steps of deals you are allowed to see.
+
 Note that "e-mail" here is a reminder for you to write one; it does not send anything.
 
 When you have done it, click the **check icon** (tooltip "Complete") next to it (on the card, or in CRM → Activities). Then **immediately plan the next one**. Doing the action without planning the next is how deals go cold.
@@ -87,7 +89,7 @@ When the need is confirmed and the deal looks real, move it to **Qualified** (se
 **How to move a deal.** Two ways:
 
 - On the deal card, section **Stage**: choose the stage and press **Move**.
-- In CRM → Pipeline, which shows one column per stage: **drag the card** to the next column. Use the filters to see only one pipeline or, with the right, one owner.
+- In CRM → Pipeline, which shows one column per stage (a stage your administrator has retired shows only while deals are still in it; move them on): **drag the card** to the next column. Use the filters to see only one pipeline or, with the right, one owner.
 
 Moving is allowed to any open stage, forward or back, as long as the deal has a future next step. If you get the message asking you to add one, plan it and try again. Closing a deal as lost cannot be done by dragging, because a reason is required (see Step 6).
 

@@ -85,6 +85,8 @@ Several pipelines (new business, renewal, partners), each with its own stages.
 
 A stage has label, position, colour, probability, rotting delay, forecast category (`pipeline`, `upside`, `commit`), and a won or lost flag. Won is probability 100 and category closed. Lost is excluded from the forecast.
 
+**Retiring instead of deleting.** Stages, qualification items, sources and loss reasons all have an `active` flag, edited in place in the Setup screen. A turned-off entry leaves the choice lists (`Stage::fetchAll($pipelineId, true)`, `Qualification::fetchItems()`, `crmFetchDictionary(..., true)`) but every read of an existing deal uses the unfiltered list, so a deal never loses the label of what it points at: a retired stage keeps its column on the board while a deal is in it, a retired source stays on the card. `Opportunity::moveToStage()` refuses a retired target (`CrmErrorStageInactive`). Deletion is refused when the record is referenced: a stage with deals or any stage history (the cohort report reads `llx_crm_stage_history`), a source or loss reason of a deal, a qualification item with answers. The user is then told to turn it off. Codes are unique per list (`crmCodeExists()`); `crmSaveDictionary()` and `crmSaveQualificationItem()` take `active = -1` to leave the flag of an existing row alone, which is what the screen and the MCP upsert tools use on update. Deleting a sequence step is confirmed and says how many running enrolments wait for it, because those end when their next step no longer exists.
+
 Open deal hygiene, in order:
 
 1. Every open deal should have a future agenda event. `CRM_REQUIRE_NEXT_STEP` defaults to on: a move between open stages is refused while no future event exists. Won and lost do not need a next step.
@@ -96,6 +98,12 @@ Closing lost requires a loss reason. Closing won asks for one and allows empty. 
 `llx_crm_stage_history` stores deal, from-stage, to-stage, user, date. Cohort conversion is computed from that table: of deals created in the chosen period, how many later entered each stage. The kanban column counts stay on the board, where they belong, and are not presented as a funnel.
 
 Win rate is won / (won + lost) by close date in the period. Cycle time is the mean of (close date − creation) on won deals only.
+
+## Next steps and lists
+
+A planned step can be changed (date, and for a call, meeting or task its kind and title) and deleted from the deal card and by MCP, through `CrmActivity::updateStep()` and `deleteStep()`. Both load the event with `loadStep()`, which refuses an event that is not linked to a deal, whose deal the user may not read (`crmCanReadOwner()`) or that belongs to another deal than the page's; `complete()` goes through it too. A done step is history (the e-mail thread, the stage timeline, the "latest done" used by rotting) and is refused. A planned e-mail keeps its subject and text, which the e-mail editor owns: only its date moves. Delete uses `ActionComm::delete()`, so core hooks and triggers run.
+
+The deal list and the activity list sort on a whitelist of columns (`Opportunity::SORT_COLUMNS`, the four columns of `CrmActivity::fetchList()`; an unknown name sorts on the default) and page with Dolibarr's `print_barre_liste()` (`sortfield`, `sortorder`, `page`, `limit`, default limit from the user's setting). The count and the rows share one FROM/WHERE (`listFromWhere()`), so the owner restriction cannot differ between them.
 
 ## Qualification
 
@@ -227,7 +235,7 @@ CRM tools:
 | `crm_mark_won`, `crm_mark_lost`, `crm_delete_opportunity` | yes |
 | `crm_link_proposal`, `crm_unlink_proposal`, `crm_set_qualification` | yes |
 | `crm_list_activities` | no |
-| `crm_create_activity`, `crm_complete_activity` | yes, agenda events |
+| `crm_create_activity`, `crm_complete_activity`, `crm_update_activity`, `crm_delete_activity` | yes, agenda events |
 | `crm_list_sequences`, `crm_get_sequence` | no |
 | `crm_create_sequence`, `crm_update_sequence`, `crm_add_sequence_step`, `crm_update_sequence_step`, `crm_delete_sequence_step` | yes |
 | `crm_enrol_sequence`, `crm_stop_sequence`, `crm_mark_replied` | yes |
@@ -255,7 +263,7 @@ There is no core tool to search users. Owner and assignee arguments are numeric 
 
 ## Install and removal
 
-`init()` loads `sql/`, seeds only an empty entity, and registers menus, rights, the home box, and both cron jobs.
+`init()` loads `sql/`, runs the schema steps newer than `CRM_SCHEMA_VERSION` (`crmUpgradeSchema()`: ordered, one by one, the number recorded after each success, stopping at the first failure, which makes `init()` fail with its reason), seeds only an empty entity, and registers menus, rights, the home box, and both cron jobs. Dolibarr keeps no version for an external module and notices no update, so the schema version is the module's own: `crmSchemaCurrent()` is what the code expects, `CRM_SCHEMA_VERSION` what the database reached, and `crmSchemaWarning()` tells an administrator on the home page and the setup screen when the code is ahead. A step is safe to run on a database that already has its result. See `UPDATE.md`.
 
 `remove()` unregisters menus, rights, the box, and the cron jobs. It does not `DROP` `llx_crm_*`, does not delete `llx_actioncomm` rows, and does not touch `llx_societe`, `llx_socpeople`, `llx_propal`, or `llx_user`. Re-enable finds the deals again.
 
@@ -308,7 +316,11 @@ No purge button in v1. A later action can drop only `llx_crm_*` and `CRM_*` cons
 ├── langs/en_US/crm.lang
 ├── langs/fr_FR/crm.lang
 ├── test/phpunit/CrmLogicTest.php
+├── test/cli/                            (checks needing Dolibarr and a database, rolled back)
 ├── README.md
+├── INSTALL.md
+├── UPDATE.md
+├── ChangeLog.md
 └── doc/
     ├── ADMIN_GUIDE.md
     ├── USER_GUIDE.md
@@ -325,7 +337,7 @@ Kanban drag and drop posts to `pipeline.php` with a CSRF token. No third-party s
 
 - Core patches, extrafields, and new agenda event types.
 - A mailbox connector of our own. Reading the archive mailbox is done by the Dolibarr e-mail collector (see "E-mail history"). Mail that is not sent by the module and does not quote an exchange already recorded is not archived.
-- Languages beyond English and French.
+- Reviewing the machine translations of the other languages.
 - A REST API beside MCP.
 - Importing existing proposals into deals.
 - A generic scoring-rule engine.

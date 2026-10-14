@@ -49,6 +49,15 @@ class CrmActivityTool extends CrmMcpTool
 			$this->definition('crm_complete_activity', 'Mark a CRM agenda event done.', array(
 				'event_id' => array('type' => 'integer'),
 			), array('event_id')),
+			$this->definition('crm_update_activity', 'Change a planned CRM step: its date and, for a call, meeting or task, its kind and title. A planned e-mail only changes date. A done step cannot be changed.', array(
+				'event_id' => array('type' => 'integer'),
+				'date' => array('type' => 'string', 'description' => 'YYYY-MM-DD or unix time'),
+				'kind' => array('type' => 'string', 'enum' => array('call', 'meeting', 'task')),
+				'label' => array('type' => 'string'),
+			), array('event_id', 'date')),
+			$this->definition('crm_delete_activity', 'Delete a planned CRM step. A done step is history and cannot be deleted.', array(
+				'event_id' => array('type' => 'integer'),
+			), array('event_id')),
 		);
 	}
 
@@ -73,6 +82,12 @@ class CrmActivityTool extends CrmMcpTool
 		}
 		if ($toolName === 'crm_complete_activity') {
 			return 'Mark CRM agenda event '.$this->argInt($args, 'event_id').' as done.';
+		}
+		if ($toolName === 'crm_update_activity') {
+			return 'Change the planned CRM agenda event '.$this->argInt($args, 'event_id').'.';
+		}
+		if ($toolName === 'crm_delete_activity') {
+			return 'Delete the planned CRM agenda event '.$this->argInt($args, 'event_id').'.';
 		}
 		return 'Create a '.$this->argString($args, 'kind').' "'.$this->argString($args, 'label').'" on CRM deal '.$this->argInt($args, 'id').'.';
 	}
@@ -162,6 +177,24 @@ class CrmActivityTool extends CrmMcpTool
 				return $this->fail($activity->error !== '' ? $activity->error : 'Could not complete the event');
 			}
 			return array(array('event_id' => $eventId, 'percent' => 100));
+		}
+		if ($toolName === 'crm_update_activity') {
+			$date = $this->argDate($args, 'date');
+			if ($date <= 0) {
+				return $this->fail('A date is required');
+			}
+			$eventId = $this->argInt($args, 'event_id');
+			if ($activity->updateStep($this->user, $eventId, $this->argString($args, 'kind'), $this->argString($args, 'label'), $date) <= 0) {
+				return $this->fail(crmErrorText($activity->error !== '' ? $activity->error : 'Error'));
+			}
+			return array(array('event_id' => $eventId, 'updated' => 1));
+		}
+		if ($toolName === 'crm_delete_activity') {
+			$eventId = $this->argInt($args, 'event_id');
+			if ($activity->deleteStep($this->user, $eventId) <= 0) {
+				return $this->fail(crmErrorText($activity->error !== '' ? $activity->error : 'Error'));
+			}
+			return array(array('event_id' => $eventId, 'deleted' => 1));
 		}
 		return $this->fail('Unknown tool');
 	}

@@ -226,21 +226,116 @@ function crmStepDraftMode(string $stepMode): bool
 }
 
 /**
- * Bring the tables of an existing installation up to the current schema. There is no migration mechanism in the module:
- * the tables are created at the first enable only, so a column added later is added here, on every enable, when missing.
+ * Version of the database schema this code expects. It is a whole number that grows by one with each schema change, and it
+ * is not the version of the module: several releases can share a schema version. Each number has a step in
+ * crmSchemaSteps(); the installed number is kept in the constant CRM_SCHEMA_VERSION.
  */
-function crmEnsureSchema(DoliDB $db): void
+function crmSchemaCurrent(): int
+{
+	return 1;
+}
+
+/**
+ * The schema steps, by the schema version they lead to. A step must be safe to run on a database that already holds its
+ * result: a new installation creates the latest tables from sql/llx_crm.sql and then runs every step, and an installation
+ * whose constant was lost runs them again. So a step looks before it changes (does the column exist, is the value
+ * already converted) and never assumes a clean starting point.
+ *
+ * @return array<int,array{label:string,run:callable}>
+ */
+function crmSchemaSteps(): array
+{
+	return array(
+		1 => array('label' => 'Column send_mode of the sequence steps', 'run' => 'crmSchemaStep1'),
+	);
+}
+
+/**
+ * Schema version 1: the column send_mode of llx_crm_sequence_step, the e-mail mode of a step.
+ */
+function crmSchemaStep1(DoliDB $db): bool
 {
 	$table = $db->prefix().'crm_sequence_step';
 	$resql = $db->DDLDescTable($table, 'send_mode');
 	if ($resql && $db->fetch_object($resql)) {
-		return;
+		return true;
 	}
 	// DDLAddField cannot write DEFAULT '' (it skips an empty default), so the statement is written here.
 	$sql = 'ALTER TABLE '.$table." ADD COLUMN send_mode varchar(8) DEFAULT '' NOT NULL".($db->type === 'pgsql' ? '' : ' AFTER body');
 	if (!$db->query($sql)) {
 		dol_syslog('CRM: could not add the column send_mode to '.$table.': '.$db->lasterror(), LOG_ERR);
+		return false;
 	}
+	return true;
+}
+
+/**
+ * Schema version installed on this entity: 0 when the module was never enabled here, or enabled before the version was kept.
+ */
+function crmSchemaInstalled(): int
+{
+	return getDolGlobalInt('CRM_SCHEMA_VERSION', 0);
+}
+
+/**
+ * True when the code expects a newer schema than the one installed: the module has been updated and must be disabled and
+ * enabled again, which runs the missing steps.
+ */
+function crmSchemaPending(): bool
+{
+	return crmSchemaInstalled() < crmSchemaCurrent();
+}
+
+/**
+ * Run, in order, the schema steps newer than the installed version, and keep the version after each one that works. It
+ * stops at the first step that fails, so the next enable starts again from there.
+ *
+ * @param array<int,array{label:string,run:callable}>|null $steps     Steps by version, null for the real ones (tests pass their own)
+ * @param int|null                                         $installed Installed version, null to read the constant
+ * @return array{ran:int[],error:string} The versions that were applied, and the reason when a step failed
+ */
+function crmUpgradeSchema(DoliDB $db, ?array $steps = null, ?int $installed = null): array
+{
+	global $conf;
+	require_once DOL_DOCUMENT_ROOT.'/core/lib/admin.lib.php';
+	$steps = ($steps === null) ? crmSchemaSteps() : $steps;
+	ksort($steps);
+	$installed = ($installed === null) ? crmSchemaInstalled() : $installed;
+	$out = array('ran' => array(), 'error' => '');
+	foreach ($steps as $version => $step) {
+		if ($version <= $installed) {
+			continue;
+		}
+		$ok = false;
+		$reason = '';
+		try {
+			$ok = (bool) call_user_func($step['run'], $db);
+			$reason = $db->lasterror();
+		} catch (Throwable $e) {
+			$reason = $e->getMessage();
+			dol_syslog('CRM: schema step '.$version.' failed: '.$reason, LOG_ERR);
+		}
+		if (!$ok) {
+			$out['error'] = 'CRM schema step '.$version.' ('.$step['label'].') failed'.($reason !== '' ? ': '.$reason : '');
+			return $out;
+		}
+		dolibarr_set_const($db, 'CRM_SCHEMA_VERSION', (string) $version, 'chaine', 0, '', (int) $conf->entity);
+		$installed = $version;
+		$out['ran'][] = $version;
+	}
+	return $out;
+}
+
+/**
+ * The notice shown to a person who may configure the module when it has been updated and its schema is behind.
+ */
+function crmSchemaWarning(): string
+{
+	global $langs, $user;
+	if (!crmSchemaPending() || !$user->hasRight('crm', 'setup')) {
+		return '';
+	}
+	return '<div class="warning">'.$langs->trans('CrmSchemaPending', crmSchemaInstalled(), crmSchemaCurrent()).'</div>';
 }
 
 /**
@@ -575,9 +670,21 @@ function crmEnsureBuiltinSources(DoliDB $db): void
 }
 
 /**
+ * True when another row of the table already uses this code.
+ */
+function crmCodeExists(DoliDB $db, string $table, string $code, int $exceptId): bool
+{
+	global $conf;
+	$sql = 'SELECT rowid FROM '.$db->prefix().$table.' WHERE entity = '.((int) $conf->entity)." AND code = '".$db->escape($code)."' AND rowid <> ".((int) $exceptId);
+	$resql = $db->query($sql);
+	return ($resql && $db->num_rows($resql) > 0);
+}
+
+/**
  * Insert or update a source or a loss reason.
  *
- * @return int Row id, or -1
+ * @param int $active 1 or 0, or -1 to leave an existing row as it is (a new row is then active)
+ * @return int Row id, -1 on error, -2 when the code is already used
  */
 function crmSaveDictionary(DoliDB $db, string $which, int $id, string $code, string $label, int $position, int $active): int
 {
@@ -586,9 +693,15 @@ function crmSaveDictionary(DoliDB $db, string $which, int $id, string $code, str
 	if ($table === '' || $code === '' || $label === '') {
 		return -1;
 	}
+	if (crmCodeExists($db, $table, $code, $id)) {
+		return -2;
+	}
 	if ($id > 0) {
 		$sql = 'UPDATE '.$db->prefix().$table.' SET';
-		$sql .= " code = '".$db->escape($code)."', label = '".$db->escape($label)."', position = ".((int) $position).', active = '.((int) $active);
+		$sql .= " code = '".$db->escape($code)."', label = '".$db->escape($label)."', position = ".((int) $position);
+		if ($active >= 0) {
+			$sql .= ', active = '.($active ? 1 : 0);
+		}
 		$sql .= ' WHERE rowid = '.((int) $id).' AND entity = '.((int) $conf->entity);
 		if (!$db->query($sql)) {
 			return -1;
@@ -596,7 +709,7 @@ function crmSaveDictionary(DoliDB $db, string $which, int $id, string $code, str
 		return $id;
 	}
 	$sql = 'INSERT INTO '.$db->prefix().$table.' (entity, code, label, position, active) VALUES (';
-	$sql .= ((int) $conf->entity).", '".$db->escape($code)."', '".$db->escape($label)."', ".((int) $position).', '.((int) $active).')';
+	$sql .= ((int) $conf->entity).", '".$db->escape($code)."', '".$db->escape($label)."', ".((int) $position).', '.($active === 0 ? 0 : 1).')';
 	if (!$db->query($sql)) {
 		return -1;
 	}
@@ -604,7 +717,8 @@ function crmSaveDictionary(DoliDB $db, string $which, int $id, string $code, str
 }
 
 /**
- * @return int Row id, or -1
+ * @param int $active 1 or 0, or -1 to leave an existing row as it is (a new row is then active)
+ * @return int Row id, -1 on error, -2 when the code is already used
  */
 function crmSaveQualificationItem(DoliDB $db, int $id, string $code, string $label, int $points, int $position, int $active): int
 {
@@ -612,10 +726,16 @@ function crmSaveQualificationItem(DoliDB $db, int $id, string $code, string $lab
 	if ($code === '' || $label === '') {
 		return -1;
 	}
+	if (crmCodeExists($db, 'crm_qualification', $code, $id)) {
+		return -2;
+	}
 	if ($id > 0) {
 		$sql = 'UPDATE '.$db->prefix().'crm_qualification SET';
 		$sql .= " code = '".$db->escape($code)."', label = '".$db->escape($label)."', points = ".((int) $points);
-		$sql .= ', position = '.((int) $position).', active = '.((int) $active);
+		$sql .= ', position = '.((int) $position);
+		if ($active >= 0) {
+			$sql .= ', active = '.($active ? 1 : 0);
+		}
 		$sql .= ' WHERE rowid = '.((int) $id).' AND entity = '.((int) $conf->entity);
 		if (!$db->query($sql)) {
 			return -1;
@@ -623,9 +743,77 @@ function crmSaveQualificationItem(DoliDB $db, int $id, string $code, string $lab
 		return $id;
 	}
 	$sql = 'INSERT INTO '.$db->prefix().'crm_qualification (entity, code, label, points, position, active) VALUES (';
-	$sql .= ((int) $conf->entity).", '".$db->escape($code)."', '".$db->escape($label)."', ".((int) $points).', '.((int) $position).', '.((int) $active).')';
+	$sql .= ((int) $conf->entity).", '".$db->escape($code)."', '".$db->escape($label)."', ".((int) $points).', '.((int) $position).', '.($active === 0 ? 0 : 1).')';
 	if (!$db->query($sql)) {
 		return -1;
 	}
 	return (int) $db->last_insert_id($db->prefix().'crm_qualification');
+}
+
+/**
+ * Table of a setup list: source, loss_reason or qualification. Empty when unknown.
+ */
+function crmItemTable(string $kind): string
+{
+	if ($kind === 'qualification') {
+		return 'crm_qualification';
+	}
+	return crmDictionaryTable($kind);
+}
+
+/**
+ * How many records point at a source, a loss reason or a qualification item.
+ */
+function crmItemUsage(DoliDB $db, string $kind, int $id): int
+{
+	$prefix = $db->prefix();
+	if ($kind === 'source') {
+		$sql = 'SELECT COUNT(rowid) as nb FROM '.$prefix.'crm_opportunity WHERE fk_source = '.((int) $id);
+	} elseif ($kind === 'loss_reason') {
+		$sql = 'SELECT COUNT(rowid) as nb FROM '.$prefix.'crm_opportunity WHERE fk_loss_reason = '.((int) $id);
+	} elseif ($kind === 'qualification') {
+		$sql = 'SELECT COUNT(rowid) as nb FROM '.$prefix.'crm_opportunity_qualification WHERE fk_qualification = '.((int) $id);
+	} else {
+		return 0;
+	}
+	$resql = $db->query($sql);
+	if ($resql && ($obj = $db->fetch_object($resql))) {
+		return (int) $obj->nb;
+	}
+	return 0;
+}
+
+/**
+ * Turn a source, a loss reason or a qualification item on or off.
+ */
+function crmSetItemActive(DoliDB $db, string $kind, int $id, int $active): bool
+{
+	global $conf;
+	$table = crmItemTable($kind);
+	if ($table === '') {
+		return false;
+	}
+	$sql = 'UPDATE '.$db->prefix().$table.' SET active = '.($active ? 1 : 0).' WHERE rowid = '.((int) $id).' AND entity = '.((int) $conf->entity);
+	return (bool) $db->query($sql);
+}
+
+/**
+ * Delete a source, a loss reason or a qualification item that nothing uses. A used one must be turned off instead.
+ *
+ * @return string '' when deleted, else a language key of the error
+ */
+function crmDeleteItem(DoliDB $db, string $kind, int $id): string
+{
+	global $conf;
+	$table = crmItemTable($kind);
+	if ($table === '' || $id <= 0) {
+		return 'Error';
+	}
+	if (crmItemUsage($db, $kind, $id) > 0) {
+		return 'CrmErrorItemInUse';
+	}
+	if (!$db->query('DELETE FROM '.$db->prefix().$table.' WHERE rowid = '.((int) $id).' AND entity = '.((int) $conf->entity))) {
+		return 'Error';
+	}
+	return '';
 }

@@ -118,7 +118,7 @@ if ($action === 'qualify' && $object->id > 0) {
 	}
 	$qualSave = new Qualification($db);
 	if ($qualSave->saveAnswers($user, (int) $object->id, $answers) <= 0) {
-		setEventMessages($qualSave->error, null, 'errors');
+		setEventMessages(crmErrorText($qualSave->error), null, 'errors');
 	} else {
 		setEventMessages($langs->trans('RecordSaved'), null);
 	}
@@ -133,7 +133,7 @@ if ($action === 'addactivity' && $object->id > 0) {
 	$activity = new CrmActivity($db);
 	$result = $activity->create($user, (int) $object->id, (int) $object->fk_soc, (int) $object->fk_socpeople, (int) $object->fk_user_resp, GETPOST('kind', 'aZ09'), GETPOST('actlabel', 'alphanohtml'), $datep, 0);
 	if ($result <= 0) {
-		setEventMessages($activity->error, null, 'errors');
+		setEventMessages(crmErrorText($activity->error), null, 'errors');
 	} else {
 		setEventMessages($langs->trans('RecordSaved'), null);
 	}
@@ -145,7 +145,30 @@ if ($action === 'complete' && $object->id > 0) {
 	crmRequireRight('activity');
 	$activity = new CrmActivity($db);
 	if ($activity->complete($user, GETPOSTINT('eventid')) <= 0) {
-		setEventMessages($activity->error, null, 'errors');
+		setEventMessages(crmErrorText($activity->error), null, 'errors');
+	}
+	header('Location: '.$back);
+	exit;
+}
+
+if ($action === 'updateactivity' && $object->id > 0) {
+	crmRequireRight('activity');
+	$when = GETPOSTDATE('actdate', 'getpost');
+	$activity = new CrmActivity($db);
+	if ($activity->updateStep($user, GETPOSTINT('eventid'), GETPOST('kind', 'aZ09'), GETPOST('actlabel', 'alphanohtml'), is_numeric($when) ? (int) $when : 0, (int) $object->id) <= 0) {
+		setEventMessages(crmErrorText($activity->error), null, 'errors');
+	} else {
+		setEventMessages($langs->trans('RecordSaved'), null);
+	}
+	header('Location: '.$back);
+	exit;
+}
+
+if ($action === 'confirm_delactivity' && GETPOST('confirm', 'alpha') === 'yes' && $object->id > 0) {
+	crmRequireRight('activity');
+	$activity = new CrmActivity($db);
+	if ($activity->deleteStep($user, GETPOSTINT('eventid'), (int) $object->id) <= 0) {
+		setEventMessages(crmErrorText($activity->error), null, 'errors');
 	}
 	header('Location: '.$back);
 	exit;
@@ -154,7 +177,7 @@ if ($action === 'complete' && $object->id > 0) {
 if ($action === 'linkpropal' && $object->id > 0) {
 	crmRequireRight('write');
 	if ($object->linkProposal(GETPOSTINT('propalid')) <= 0) {
-		setEventMessages($object->error, null, 'errors');
+		setEventMessages(crmErrorText($object->error), null, 'errors');
 	}
 	header('Location: '.$back);
 	exit;
@@ -173,15 +196,23 @@ if ($action === 'confirm_delete' && GETPOST('confirm', 'alpha') === 'yes' && $ob
 		header('Location: '.dol_buildpath('/crm/opportunity_list.php', 1));
 		exit;
 	}
-	setEventMessages($object->error, null, 'errors');
+	setEventMessages(crmErrorText($object->error), null, 'errors');
 }
 
 $pipelines = (new Pipeline($db))->fetchAll(true);
-$sources = crmFetchDictionary($db, 'source', true);
+// Every source, so that a deal keeps the label of a source turned off since; the form offers the active ones.
+$sources = crmFetchDictionary($db, 'source', false);
 $reasons = crmFetchDictionary($db, 'loss_reason', true);
 $stages = ($object->fk_pipeline > 0) ? (new Stage($db))->fetchAll((int) $object->fk_pipeline) : array();
 
 llxHeader('', $langs->trans('CrmOpportunity'), '', '', 0, 0, '', array('/crm/css/crm.css'));
+
+if ($action === 'askdelactivity' && $object->id > 0 && $user->hasRight('crm', 'activity')) {
+	$askEvent = (new CrmActivity($db))->fetchPlanned(GETPOSTINT('eventid'), (int) $object->id);
+	if ($askEvent !== null) {
+		print $form->formconfirm($back.'&eventid='.(int) $askEvent->rowid, $langs->trans('Delete'), $langs->trans('CrmConfirmDeleteActivity', (string) $askEvent->label), 'confirm_delactivity', '', 0, 1);
+	}
+}
 
 if ($action === 'delete' && $object->id > 0) {
 	print $form->formconfirm($back, $langs->trans('Delete'), $langs->trans('CrmConfirmDelete'), 'confirm_delete', '', 0, 1);
@@ -256,6 +287,9 @@ if ($creating && $user->hasRight('societe', 'creer')) {
 	print '<tr><td>'.$langs->trans('CrmExpectedClose').'</td><td>'.$form->selectDate((int) $object->date_close_expected, 'dateclose', 0, 0, 1).'</td></tr>';
 	print '<tr><td>'.$langs->trans('CrmSource').'</td><td><select name="sourceid"><option value="0"></option>';
 	foreach ($sources as $source) {
+		if (!$source->active && (int) $object->fk_source !== (int) $source->rowid) {
+			continue;
+		}
 		$selected = ((int) $object->fk_source === (int) $source->rowid) ? ' selected' : '';
 		print '<option value="'.((int) $source->rowid).'"'.$selected.'>'.dol_escape_htmltag(crmDictLabel((string) $source->label)).'</option>';
 	}
@@ -420,6 +454,27 @@ if (count($events) === 0) {
 	print '<tr class="oddeven"><td colspan="5">'.$langs->trans('CrmNoRows').'</td></tr>';
 }
 foreach ($events as $event) {
+	if ($action === 'editactivity' && GETPOSTINT('eventid') === (int) $event->rowid && (int) $event->percent < 100 && $user->hasRight('crm', 'activity')) {
+		$editIsEmail = ((string) $event->event_code === 'AC_EMAIL');
+		$editKind = ((string) $event->code === 'AC_TEL') ? 'call' : (((string) $event->code === 'AC_RDV') ? 'meeting' : 'task');
+		print '<tr class="oddeven"><td colspan="5"><form method="POST" action="'.$_SERVER['PHP_SELF'].'">';
+		print '<input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="action" value="updateactivity">';
+		print '<input type="hidden" name="id" value="'.((int) $object->id).'"><input type="hidden" name="eventid" value="'.((int) $event->rowid).'">';
+		if ($editIsEmail) {
+			// The subject of a planned e-mail is edited in the e-mail editor; here only the date can change.
+			print dol_escape_htmltag((string) $event->label).' ';
+		} else {
+			print '<select name="kind">';
+			foreach (array('call' => 'CrmCall', 'meeting' => 'CrmMeeting', 'task' => 'CrmTask') as $kind => $key) {
+				print '<option value="'.$kind.'"'.($kind === $editKind ? ' selected' : '').'>'.$langs->trans($key).'</option>';
+			}
+			print '</select> <input name="actlabel" class="minwidth200" required value="'.dol_escape_htmltag((string) $event->label).'"> ';
+		}
+		print $form->selectDate((int) $db->jdate($event->datep), 'actdate', 1, 1, 0);
+		print ' <input type="submit" class="button" value="'.$langs->trans('Save').'"> <a class="button button-cancel" href="'.dol_escape_htmltag($back).'">'.$langs->trans('Cancel').'</a>';
+		print '</form></td></tr>';
+		continue;
+	}
 	print '<tr class="oddeven">';
 	print '<td>'.dol_print_date($db->jdate($event->datep), 'dayhour').'</td>';
 	$isDraftEmail = CrmActivity::isPlannedEmail((string) $event->event_code, (int) $event->percent);
@@ -438,6 +493,8 @@ foreach ($events as $event) {
 	}
 	if ($user->hasRight('crm', 'activity') && (int) $event->percent < 100) {
 		print crmIconLink($_SERVER['PHP_SELF'].'?id='.$id.'&action=complete&eventid='.(int) $event->rowid.'&token='.newToken(), 'check', $langs->trans('CrmComplete'));
+		print crmIconLink($_SERVER['PHP_SELF'].'?id='.$id.'&action=editactivity&eventid='.(int) $event->rowid.'&token='.newToken(), 'edit', $langs->trans('Modify'));
+		print crmIconLink($_SERVER['PHP_SELF'].'?id='.$id.'&action=askdelactivity&eventid='.(int) $event->rowid.'&token='.newToken(), 'delete', $langs->trans('Delete'));
 	}
 	print '</td></tr>';
 }
@@ -481,6 +538,9 @@ if ($user->hasRight('crm', 'write')) {
 	$lostSelected = ($currentStage && (int) $currentStage->is_lost === 1);
 	print '<select name="stageid" id="crm-stageid">';
 	foreach ($stages as $stage) {
+		if (!$stage->active && (int) $object->fk_stage !== (int) $stage->id) {
+			continue;
+		}
 		$selected = ((int) $object->fk_stage === (int) $stage->id) ? ' selected' : '';
 		print '<option value="'.((int) $stage->id).'" data-lost="'.((int) $stage->is_lost).'"'.$selected.'>'.dol_escape_htmltag(crmStageLabel((string) $stage->label)).'</option>';
 	}

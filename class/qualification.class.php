@@ -32,10 +32,10 @@ class Qualification
 	 *
 	 * @return array<int,object>
 	 */
-	public function fetchItems(): array
+	public function fetchItems(bool $onlyActive = true): array
 	{
 		global $conf;
-		$sql = 'SELECT * FROM '.$this->db->prefix().'crm_qualification WHERE entity = '.((int) $conf->entity).' AND active = 1 ORDER BY position ASC';
+		$sql = 'SELECT * FROM '.$this->db->prefix().'crm_qualification WHERE entity = '.((int) $conf->entity).($onlyActive ? ' AND active = 1' : '').' ORDER BY position ASC, rowid ASC';
 		return $this->rows($sql);
 	}
 

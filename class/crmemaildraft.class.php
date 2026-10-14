@@ -44,11 +44,11 @@ class CrmEmailDraft
 		global $conf;
 		$event = new ActionComm($this->db);
 		if ($eventId <= 0 || $event->fetch($eventId) <= 0 || (string) $event->elementtype !== CrmActivity::ELEMENT_TYPE) {
-			$this->error = 'Not a CRM step';
+			$this->error = 'CrmErrorEventNotStep';
 			return -1;
 		}
 		if (!CrmActivity::isPlannedEmail((string) $event->code, (int) $event->percentage)) {
-			$this->error = 'Not a planned e-mail';
+			$this->error = 'CrmErrorNotPlannedEmail';
 			return -1;
 		}
 		$sql = 'SELECT o.rowid, o.ref, o.fk_soc, o.fk_socpeople, o.fk_user_resp, sp.email as contact_email';
@@ -58,7 +58,7 @@ class CrmEmailDraft
 		$resql = $this->db->query($sql);
 		$deal = $resql ? $this->db->fetch_object($resql) : null;
 		if (!$deal) {
-			$this->error = 'Deal not found';
+			$this->error = 'CrmErrorDealNotFound';
 			return -1;
 		}
 		$this->event = $event;

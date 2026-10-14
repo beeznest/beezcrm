@@ -287,7 +287,11 @@ class modCrm extends DolibarrModules
 		}
 		$this->remove($options);
 		require_once __DIR__.'/../../lib/crm.lib.php';
-		crmEnsureSchema($this->db);
+		$upgrade = crmUpgradeSchema($this->db);
+		if ($upgrade['error'] !== '') {
+			$this->error = $upgrade['error'];
+			return -1;
+		}
 		crmEnsureConstants($this->db);
 		crmSeedIfEmpty($this->db);
 		crmEnsureBuiltinSources($this->db);

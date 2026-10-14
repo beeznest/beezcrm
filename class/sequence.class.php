@@ -159,6 +159,24 @@ class Sequence
 	}
 
 	/**
+	 * Running enrolments whose next step is this one. Deleting the step ends them, as there is nothing left to run.
+	 */
+	public function countWaitingOnStep(int $stepId): int
+	{
+		$step = $this->fetchStep($stepId);
+		if ($step === null) {
+			return 0;
+		}
+		$sql = 'SELECT COUNT(rowid) as nb FROM '.$this->db->prefix().'crm_sequence_enrol WHERE fk_sequence = '.((int) $this->id);
+		$sql .= " AND status = 'running' AND current_step = ".((int) $step->position);
+		$resql = $this->db->query($sql);
+		if ($resql && ($obj = $this->db->fetch_object($resql))) {
+			return (int) $obj->nb;
+		}
+		return 0;
+	}
+
+	/**
 	 * @param string $action   email|call|task
 	 * @param string $sendMode For an e-mail step: draft or send to force its mode, empty to follow the global setting
 	 * @return int Row id, or -1
@@ -259,14 +277,14 @@ class Sequence
 		global $conf;
 		$steps = $this->fetchSteps();
 		if (count($steps) === 0) {
-			$this->error = 'Sequence has no steps';
+			$this->error = 'CrmErrorSequenceNoSteps';
 			return -1;
 		}
 		$sqlRunning = 'SELECT rowid FROM '.$this->db->prefix()."crm_sequence_enrol WHERE fk_sequence = ".((int) $this->id);
 		$sqlRunning .= ' AND fk_opportunity = '.((int) $opportunityId)." AND status = 'running'";
 		$resRunning = $this->db->query($sqlRunning);
 		if ($resRunning && $this->db->num_rows($resRunning) > 0) {
-			$this->error = 'Deal is already enrolled';
+			$this->error = 'CrmErrorDealEnrolled';
 			return -1;
 		}
 		$first = $steps[0];

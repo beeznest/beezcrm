@@ -86,12 +86,12 @@ class Stage
 	 *
 	 * @return array<int,Stage>
 	 */
-	public function fetchAll(int $pipelineId): array
+	public function fetchAll(int $pipelineId, bool $onlyActive = false): array
 	{
 		global $conf;
 		$list = array();
 		$sql = 'SELECT * FROM '.$this->db->prefix().'crm_stage';
-		$sql .= ' WHERE entity = '.((int) $conf->entity).' AND fk_pipeline = '.((int) $pipelineId);
+		$sql .= ' WHERE entity = '.((int) $conf->entity).' AND fk_pipeline = '.((int) $pipelineId).($onlyActive ? ' AND active = 1' : '');
 		$sql .= ' ORDER BY position ASC, rowid ASC';
 		$resql = $this->db->query($sql);
 		if ($resql) {
@@ -110,6 +110,9 @@ class Stage
 	public function create(): int
 	{
 		global $conf;
+		if (!$this->validate()) {
+			return -1;
+		}
 		$sql = 'INSERT INTO '.$this->db->prefix().'crm_stage (entity, fk_pipeline, label, position, color, probability, rotting_days, forecast_category, is_won, is_lost, active) VALUES (';
 		$sql .= ((int) $conf->entity).', '.((int) $this->fk_pipeline).", '".$this->db->escape($this->label)."', ".((int) $this->position);
 		$sql .= ", '".$this->db->escape($this->color)."', ".((int) $this->probability).', '.((int) $this->rotting_days);
@@ -123,10 +126,29 @@ class Stage
 	}
 
 	/**
+	 * A stage needs a label, and cannot be both won and lost.
+	 */
+	private function validate(): bool
+	{
+		if (trim($this->label) === '') {
+			$this->error = 'CrmErrorLabelRequired';
+			return false;
+		}
+		if ($this->is_won && $this->is_lost) {
+			$this->error = 'CrmErrorStageWonAndLost';
+			return false;
+		}
+		return true;
+	}
+
+	/**
 	 * @return int 1 if OK, -1 on error
 	 */
 	public function update(): int
 	{
+		if (!$this->validate()) {
+			return -1;
+		}
 		$sql = 'UPDATE '.$this->db->prefix().'crm_stage SET';
 		$sql .= " label = '".$this->db->escape($this->label)."'";
 		$sql .= ', position = '.((int) $this->position);
@@ -158,6 +180,15 @@ class Stage
 			$obj = $this->db->fetch_object($resql);
 			if ($obj && (int) $obj->nb > 0) {
 				$this->error = 'CrmErrorStageNotEmpty';
+				return -1;
+			}
+		}
+		$sqlHistory = 'SELECT COUNT(rowid) as nb FROM '.$this->db->prefix().'crm_stage_history WHERE fk_stage_from = '.((int) $this->id).' OR fk_stage_to = '.((int) $this->id);
+		$resHistory = $this->db->query($sqlHistory);
+		if ($resHistory) {
+			$obj = $this->db->fetch_object($resHistory);
+			if ($obj && (int) $obj->nb > 0) {
+				$this->error = 'CrmErrorStageInHistory';
 				return -1;
 			}
 		}

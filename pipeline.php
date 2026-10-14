@@ -96,10 +96,11 @@ print crmHelp($langs->trans('CrmDragHint'));
 $boardUrl = dol_escape_htmltag($_SERVER['PHP_SELF']);
 print '<div id="crm-board" class="crm-board" data-token="'.dol_escape_htmltag(newToken()).'" data-url="'.$boardUrl.'" data-pipeline="'.((int) $pipelineId).'" data-owner="'.((int) $ownerId).'" data-lost-message="'.dol_escape_htmltag($langs->trans('CrmErrorLossReasonRequired')).'">';
 foreach ($stages as $stage) {
-	if (!$stage->active) {
+	$cards = $byStage[(int) $stage->id] ?? array();
+	// A retired stage stays on the board only while deals are still in it.
+	if (!$stage->active && count($cards) === 0) {
 		continue;
 	}
-	$cards = $byStage[(int) $stage->id] ?? array();
 	print '<section class="crm-column" data-stage="'.((int) $stage->id).'" data-lost="'.((int) $stage->is_lost).'" style="border-top: 4px solid '.dol_escape_htmltag($stage->color).'">';
 	print '<div class="crm-column-head">'.dol_escape_htmltag(crmStageLabel((string) $stage->label));
 	print ' <span class="crm-column-meta">'.count($cards).' · '.(int) $stage->probability.'%</span></div>';

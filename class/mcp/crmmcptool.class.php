@@ -109,7 +109,7 @@ abstract class CrmMcpTool extends McpTool
 	 */
 	protected function fail(string $message): array
 	{
-		return array('error' => $message);
+		return array('error' => strncmp($message, 'CrmError', 8) === 0 ? crmErrorText($message) : $message);
 	}
 
 	/**

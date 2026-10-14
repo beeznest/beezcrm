@@ -234,3 +234,11 @@ button.crm-help-toggle-fixed {
 	top: 0.5em;
 	right: 1em;
 }
+
+.crm-swatch {
+	display: inline-block;
+	width: 0.9em;
+	height: 0.9em;
+	border-radius: 2px;
+	vertical-align: middle;
+}

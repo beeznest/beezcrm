@@ -122,7 +122,7 @@ if ($action === 'addstep') {
 	crmRequireRight('sequence');
 	$input = $readStepInput();
 	if ($sequence->addStep($input['kind'], $input['delay'], $input['subject'], $input['body'], $input['mode']) <= 0) {
-		setEventMessages($sequence->error, null, 'errors');
+		setEventMessages(crmErrorText($sequence->error), null, 'errors');
 	}
 	header('Location: '.$back);
 	exit;
@@ -140,7 +140,7 @@ if ($action === 'updatestep') {
 	exit;
 }
 
-if ($action === 'delstep') {
+if ($action === 'confirm_delstep' && GETPOST('confirm', 'alpha') === 'yes') {
 	crmRequireRight('sequence');
 	$sequence->deleteStep(GETPOSTINT('stepid'));
 	header('Location: '.$back);
@@ -155,7 +155,7 @@ if ($action === 'enrol') {
 	if ($deal->fetch($dealId) <= 0 || !crmCanReadOwner($user, (int) $deal->fk_user_resp)) {
 		setEventMessages($langs->trans('CrmNoRows'), null, 'errors');
 	} elseif ($sequence->enrol($dealId) <= 0) {
-		setEventMessages($sequence->error, null, 'errors');
+		setEventMessages(crmErrorText($sequence->error), null, 'errors');
 	} else {
 		setEventMessages($langs->trans('RecordSaved'), null);
 	}
@@ -177,6 +177,12 @@ $log = $sequence->fetchLog();
 
 llxHeader('', $sequence->ref, '', '', 0, 0, array('/crm/js/crm_format_editor.js'), array('/crm/css/crm.css'));
 print load_fiche_titre($sequence->ref.' — '.$sequence->label, '', 'fa-handshake');
+$form = new Form($db);
+if ($action === 'askdelstep' && $user->hasRight('crm', 'sequence') && $sequence->fetchStep(GETPOSTINT('stepid')) !== null) {
+	$waiting = $sequence->countWaitingOnStep(GETPOSTINT('stepid'));
+	$question = $langs->trans('CrmConfirmDeleteStep').($waiting > 0 ? ' '.$langs->trans('CrmConfirmDeleteStepWaiting', $waiting) : '');
+	print $form->formconfirm($back.'&stepid='.GETPOSTINT('stepid'), $langs->trans('Delete'), $question, 'confirm_delstep', '', 0, 1);
+}
 if ($user->hasRight('crm', 'sequence')) {
 	print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'">';
 	print '<input type="hidden" name="token" value="'.newToken().'">';
@@ -223,7 +229,7 @@ foreach ($steps as $step) {
 	print '</td><td>';
 	if ($user->hasRight('crm', 'sequence')) {
 		print crmIconLink($back.'&action=editstep&stepid='.(int) $step->rowid.'&token='.newToken().'#crm-step-form', 'edit', $langs->trans('Modify'));
-		print crmIconLink($back.'&action=delstep&stepid='.(int) $step->rowid.'&token='.newToken(), 'delete', $langs->trans('Delete'));
+		print crmIconLink($back.'&action=askdelstep&stepid='.(int) $step->rowid.'&token='.newToken(), 'delete', $langs->trans('Delete'));
 	}
 	print '</td></tr>';
 }
@@ -337,7 +343,6 @@ if ($user->hasRight('crm', 'sequence')) {
 		}
 		$dealChoices[(int) $deal->rowid] = $deal->ref.' — '.$deal->label.($deal->soc_name !== null && $deal->soc_name !== '' ? ' ('.$deal->soc_name.')' : '');
 	}
-	$form = new Form($db);
 	print $langs->trans('CrmOpportunity').' '.$form->selectarray('opportunityid', $dealChoices, '', 1, 0, 0, '', 0, 0, 0, '', 'minwidth400', 1).' ';
 	print '<input type="submit" class="button" value="'.$langs->trans('CrmEnrol').'">';
 	print '</form>';

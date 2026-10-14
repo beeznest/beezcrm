@@ -37,7 +37,7 @@ The module works only if these global Dolibarr settings are in place. Go through
 **Users** (Users → each user)
 
 - Each salesperson needs an **e-mail address** on their user card: it is where the owner reminders go, and it is how the e-mail history recognises a message "sent by us" (the sender's address belongs to a Dolibarr user).
-- Each user's **language** decides which translation of the module they see. English and French are supplied; any other language shows English.
+- Each user's **language** decides which translation of the module they see. English and French are maintained by hand; the other languages Dolibarr supplies have a machine translation that no native speaker has reviewed. A language not supplied shows English.
 - To read an e-mail event of a deal in the agenda (the link on the deal card), a user also needs the Agenda right to see events. The CRM screens themselves do not need it.
 
 **Third parties**
@@ -68,7 +68,9 @@ The module root is the directory that contains `core/modules/modCrm.class.php`. 
 ln -sfn /path/to/crm /path/to/dolibarr/htdocs/custom/crm
 ```
 
-The link name must be `crm`. A packaged zip can instead be installed from Home → Setup → Modules → "Deploy an external module", which unpacks it into the same place.
+The link name must be `crm`.
+
+The complete installation procedure is in [INSTALL.md](../INSTALL.md); this section keeps what the first enable does.
 
 `htdocs/custom` is scanned when `$dolibarr_main_document_root_alt` in `conf.php` is empty, or when it lists that directory (`$dolibarr_main_url_root_alt='/custom'` and the matching path). Nothing else in `conf.php` is needed.
 
@@ -86,7 +88,7 @@ Then, as an administrator:
 - Registers the menus, the rights, a home box ("CRM follow-up") and two scheduled jobs.
 - Registers hooks (see [Maintenance](#maintenance)).
 
-The seeded entries are stored in English and shown in the language of each user (English and French are supplied). An entry you rename, or create, is shown exactly as you typed it.
+The seeded entries are stored in English and shown in the language of each user (English and French are maintained; other languages are machine translations). An entry you rename, or create, is shown exactly as you typed it.
 
 ## Rights
 
@@ -141,7 +143,7 @@ Under the table a note reminds you that sequences stay off until enabled and tha
 Pipelines and their stages. From top to bottom:
 
 1. **Pipeline list and Filter button.** Picks the pipeline whose stages are shown and edited below. It lists inactive pipelines too.
-2. **Stage table.** For the selected pipeline, in board order: label, position, probability, forecast category, and a **Delete stage** link. A stage in which a deal sits cannot be deleted (the screen says so).
+2. **Stage table.** For the selected pipeline, in board order: colour, label, position, probability, forecast category (and the won / lost flag), with three icons per row: **Modify** (the row becomes a form with the same fields as the **Add** form below; **Save** or **Cancel**), **Turn off / Turn on** and **Delete**. A turned-off stage is greyed and marked *Inactive*. It is no longer offered as a target for a move and no longer shown on the board once no deal is in it; the deals it holds stay there, visible on the board and on their card, until someone moves them. Delete asks for a confirmation and is refused for a stage that holds a deal or that any deal has passed through (the cohort report relies on that history): turn it off instead. A stage cannot be both won and lost, and needs a label.
 3. **Selected pipeline** (a warning appears if the pipeline has no open stage). Shows the fixed reference, and lets you change the **label** and the **Active** checkbox, then **Save**. An inactive pipeline is no longer offered for new deals or on the board; its deals stay in the lists and reports. The last active pipeline cannot be deactivated.
 4. **Add** (a stage to the selected pipeline). The fields, in order:
    - *Label*: the name shown on the board.
@@ -155,21 +157,23 @@ Pipelines and their stages. From top to bottom:
 
 Rules when you design stages: a pipeline needs at least one **open**, one **won** and one **lost** stage; a new deal starts in the first open stage by position, and without one nobody can create a deal in that pipeline. Typical shape: New → Qualified → Proposal sent → Negotiation → Won / Lost, with probabilities rising from 10% to 75%.
 
-**Limit of the screen.** Stages are added and deleted here, not edited in place. To change the probability, the label or the colour of an existing stage, create the corrected stage and delete the old one (only possible while no deal is in it), or use the MCP tool `crm_upsert_stage`.
+Changing the probability of a stage applies at once to every deal in it: the weighted forecast always reads the stage, never a copy. A warning above the pipeline form tells you when turning a stage off leaves the pipeline without an open stage.
 
 ### CRM → Setup → Qualification
 
-The checklist a salesperson ticks on each deal. A table lists the active items (code, label, points) and a form adds one: **code** (unique, letters and digits, for example `NEED`), **label** (shown to users), **points** (default 25) and **position**. The score of a deal is the sum of the points of the ticked items, capped at 100; the card lists the unticked items as "missing". Keep the total around 100 so the score reads as a percentage. The seeded items are Need, Budget, Decision maker, Timeline, 25 points each. There is no scoring-rule engine and no grade.
+The checklist a salesperson ticks on each deal. A table lists every item (code, label, points, position, how many deals have an answer for it) with the icons **Modify**, **Turn off / Turn on** and **Delete**, and a form adds one: **code** (unique, letters and digits, for example `NEED`), **label** (shown to users), **points** (default 25) and **position**. The score of a deal is the sum of the points of the ticked items, capped at 100; the card lists the unticked items as "missing". Keep the total around 100 so the score reads as a percentage. The seeded items are Need, Budget, Decision maker, Timeline, 25 points each. There is no scoring-rule engine and no grade.
+
+A turned-off item is no longer asked on the deals and no longer counts in the score, so scores of existing deals change when you turn one off or change its points. An item that has recorded answers cannot be deleted (the Delete icon is not shown): turn it off.
 
 ### CRM → Setup → Loss reasons
 
-The reasons offered when a deal is closed as lost, which is **required** to close it. A table lists them (code, label) and a form adds one (code, label, position). The Reports page counts deals and amounts per reason, so keep the list short and distinct. Seeded: price, no budget, competitor, timing, no decision, no answer.
+The reasons offered when a deal is closed as lost, which is **required** to close it. The table has the same columns and icons as the qualification one, and the same form without the points (code, label, position). The Reports page counts deals and amounts per reason, so keep the list short and distinct. Seeded: price, no budget, competitor, timing, no decision, no answer.
 
 ### CRM → Setup → Sources
 
 Where a lead came from, offered on the deal and used by the "by source" report. Same table and form as the loss reasons. Seeded: website, referral, inbound call, event, partner, prospecting, inbound e-mail.
 
-For these three dictionaries the screen **adds** entries; it does not edit, reorder or deactivate them. To rename, reorder or deactivate an entry (a deactivated entry is no longer offered but keeps its history), use the MCP tools `crm_upsert_qualification`, `crm_upsert_loss_reason` and `crm_upsert_source`. A code that already exists is refused by the screen.
+For these three lists a **turned-off** entry is no longer offered, but the deals that already use it keep it (a source stays on the card and in the "by source" report; a loss reason stays in the loss report). An entry used by a deal cannot be deleted: turn it off. An unused one is deleted after a confirmation. The code must be unique in its list: the screen refuses a code already used. Renaming an entry that was seeded stops its automatic translation: the label is then shown exactly as you typed it. The MCP tools `crm_upsert_qualification`, `crm_upsert_loss_reason` and `crm_upsert_source` change the same data and leave the on/off state alone when `active` is not given.
 
 ### CRM → Setup → About
 
@@ -241,7 +245,7 @@ An enrolment stops by itself when the deal is won or lost, when someone presses 
 
 - An enrolment that is **waiting for the step you change keeps the due date it already has**. A new **delay** therefore applies only to steps scheduled from now on: the enrolments that have not reached that step yet, and the following steps of those that have.
 - The **kind, subject, text and mode** are read when the step runs, so they apply the next time it runs for every enrolment, including those already waiting for it.
-- Do not **delete** a step that enrolments are waiting for: they cannot find their next step and are marked finished. Change it instead.
+- Do not **delete** a step that enrolments are waiting for: they cannot find their next step and are marked finished. Change it instead. The screen asks for a confirmation and tells you how many running enrolments wait for the step.
 
 There are no buttons to move a step up or down; the order is the order of creation. The MCP tool `crm_update_sequence_step` changes only the fields it is given, in the same way.
 
@@ -346,7 +350,7 @@ The module adds tools named `crm_*` to Dolibarr's MCP server, so an AI assistant
 2. The AI setup tabs "MCP server" and "Tool access control" show only when the constant `MAIN_FEATURES_LEVEL` is 1 or more (Home → Setup → Other setup). Without it, `ai/admin/server_mcp.php` can still be opened directly. `MAIN_FEATURES_LEVEL` also turns on every other experimental Dolibarr feature.
 3. On the MCP server tab, switch the server on (`AI_MCP_ENABLED`). Then either generate the **shared MCP key** and choose the user the tools run as (`AI_MCP_USER_ID`), or use a **personal Dolibarr API key** for each user.
 4. A user who connects with a personal API key needs the AI right "use the assistant". With the shared key, the tools run as the chosen user. Either way the tools list only what that user's CRM rights allow. Use a dedicated user with exactly the rights the assistant needs.
-5. Tool access control (`AI_MCP_SERVER_ALLOWED_TOOLS`): while it is empty, every tool is allowed. Once it is set, the `crm_*` tools must be in the list.
+5. Tool access control (`AI_MCP_SERVER_ALLOWED_TOOLS`): while it is empty, every tool is allowed. Once it is set, the `crm_*` tools must be in the list, each by name: a tool added by an update of the module (for example `crm_update_activity` and `crm_delete_activity`) is refused until you add it.
 6. A client calls `POST /ai/server/mcp_server.php` with `Authorization: Bearer <key>`: `initialize`, then `tools/list`, then `tools/call`.
 
 Keys are secrets: never store them in the project, and regenerate one that was shared.
@@ -356,13 +360,13 @@ Keys are secrets: never store them in the project, and regenerate one that was s
 - **24.0.0** has the MCP server, but it authenticates with the **shared key only** (`AI_MCP_API_KEY`, running as the user chosen in `AI_MCP_USER_ID`), does not check the rights a tool declares, and does not ask for a confirmation before a write. To keep the rights of the CRM, the tools check their own rights before running, so a caller who lacks, for example, "Delete deals" or "Configure CRM" is refused. The confirmation step before a write is not there: use a dedicated MCP user with only the rights the assistant needs. The AI setup tabs need `MAIN_FEATURES_LEVEL` at 2 or more.
 - **25.0.0 alpha** adds personal API keys for MCP, the per-tool rights check and the confirmation step before a write, and shows the AI tabs from level 1. Both sets of rights checks apply: the core's and the tool's own.
 
-The tools cover pipelines, stages, sources, loss reasons and qualification items (list and change), deals (list, read, create, update, move, win, lose, delete), proposals links, qualification answers, agenda steps, sequences, reports and settings (`crm_get_settings`, `crm_set_settings`, `crm_run_sequences`, `crm_run_owner_reminders`). Tools that write return a confirmation text that names the record. The tools that change setup need "Configure CRM"; the others follow the matching right. Owners are numeric Dolibarr user ids: there is no user search tool. Searching and editing third parties, contacts, proposals, orders and invoices stays with the core tools.
+The tools cover pipelines, stages, sources, loss reasons and qualification items (list and change), deals (list, read, create, update, move, win, lose, delete), proposals links, qualification answers, agenda steps (list, create, complete, change the date or title of a planned step, delete a planned step), sequences, reports and settings (`crm_get_settings`, `crm_set_settings`, `crm_run_sequences`, `crm_run_owner_reminders`). Tools that write return a confirmation text that names the record. The tools that change setup need "Configure CRM"; the others follow the matching right. Owners are numeric Dolibarr user ids: there is no user search tool. Searching and editing third parties, contacts, proposals, orders and invoices stays with the core tools.
 
 ## Maintenance
 
-**After an update of the module.** Copy or `git pull` the new files; they are live at once. Then, if the update touched the descriptor (menus, rights, hooks, cron jobs, home box, the icon), **disable and re-enable the module** in Home → Setup → Modules. This is safe: tables, deals, constants and agenda events are kept, and nothing is seeded twice. Without it, new hooks (e-mail collector operation, search box entry) and new rights are not registered.
+**After an update of the module.** The procedure is in [UPDATE.md](../UPDATE.md): back up, replace the files (they are live at once), then **disable and enable the module** in Home → Setup → Modules. That re-enable runs the database steps and registers again the rights, menus, hooks, scheduled jobs and home box a version can change. It is safe: tables, deals, settings and agenda events are kept, and nothing is seeded twice.
 
-**Database changes.** The tables are created at the first enable. A column added by a later release is added **when the module is re-enabled** (`crmEnsureSchema()`), which is safe to repeat. Until then the module keeps working without the new feature: for the e-mail mode of a step, the list is simply absent from the add-step form. There is no other migration mechanism: a change that cannot be done by adding a column is described in the release notes.
+**Database schema version.** Dolibarr keeps no version for an external module, so the module keeps its own: a whole number, the schema version, stored in the setting `CRM_SCHEMA_VERSION`, against the number the code expects. CRM → Setup → **About** shows the module version and the schema "installed / expected". When the code is ahead of the database (files updated, module not re-enabled yet), a notice on CRM → Home and CRM → Setup, shown to people who hold "Configure CRM", asks for the re-enable; until then the module works without the new feature. A step that fails stops the enable with its reason and is retried at the next enable.
 
 **Disabling the module** removes the menus, rights, home box and the two scheduled jobs. It does **not** drop the `llx_crm_*` tables, does not delete agenda events (calls, meetings, e-mails stay in the agenda, but no longer link back to the deal while the module is off), and does not touch third parties, contacts, proposals or users. Enabling it again finds everything.
 
@@ -377,7 +381,7 @@ The tools cover pipelines, stages, sources, loss reasons and qualification items
 - The Dolibarr log (`documents/dolibarr.log`) records the module's e-mail archive decisions (`CRM e-mail archive: recorded|duplicate|ignored|error`).
 - The e-mail collector card shows what each collection did.
 
-**Languages.** English and French are supplied (`langs/*/crm.lang`). Entries you create are shown as typed, in every language.
+**Languages.** English and French are maintained by hand; every other language of Dolibarr has a machine translation (`langs/*/crm.lang`) that has not been reviewed by a native speaker. To correct a wording, edit the key in that file; Dolibarr falls back to English for a missing key. Entries you create are shown as typed, in every language.
 
 **Agenda event types.** E-mail events use the types "Send Email" and "Reception Email" of Dolibarr's agenda (`AC_EMAIL`, `AC_EMAIL_IN`) whether or not an administrator has activated them in Home → Setup → Dictionaries → Types of agenda events; calls use "Phone call" and meetings "Rendez-vous", which must be active, otherwise the event is recorded as "Other". The module never adds event types of its own.
 

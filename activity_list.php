@@ -42,7 +42,7 @@ if ($action === 'complete') {
 	crmRequireRight('activity');
 	$activity = new CrmActivity($db);
 	if ($activity->complete($user, GETPOSTINT('eventid')) <= 0) {
-		setEventMessages($activity->error, null, 'errors');
+		setEventMessages(crmErrorText($activity->error), null, 'errors');
 	} else {
 		setEventMessages($langs->trans('RecordSaved'), null);
 	}
@@ -50,10 +50,24 @@ if ($action === 'complete') {
 	exit;
 }
 
-$rows = (new CrmActivity($db))->fetchList($user, $scope);
+$sortField = GETPOST('sortfield', 'aZ09');
+if (!in_array($sortField, array('date', 'ref', 'label', 'account'), true)) {
+	$sortField = 'date';
+}
+$sortOrder = (GETPOST('sortorder', 'aZ09') === 'desc') ? 'desc' : 'asc';
+$limit = GETPOSTINT('limit') > 0 ? GETPOSTINT('limit') : (int) $conf->liste_limit;
+$total = (new CrmActivity($db))->countList($user, $scope);
+$page = max(0, GETPOSTINT('page'));
+if ($page * $limit >= $total) {
+	$page = 0;
+}
+$rows = (new CrmActivity($db))->fetchList($user, $scope, 0, $limit, $page * $limit, $sortField, $sortOrder);
+$param = '&scope='.$scope.'&limit='.$limit;
 
 llxHeader('', $langs->trans('CrmActivities'), '', '', 0, 0, '', array('/crm/css/crm.css'));
-print load_fiche_titre($langs->trans('CrmActivities'), '', 'fa-handshake');
+print '<form method="GET" action="'.$_SERVER['PHP_SELF'].'"><input type="hidden" name="scope" value="'.$scope.'">';
+print '<input type="hidden" name="sortfield" value="'.$sortField.'"><input type="hidden" name="sortorder" value="'.$sortOrder.'">';
+print_barre_liste($langs->trans('CrmActivities'), $page, $_SERVER['PHP_SELF'], $param, $sortField, $sortOrder, '', count($rows), $total, 'fa-handshake', 0, '', '', $limit);
 
 print '<div class="tabsAction">';
 foreach (array('overdue' => 'CrmOverdue', 'today' => 'CrmToday', 'planned' => 'CrmPlanned', 'done' => 'CrmDone') as $code => $key) {
@@ -64,7 +78,12 @@ foreach (array('overdue' => 'CrmOverdue', 'today' => 'CrmToday', 'planned' => 'C
 print '</div>';
 
 print '<table class="noborder centpercent">';
-print '<tr class="liste_titre"><td>'.$langs->trans('CrmDate').'</td><td>'.$langs->trans('Ref').'</td><td>'.$langs->trans('CrmTitle').'</td><td>'.$langs->trans('CrmAccount').'</td><td></td></tr>';
+print '<tr class="liste_titre">';
+print_liste_field_titre($langs->trans('CrmDate'), $_SERVER['PHP_SELF'], 'date', '', $param, '', $sortField, $sortOrder);
+print_liste_field_titre($langs->trans('Ref'), $_SERVER['PHP_SELF'], 'ref', '', $param, '', $sortField, $sortOrder);
+print_liste_field_titre($langs->trans('CrmTitle'), $_SERVER['PHP_SELF'], 'label', '', $param, '', $sortField, $sortOrder);
+print_liste_field_titre($langs->trans('CrmAccount'), $_SERVER['PHP_SELF'], 'account', '', $param, '', $sortField, $sortOrder);
+print '<td></td></tr>';
 if (count($rows) === 0) {
 	print '<tr class="oddeven"><td colspan="5">'.$langs->trans('CrmNoRows').'</td></tr>';
 }
@@ -84,6 +103,7 @@ foreach ($rows as $row) {
 	print '</td></tr>';
 }
 print '</table>';
+print '</form>';
 
 crmHelpToggle();
 llxFooter();

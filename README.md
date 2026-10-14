@@ -23,9 +23,14 @@ Sales pipeline module for [Dolibarr](https://www.dolibarr.org). Accounts, contac
 | The person who installs, configures and maintains the module | [doc/ADMIN_GUIDE.md](doc/ADMIN_GUIDE.md) |
 | The person who uses it every day, in particular a new salesperson | [doc/USER_GUIDE.md](doc/USER_GUIDE.md) |
 | Why it is designed this way: data model, rules, decisions | [doc/STRUCTURE_ANALYSIS.md](doc/STRUCTURE_ANALYSIS.md) |
+| What changed in each version | [ChangeLog.md](ChangeLog.md) |
+| Installing the module | [INSTALL.md](INSTALL.md) |
+| Updating the module | [UPDATE.md](UPDATE.md) |
 | Developers and AI agents working on the code | [AGENTS.md](AGENTS.md) |
 
 ## Quick install
+
+The full procedure is in [INSTALL.md](INSTALL.md); to update, see [UPDATE.md](UPDATE.md).
 
 Requires Dolibarr 21 or later, PHP 8.1 or later, and the Dolibarr modules Third parties and Agenda.
 
@@ -45,8 +50,8 @@ class/     deals, pipelines, stages, sequences, reports, e-mail drafts and archi
 lib/       helpers (pure rules separated from the ones that need Dolibarr)
 admin/     the Setup screen
 sql/       tables
-langs/     English and French
-test/      unit tests of the pure rules
+langs/     English and French, plus a machine translation for the other languages of Dolibarr
+test/      unit tests of the pure rules, and command-line checks against a database
 doc/       the guides above
 ```
 
