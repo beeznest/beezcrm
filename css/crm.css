@@ -189,3 +189,48 @@ a.crm-scope:link,
 a.crm-scope:visited {
 	cursor: pointer !important;
 }
+
+/* Row actions shown as icons. */
+a.crm-icon-action {
+	margin-right: 0.7em;
+	text-decoration: none;
+}
+
+a.crm-icon-action:last-child {
+	margin-right: 0;
+}
+
+/* Explanations longer than 12 words are hidden until the "?" button of the page is clicked. */
+.crm-help {
+	display: none;
+}
+
+.crm-show-help p.crm-help,
+.crm-show-help div.crm-help,
+.crm-show-help ul.crm-help {
+	display: block;
+}
+
+.crm-show-help span.crm-help,
+.crm-show-help br.crm-help {
+	display: inline;
+}
+
+button.crm-help-toggle {
+	background: none;
+	border: 0;
+	cursor: pointer;
+	font-size: 1.4em;
+	padding: 0 0.3em;
+	color: inherit;
+}
+
+button.crm-help-toggle[aria-pressed="true"] {
+	color: var(--colortextlink, #0b5ed7);
+}
+
+button.crm-help-toggle-fixed {
+	position: absolute;
+	top: 0.5em;
+	right: 1em;
+}

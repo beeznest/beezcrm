@@ -115,5 +115,6 @@ $printDim = function (string $title, array $rows) use ($langs): void {
 $printDim($langs->trans('CrmByOwner'), $byOwner);
 $printDim($langs->trans('CrmBySource'), $bySource);
 
+crmHelpToggle();
 llxFooter();
 $db->close();

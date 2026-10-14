@@ -76,14 +76,15 @@ foreach ($rows as $row) {
 	print '<td>'.dol_escape_htmltag((string) $row->label).'</td>';
 	print '<td>'.dol_escape_htmltag((string) $row->soc_name).'</td><td>';
 	if (CrmActivity::isPlannedEmail((string) $row->event_code, (int) $row->percent)) {
-		print '<a href="'.dol_buildpath('/crm/email_compose.php', 1).'?id='.(int) $row->rowid.'">'.$langs->trans('CrmWriteSend').'</a> ';
+		print crmIconLink(dol_buildpath('/crm/email_compose.php', 1).'?id='.(int) $row->rowid, 'fa-envelope', $langs->trans('CrmWriteSend'));
 	}
 	if ($user->hasRight('crm', 'activity') && (int) $row->percent < 100) {
-		print '<a href="'.$_SERVER['PHP_SELF'].'?scope='.$scope.'&action=complete&eventid='.(int) $row->rowid.'&token='.newToken().'">'.$langs->trans('CrmComplete').'</a>';
+		print crmIconLink($_SERVER['PHP_SELF'].'?scope='.$scope.'&action=complete&eventid='.(int) $row->rowid.'&token='.newToken(), 'check', $langs->trans('CrmComplete'));
 	}
 	print '</td></tr>';
 }
 print '</table>';
 
+crmHelpToggle();
 llxFooter();
 $db->close();

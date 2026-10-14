@@ -255,4 +255,19 @@ class CrmLogicTest extends TestCase
 		$html = "<p>Bonjour,</p>\n<p>Premier paragraphe<br>\nsuite</p>\n<p>Cordialement,</p>\n";
 		$this->assertSame("Bonjour,\n\nPremier paragraphe\nsuite\n\nCordialement,", crmHtmlToText($html));
 	}
+
+	/**
+	 * Words are counted without tags and entities; twelve is the longest text that stays visible.
+	 *
+	 * @return void
+	 */
+	public function testWordCount()
+	{
+		$this->assertSame(0, crmWordCount('  <br> '));
+		$this->assertSame(3, crmWordCount('One <b>two</b>&nbsp;three'));
+		$twelve = 'one two three four five six seven eight nine ten eleven twelve';
+		$this->assertSame(12, crmWordCount($twelve));
+		$this->assertSame(13, crmWordCount($twelve.' thirteen'));
+		$this->assertSame(4, crmWordCount("Rédiger\n l'e-mail  du client"));
+	}
 }

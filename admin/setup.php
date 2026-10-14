@@ -217,12 +217,12 @@ if ($tab === 'parameters') {
 			$mode = crmSequenceDraftMode() ? 'draft' : 'send';
 			print '<td><select name="'.$name.'"><option value="draft"'.($mode === 'draft' ? ' selected' : '').'>'.$langs->trans('CrmSequenceEmailModeDraft').'</option>';
 			print '<option value="send"'.($mode === 'send' ? ' selected' : '').'>'.$langs->trans('CrmSequenceEmailModeSend').'</option></select>';
-			print '<br><span class="opacitymedium">'.$langs->trans('CrmSequenceEmailModeHelp').'</span></td></tr>';
+			print crmHelp($langs->trans('CrmSequenceEmailModeHelp'), 'span', true).'</td></tr>';
 			continue;
 		}
 		if ($name === 'CRM_AI_EMAIL_PROMPT') {
 			print '<td><textarea class="quatrevingtpercent" name="'.$name.'" rows="5">'.dol_escape_htmltag(getDolGlobalString($name), 0, 1).'</textarea>';
-			print '<br><span class="opacitymedium">'.$langs->trans('CrmAiEmailPromptHelp').'</span></td></tr>';
+			print crmHelp($langs->trans('CrmAiEmailPromptHelp'), 'span', true).'</td></tr>';
 			continue;
 		}
 		if (in_array($name, $switches, true)) {
@@ -235,7 +235,7 @@ if ($tab === 'parameters') {
 			print ' href="'.$_SERVER['PHP_SELF'].'?tab=parameters&action='.($on ? 'del_' : 'set_').$name.'&token='.newToken().'">';
 			print '<span class="crm-sw-on">'.img_picto($langs->trans('Enabled'), 'switch_on').'</span><span class="crm-sw-off">'.img_picto($langs->trans('Disabled'), 'switch_off').'</span></a>';
 			if ($name === 'CRM_AI_EMAIL_ASSIST') {
-				print '<br><span class="opacitymedium">'.$langs->trans('CrmAiEmailAssistHelp').'</span>';
+				print crmHelp($langs->trans('CrmAiEmailAssistHelp'), 'span', true);
 			}
 			print '</td></tr>';
 			continue;
@@ -251,9 +251,9 @@ if ($tab === 'parameters') {
 	print '</table>';
 	print '<div class="center"><input type="submit" class="button" value="'.$langs->trans('Save').'"></div>';
 	print '</form>';
-	print '<p class="opacitymedium">'.$langs->trans('CrmRunNote').'</p>';
-	print '<p class="opacitymedium">'.$langs->trans('CrmArchiveHelp').'</p>';
-	print '<p class="opacitymedium">'.$langs->trans('CrmSwitchHelp').'</p>';
+	print crmHelp($langs->trans('CrmRunNote'));
+	print crmHelp($langs->trans('CrmArchiveHelp'));
+	print crmHelp($langs->trans('CrmSwitchHelp'));
 	$switchJs = <<<'JS'
 (function () {
 	var token = __TOKEN__;
@@ -331,7 +331,7 @@ if ($tab === 'stages') {
 			print '<label><input type="checkbox" name="active" value="1"'.($selected->active ? ' checked' : '').'> '.$langs->trans('CrmActive').'</label> ';
 			print '<input type="submit" class="button" value="'.$langs->trans('Save').'">';
 			print '</form>';
-			print '<p class="opacitymedium">'.$langs->trans('CrmEditPipelineHelp').'</p>';
+			print crmHelp($langs->trans('CrmEditPipelineHelp'));
 		}
 	}
 	print '<h2>'.$langs->trans('CrmNewPipeline').'</h2>';
@@ -347,7 +347,7 @@ if ($tab === 'stages') {
 	print '</select> ';
 	print '<input type="submit" class="button" value="'.$langs->trans('Create').'">';
 	print '</form>';
-	print '<p class="opacitymedium">'.$langs->trans('CrmNewPipelineHelp').'</p>';
+	print crmHelp($langs->trans('CrmNewPipelineHelp'));
 }
 
 if ($tab === 'qualification') {
@@ -391,5 +391,6 @@ if ($tab === 'about') {
 }
 
 print dol_get_fiche_end();
+crmHelpToggle();
 llxFooter();
 $db->close();

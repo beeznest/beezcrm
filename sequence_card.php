@@ -185,7 +185,7 @@ if ($user->hasRight('crm', 'sequence')) {
 	print '<table class="border centpercent">';
 	print '<tr><td class="titlefield">'.$langs->trans('Ref').'</td><td><input name="ref" class="minwidth200" maxlength="32" value="'.dol_escape_htmltag($sequence->ref).'" required></td></tr>';
 	print '<tr><td>'.$langs->trans('CrmLabel').'</td><td><input name="label" class="minwidth300" value="'.dol_escape_htmltag($sequence->label).'" required></td></tr>';
-	print '<tr><td>'.$langs->trans('CrmActive').'</td><td><label><input type="checkbox" name="active" value="1"'.($sequence->active ? ' checked' : '').'> '.$langs->trans('CrmSequenceActiveHelp').'</label></td></tr>';
+		print '<tr><td>'.$langs->trans('CrmActive').'</td><td><label><input type="checkbox" name="active" value="1"'.($sequence->active ? ' checked' : '').'> '.$langs->trans('Yes').'</label> '.crmHelp($langs->trans('CrmSequenceActiveHelp'), 'span').'</td></tr>';
 	print '<tr><td>'.$langs->trans('CrmStopRules').'</td><td>';
 	print '<label><input type="checkbox" name="stop_on_reply" value="1"'.($sequence->stop_on_reply ? ' checked' : '').'> '.$langs->trans('CrmStopOnReply').'</label><br>';
 	print '<label><input type="checkbox" name="stop_on_won" value="1"'.($sequence->stop_on_won ? ' checked' : '').'> '.$langs->trans('CrmStopOnWon').'</label><br>';
@@ -194,15 +194,15 @@ if ($user->hasRight('crm', 'sequence')) {
 	print '</table>';
 	print '<div class="center"><input type="submit" class="button" value="'.$langs->trans('Update').'"></div>';
 	print '</form>';
-	print '<p class="opacitymedium">'.$langs->trans('CrmSequenceUpdateHelp').'</p>';
+	print crmHelp($langs->trans('CrmSequenceUpdateHelp'));
 } else {
 	print '<p>'.$langs->trans('CrmActive').': '.((int) $sequence->active ? $langs->trans('Yes') : $langs->trans('No')).'</p>';
 }
-print '<p class="opacitymedium">'.$langs->trans('CrmSequenceIntro').'</p>';
-print '<p class="opacitymedium">'.$langs->trans('CrmPlaceholders').'</p>';
+print crmHelp($langs->trans('CrmSequenceIntro'));
+print crmHelp($langs->trans('CrmPlaceholders'));
 
 print '<h2>'.$langs->trans('CrmSteps').'</h2>';
-print '<p class="opacitymedium">'.$langs->trans('CrmStepsHelp').'</p>';
+print crmHelp($langs->trans('CrmStepsHelp'));
 print '<table class="noborder centpercent">';
 print '<tr class="liste_titre"><td>#</td><td>'.$langs->trans('CrmKind').'</td><td>'.$langs->trans('CrmDelayDays').'</td><td>'.$langs->trans('CrmSubject').'</td><td>'.$langs->trans('CrmStepMode').'</td><td></td></tr>';
 foreach ($steps as $step) {
@@ -222,8 +222,8 @@ foreach ($steps as $step) {
 	}
 	print '</td><td>';
 	if ($user->hasRight('crm', 'sequence')) {
-		print '<a href="'.$back.'&action=editstep&stepid='.(int) $step->rowid.'&token='.newToken().'#crm-step-form">'.$langs->trans('Modify').'</a> ';
-		print '<a href="'.$back.'&action=delstep&stepid='.(int) $step->rowid.'&token='.newToken().'">'.$langs->trans('Delete').'</a>';
+		print crmIconLink($back.'&action=editstep&stepid='.(int) $step->rowid.'&token='.newToken().'#crm-step-form', 'edit', $langs->trans('Modify'));
+		print crmIconLink($back.'&action=delstep&stepid='.(int) $step->rowid.'&token='.newToken(), 'delete', $langs->trans('Delete'));
 	}
 	print '</td></tr>';
 }
@@ -275,14 +275,14 @@ if ($user->hasRight('crm', 'sequence')) {
 	print '<div class="marginbottomonly">'.$langs->trans('CrmFormat').' ';
 	print '<label><input type="radio" name="format" value="html"'.($pfFormat === 'html' ? ' checked' : '').'> '.$langs->trans('CrmFormatHtml').'</label> &nbsp; ';
 	print '<label><input type="radio" name="format" value="text"'.($pfFormat === 'text' ? ' checked' : '').'> '.$langs->trans('CrmFormatText').'</label>';
-	print '<br><span class="opacitymedium">'.$langs->trans('CrmStepFormatHelp').'</span></div>';
+	print crmHelp($langs->trans('CrmStepFormatHelp'), 'span', true).'</div>';
 	print '<div class="crm-tabs"><button type="button" id="crm-tab-html" class="crm-tab">'.$langs->trans('CrmTabHtml').'</button><button type="button" id="crm-tab-plain" class="crm-tab">'.$langs->trans('CrmTabPlain').'</button></div>';
 	print '<div id="crm-pane-html" class="crm-pane">';
 	$stepEditor = new DolEditor('bodyhtml', $pfEditorHtml, '', 260, 'dolibarr_mailings', 'In', true, false, true, 10, '95%');
 	$stepEditor->Create(0, '', true);
 	print '</div>';
 	print '<div id="crm-pane-plain" class="crm-pane"><textarea name="body" id="crm-body" class="quatrevingtpercent" rows="8" placeholder="'.dol_escape_htmltag($langs->trans('CrmBody')).'">'.dol_escape_htmltag($pfPlain, 0, 1).'</textarea>';
-	print '<div id="crm-plain-note" class="opacitymedium">'.$langs->trans('CrmPlainAlternativeNote').'</div></div>';
+	print crmHelp($langs->trans('CrmPlainAlternativeNote'), 'div').'</div>';
 	print '</div>';
 	print '<div>';
 	print '<input type="submit" class="button" value="'.$langs->trans($isEdit ? 'CrmUpdateStep' : 'CrmAddStep').'"> ';
@@ -290,10 +290,10 @@ if ($user->hasRight('crm', 'sequence')) {
 	print '<button type="button" class="button" id="crm-ai-step" disabled'.($aiStepAvailable ? ' title="'.dol_escape_htmltag($langs->trans('CrmAiStepNeedSubject')).'"' : ' title="'.dol_escape_htmltag($langs->trans('CrmAiStepOff')).'"').'>'.$langs->trans('CrmAiStepSuggest').'</button> ';
 	print '<span id="crm-ai-step-msg" class="opacitymedium"></span>';
 	if ($aiStepAvailable) {
-		print '<br><span class="opacitymedium">'.$langs->trans('CrmAiStepHelp').'</span>';
+		print crmHelp($langs->trans('CrmAiStepHelp'), 'span', true);
 	}
 	if ($isEdit) {
-		print '<br><span class="opacitymedium">'.$langs->trans('CrmEditStepHelp').'</span>';
+		print crmHelp($langs->trans('CrmEditStepHelp'), 'span', true);
 	}
 	print '</div>';
 	$stepConfig = array(
@@ -315,7 +315,7 @@ if ($user->hasRight('crm', 'sequence')) {
 }
 
 print '<h2>'.$langs->trans('CrmEnrolments').'</h2>';
-print '<p class="opacitymedium">'.$langs->trans('CrmEnrolmentsHelp').'</p>';
+print crmHelp($langs->trans('CrmEnrolmentsHelp'));
 if ($user->hasRight('crm', 'sequence')) {
 	print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'">';
 	print '<input type="hidden" name="token" value="'.newToken().'">';
@@ -361,7 +361,7 @@ foreach ($enrolments as $enrol) {
 print '</table>';
 
 print '<h2>'.$langs->trans('CrmJournal').'</h2>';
-print '<p class="opacitymedium">'.$langs->trans('CrmJournalHelp').'</p>';
+print crmHelp($langs->trans('CrmJournalHelp'));
 print '<table class="noborder centpercent">';
 print '<tr class="liste_titre"><td>'.$langs->trans('CrmDate').'</td><td>'.$langs->trans('CrmEmail').'</td><td>'.$langs->trans('CrmSubject').'</td><td>'.$langs->trans('CrmStatus').'</td><td>'.$langs->trans('Error').'</td></tr>';
 foreach ($log as $line) {
@@ -375,5 +375,6 @@ foreach ($log as $line) {
 }
 print '</table>';
 
+crmHelpToggle();
 llxFooter();
 $db->close();

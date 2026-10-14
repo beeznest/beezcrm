@@ -48,7 +48,7 @@ print load_fiche_titre($langs->trans('CrmHome'), '', 'fa-handshake');
  */
 $printDeals = function (string $title, string $descKey, array $rows) use ($langs): void {
 	print '<h2>'.dol_escape_htmltag($title).' ('.count($rows).')</h2>';
-	print '<p class="opacitymedium">'.$langs->trans($descKey).'</p>';
+	print crmHelp($langs->trans($descKey));
 	if (count($rows) === 0) {
 		print '<p class="opacitymedium">'.$langs->trans('CrmNoRows').'</p>';
 		return;
@@ -70,7 +70,7 @@ $printDeals = function (string $title, string $descKey, array $rows) use ($langs
 $printDeals($langs->trans('CrmNoNextStep'), 'CrmNoNextStepDesc', $hygiene['no_next']);
 
 print '<h2>'.$langs->trans('CrmOverdue').' ('.count($hygiene['overdue']).')</h2>';
-print '<p class="opacitymedium">'.$langs->trans('CrmOverdueDesc').'</p>';
+print crmHelp($langs->trans('CrmOverdueDesc'));
 if (count($hygiene['overdue']) === 0) {
 	print '<p class="opacitymedium">'.$langs->trans('CrmNoRows').'</p>';
 } else {
@@ -82,7 +82,7 @@ if (count($hygiene['overdue']) === 0) {
 		print '<td><a href="'.$url.'">'.dol_escape_htmltag((string) $row->ref).'</a></td>';
 		print '<td>'.dol_escape_htmltag((string) $row->label);
 		if (CrmActivity::isPlannedEmail((string) $row->event_code, (int) $row->percent)) {
-			print ' <a href="'.dol_buildpath('/crm/email_compose.php', 1).'?id='.(int) $row->rowid.'">'.$langs->trans('CrmWriteSend').'</a>';
+			print ' '.crmIconLink(dol_buildpath('/crm/email_compose.php', 1).'?id='.(int) $row->rowid, 'fa-envelope', $langs->trans('CrmWriteSend'));
 		}
 		print '</td>';
 		print '<td>'.dol_print_date($db->jdate($row->datep), 'dayhour').'</td>';
@@ -95,7 +95,7 @@ $printDeals($langs->trans('CrmPastClose'), 'CrmPastCloseDesc', $hygiene['past_cl
 $printDeals($langs->trans('CrmRotting'), 'CrmRottingDesc', $hygiene['rotting']);
 
 print '<h2>'.$langs->trans('CrmForecast').'</h2>';
-print '<p class="opacitymedium">'.$langs->trans('CrmForecastDesc').'</p>';
+print crmHelp($langs->trans('CrmForecastDesc'));
 print '<table class="noborder centpercent">';
 print '<tr class="liste_titre"><td>'.$langs->trans('CrmDate').'</td><td>'.$langs->trans('CrmForecastCategory').'</td><td class="right">'.$langs->trans('CrmAmount').'</td><td class="right">'.$langs->trans('CrmWeighted').'</td></tr>';
 $printed = 0;
@@ -122,5 +122,6 @@ if ($printed === 0) {
 }
 print '</table>';
 
+crmHelpToggle();
 llxFooter();
 $db->close();

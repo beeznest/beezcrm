@@ -296,3 +296,5 @@ CrmUpdateStep=Update step
 CrmEditStepHelp=The step keeps its place. An enrolment that is already waiting for this step keeps the date it was given, so a new delay applies to the steps scheduled from now on. The kind, subject, text and mode apply the next time the step runs.
 CrmErrorStepNotFound=Step not found.
 CrmErrorStepKind=The kind of a step is e-mail, call or task.
+CrmAiService=Service: %s.
+CrmHelpToggle=Show or hide the explanations

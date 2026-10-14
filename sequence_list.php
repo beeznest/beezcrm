@@ -52,7 +52,7 @@ $rows = (new Sequence($db))->fetchAll();
 
 llxHeader('', $langs->trans('CrmSequences'), '', '', 0, 0, '', array('/crm/css/crm.css'));
 print load_fiche_titre($langs->trans('CrmSequences'), '', 'fa-handshake');
-print '<p class="opacitymedium">'.$langs->trans('CrmRunNote').'</p>';
+print crmHelp($langs->trans('CrmRunNote'));
 
 print '<table class="noborder centpercent">';
 print '<tr class="liste_titre"><td>'.$langs->trans('Ref').'</td><td>'.$langs->trans('CrmLabel').'</td><td>'.$langs->trans('CrmActive').'</td><td class="right">'.$langs->trans('CrmSteps').'</td><td class="right">'.$langs->trans('CrmEnrolments').'</td></tr>';
@@ -82,5 +82,6 @@ if ($user->hasRight('crm', 'sequence')) {
 	print '</form>';
 }
 
+crmHelpToggle();
 llxFooter();
 $db->close();

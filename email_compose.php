@@ -128,7 +128,7 @@ $archiveCopy = (getDolGlobalString('CRM_ARCHIVE_COPY') === 'cc') ? 'cc' : 'bcc';
 
 llxHeader('', $langs->trans('CrmComposeTitle'), '', '', 0, 0, '', array('/crm/css/crm.css'));
 print load_fiche_titre($langs->trans('CrmComposeTitle').' — <a href="'.$dealUrl.'">'.dol_escape_htmltag((string) $draft->deal->ref).'</a>', '', 'fa-handshake');
-print '<p class="opacitymedium">'.$langs->trans('CrmComposeIntro').'</p>';
+print crmHelp($langs->trans('CrmComposeIntro'));
 if ($draft->contactEmail() === '') {
 	print '<div class="warning">'.$langs->trans('CrmNoContactEmail').'</div>';
 }
@@ -143,7 +143,7 @@ print '<tr><td>'.$langs->trans('CrmSubject').'</td><td><input class="quatrevingt
 print '<tr><td>'.$langs->trans('CrmFormat').'</td><td>';
 print '<label><input type="radio" name="format" value="html"'.($format === 'html' ? ' checked' : '').($canAct ? '' : ' disabled').'> '.$langs->trans('CrmFormatHtml').'</label> &nbsp; ';
 print '<label><input type="radio" name="format" value="text"'.($format === 'text' ? ' checked' : '').($canAct ? '' : ' disabled').'> '.$langs->trans('CrmFormatText').'</label>';
-print '<br><span class="opacitymedium">'.$langs->trans('CrmFormatHelp').'</span></td></tr>';
+print crmHelp($langs->trans('CrmFormatHelp'), 'span', true).'</td></tr>';
 print '<tr><td>'.$langs->trans('CrmBody').'</td><td>';
 print '<div class="crm-tabs"><button type="button" id="crm-tab-html" class="crm-tab">'.$langs->trans('CrmTabHtml').'</button><button type="button" id="crm-tab-plain" class="crm-tab">'.$langs->trans('CrmTabPlain').'</button></div>';
 print '<div id="crm-pane-html" class="crm-pane">';
@@ -151,16 +151,18 @@ $editor = new DolEditor('bodyhtml', $bodyHtml, '', 320, 'dolibarr_mailings', 'In
 $editor->Create(0, '', true);
 print '</div>';
 print '<div id="crm-pane-plain" class="crm-pane"><textarea class="quatrevingtpercent" id="crm-body" name="body" rows="16"'.$readonly.'>'.dol_escape_htmltag($bodyText, 0, 1).'</textarea>';
-print '<div id="crm-plain-note" class="opacitymedium">'.$langs->trans('CrmPlainAlternativeNote').'</div></div>';
+print crmHelp($langs->trans('CrmPlainAlternativeNote'), 'div').'</div>';
 print '</td></tr>';
 if ($aiAvailable) {
 	print '<tr><td>'.$langs->trans('CrmAiAssistant').'</td><td>';
-	print '<p class="opacitymedium">'.$langs->trans('CrmAiIntro', dol_escape_htmltag(CrmAiReply::serviceLabel())).' ';
+	// Where the text goes and whether it is masked stay visible: that is a notice about data leaving, not an explanation.
+	print '<p class="opacitymedium">'.$langs->trans('CrmAiService', dol_escape_htmltag(CrmAiReply::serviceLabel())).' ';
 	print $langs->trans(getDolGlobalInt('AI_PRIVACY_REDACTION', 0) ? 'CrmAiMasked' : 'CrmAiNotMasked').'</p>';
+	print crmHelp($langs->trans('CrmAiIntro', dol_escape_htmltag(CrmAiReply::serviceLabel())));
 	print '<textarea class="quatrevingtpercent" id="crm-ai-prompt" name="aiprompt" rows="6">'.dol_escape_htmltag($aiPrompt, 0, 1).'</textarea><br>';
 	print '<button type="submit" class="button" name="action" value="aisuggest">'.$langs->trans('CrmAiSuggest').'</button> ';
 	print '<button type="button" class="button" id="crm-ai-restore">'.$langs->trans('CrmAiRestorePrompt').'</button>';
-	print '<br><span class="opacitymedium">'.$langs->trans('CrmAiHelp').'</span>';
+	print crmHelp($langs->trans('CrmAiHelp'), 'span', true);
 	print '</td></tr>';
 }
 if ($archive !== '') {
@@ -177,11 +179,11 @@ if ($canAct) {
 	print '<button type="submit" class="button" name="action" value="sentmanually" data-confirm="'.dol_escape_htmltag($langs->trans('CrmConfirmSentManually')).'">'.$langs->trans('CrmSentManually').'</button> ';
 	print '<button type="submit" class="button butActionDelete" name="action" value="discard" data-confirm="'.dol_escape_htmltag($langs->trans('CrmConfirmDiscard')).'">'.$langs->trans('CrmDiscardDraft').'</button>';
 	print '</div>';
-	print '<ul class="opacitymedium">';
+	$helpItems = '';
 	foreach (array('CrmHelpSave', 'CrmHelpSend', 'CrmHelpMailClient', 'CrmHelpSentManually', 'CrmHelpDiscard') as $key) {
-		print '<li>'.$langs->trans($key).'</li>';
+		$helpItems .= '<li>'.$langs->trans($key).'</li>';
 	}
-	print '</ul>';
+	print crmHelp($helpItems, 'ul');
 }
 print '</form>';
 print '<p><a href="'.$dealUrl.'">'.$langs->trans('CrmBackToDeal').'</a></p>';
@@ -324,5 +326,6 @@ $config = array(
 );
 print '<script nonce="'.dol_escape_htmltag(getNonce()).'">'.str_replace('__CONFIG__', json_encode($config, JSON_HEX_TAG | JSON_HEX_AMP), $js).'</script>';
 
+crmHelpToggle();
 llxFooter();
 $db->close();

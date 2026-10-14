@@ -109,6 +109,8 @@ Two more rights matter outside CRM: creating a prospect from the deal form needs
 
 ## Module setup, page by page
 
+**Explanations are hidden by default.** On every page, a text of more than 12 words that explains something (a list, a field, a rule) is hidden until the **"?" button** at the top right of the page title is clicked; click again to hide it. Warnings, errors, confirmations and the notice of the e-mail editor that says which AI service the text goes to, and whether names are masked, are always visible. The About tab is page content and stays visible. This is also the place where the setup explanations of this guide appear on screen (the notes under the Parameters table, the help under each setting, the notes on pipelines).
+
 Everything the module lets you configure is under **CRM → Setup** (needs "Configure CRM"), plus the **Sequences** screens. The gear icon of the module in Home → Setup → Modules opens the same Setup screen.
 
 ### CRM → Setup → Parameters
@@ -235,7 +237,7 @@ An enrolment stops by itself when the deal is won or lost, when someone presses 
 
 **The mode of each e-mail step.** The global setting is only the default. When you add an e-mail step, the **E-mail mode** list of the form lets you choose **Default** (follow the global setting), **Draft for the salesperson**, or **Send automatically** for that step alone. The steps table shows each step's mode, and "Default (draft)" or "Default (send)" for the ones that follow the global setting. This lets one sequence mix a reminder that is sent by itself and a long message that a person must review. A call or task step has no mode. The MCP tool `crm_add_sequence_step` takes the same choice (`send_mode`: empty, `draft` or `send`), and `crm_get_sequence` returns it. A step whose mode is "send" is subject to dry-run and to the cap of e-mails per run; drafts are not.
 
-**Changing a step.** Each row of the steps table has a **Modify** link. It opens the same form as for adding, filled with the step (kind, delay, e-mail mode, subject, and the text with its format, plain or HTML, and the AI button), and the **Update step** button saves it; **Cancel** leaves it unchanged. The step **keeps its position**, so the order of the sequence does not change. What happens to enrolments that are already running (nothing is recomputed, so nothing fires early or late by surprise):
+**Changing a step.** Each row of the steps table has two icons: a **pencil** (Modify) and a **trash can** (Delete); hover one to see its name. The pencil opens the same form as for adding, filled with the step (kind, delay, e-mail mode, subject, and the text with its format, plain or HTML, and the AI button), and the **Update step** button saves it; **Cancel** leaves it unchanged. The step **keeps its position**, so the order of the sequence does not change. What happens to enrolments that are already running (nothing is recomputed, so nothing fires early or late by surprise):
 
 - An enrolment that is **waiting for the step you change keeps the due date it already has**. A new **delay** therefore applies only to steps scheduled from now on: the enrolments that have not reached that step yet, and the following steps of those that have.
 - The **kind, subject, text and mode** are read when the step runs, so they apply the next time it runs for every enrolment, including those already waiting for it.

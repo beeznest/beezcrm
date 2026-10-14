@@ -250,7 +250,7 @@ if ($creating && $user->hasRight('societe', 'creer')) {
 	});
 	</script>';
 }
-	print '<br><span class="opacitymedium">'.$langs->trans('CrmAccountHelp').'</span></td></tr>';
+	print crmHelp($langs->trans('CrmAccountHelp'), 'span', true).'</td></tr>';
 	print '<tr><td>'.$langs->trans('CrmContact').'</td><td>'.$form->selectcontacts((int) $object->fk_soc, (int) $object->fk_socpeople, 'contactid', 1).'</td></tr>';
 	print '<tr><td>'.$langs->trans('CrmAmount').'</td><td><input name="amount" value="'.price((float) $object->amount).'"></td></tr>';
 	print '<tr><td>'.$langs->trans('CrmExpectedClose').'</td><td>'.$form->selectDate((int) $object->date_close_expected, 'dateclose', 0, 0, 1).'</td></tr>';
@@ -276,6 +276,7 @@ if ($creating && $user->hasRight('societe', 'creer')) {
 	print '</table>';
 	print '<div class="center"><input type="submit" class="button" value="'.$langs->trans('Save').'"></div>';
 	print '</form>';
+	crmHelpToggle();
 	llxFooter();
 	$db->close();
 	return;
@@ -433,10 +434,10 @@ foreach ($events as $event) {
 	print '<td>'.dol_escape_htmltag((string) $event->type_label).'</td>';
 	print '<td>'.((int) $event->percent >= 100 ? $langs->trans('CrmDone') : (int) $event->percent.'%').'</td><td>';
 	if ($isDraftEmail) {
-		print '<a href="'.$composeUrl.'">'.$langs->trans('CrmWriteSend').'</a> ';
+		print crmIconLink($composeUrl, 'fa-envelope', $langs->trans('CrmWriteSend'));
 	}
 	if ($user->hasRight('crm', 'activity') && (int) $event->percent < 100) {
-		print '<a href="'.$_SERVER['PHP_SELF'].'?id='.$id.'&action=complete&eventid='.(int) $event->rowid.'&token='.newToken().'">'.$langs->trans('CrmComplete').'</a>';
+		print crmIconLink($_SERVER['PHP_SELF'].'?id='.$id.'&action=complete&eventid='.(int) $event->rowid.'&token='.newToken(), 'check', $langs->trans('CrmComplete'));
 	}
 	print '</td></tr>';
 }
@@ -509,7 +510,7 @@ if ($user->hasRight('crm', 'write')) {
 	print '<input name="lossnote" placeholder="'.dol_escape_htmltag($langs->trans('CrmLossNote')).'" value="'.dol_escape_htmltag((string) $object->loss_note).'"> ';
 	print '<input type="submit" class="button" value="'.$langs->trans('CrmMove').'">';
 	if (getDolGlobalInt('CRM_REQUIRE_NEXT_STEP')) {
-		print '<br><span class="opacitymedium">'.$langs->trans('CrmMoveNextStepHelp').'</span>';
+		print crmHelp($langs->trans('CrmMoveNextStepHelp'), 'span', true);
 	}
 	print '</form>';
 }
@@ -544,5 +545,6 @@ foreach ($object->fetchHistory() as $hist) {
 }
 print '</table>';
 
+crmHelpToggle();
 llxFooter();
 $db->close();

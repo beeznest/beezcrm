@@ -91,7 +91,7 @@ if ($user->hasRight('crm', 'readall')) {
 }
 print ' <input type="submit" class="button" value="'.$langs->trans('CrmFilter').'">';
 print '</form>';
-print '<p class="opacitymedium">'.$langs->trans('CrmDragHint').'</p>';
+print crmHelp($langs->trans('CrmDragHint'));
 
 $boardUrl = dol_escape_htmltag($_SERVER['PHP_SELF']);
 print '<div id="crm-board" class="crm-board" data-token="'.dol_escape_htmltag(newToken()).'" data-url="'.$boardUrl.'" data-pipeline="'.((int) $pipelineId).'" data-owner="'.((int) $ownerId).'" data-lost-message="'.dol_escape_htmltag($langs->trans('CrmErrorLossReasonRequired')).'">';
@@ -127,5 +127,6 @@ foreach ($stages as $stage) {
 }
 print '</div>';
 
+crmHelpToggle();
 llxFooter();
 $db->close();

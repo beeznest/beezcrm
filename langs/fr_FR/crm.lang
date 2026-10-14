@@ -296,3 +296,5 @@ CrmUpdateStep=Mettre à jour l'étape
 CrmEditStepHelp=L'étape garde sa place. Une inscription qui attend déjà cette étape garde la date qui lui a été donnée : un nouveau délai s'applique donc aux étapes planifiées à partir de maintenant. Le type, l'objet, le texte et le mode s'appliquent à la prochaine exécution de l'étape.
 CrmErrorStepNotFound=Étape introuvable.
 CrmErrorStepKind=Le type d'une étape est e-mail, appel ou tâche.
+CrmAiService=Service : %s.
+CrmHelpToggle=Afficher ou masquer les explications

@@ -18,6 +18,8 @@ All menus are under **CRM** in the top bar.
 
 The general search box at the top of Dolibarr also has an entry **CRM opportunities** (shortcut `O`): type a reference, a title, an account name or a contact name, and choose it. The list then shows the matches in every status. It only shows deals you may see.
 
+**The "?" button.** Most pages carry long explanations of what a list or a field is for. To keep the screens light, they are **hidden** by default. A **"?" button** appears in the top right corner of the page title bar whenever the page has some; click it to show them, click it again to hide them. It does not remember your choice from one page to the next. Short hints and warnings are always visible.
+
 ## The vocabulary
 
 - **Account**: the company you sell to. It is a normal Dolibarr third party, so the same record is used by invoices and by your colleagues.
@@ -59,7 +61,7 @@ The general search box at the top of Dolibarr also has an entry **CRM opportunit
 
 Note that "e-mail" here is a reminder for you to write one; it does not send anything.
 
-When you have done it, press **Complete** next to it (on the card, or in CRM → Activities). Then **immediately plan the next one**. Doing the action without planning the next is how deals go cold.
+When you have done it, click the **check icon** (tooltip "Complete") next to it (on the card, or in CRM → Activities). Then **immediately plan the next one**. Doing the action without planning the next is how deals go cold.
 
 ## Step 3. Qualify
 
@@ -95,7 +97,7 @@ Moving is allowed to any open stage, forward or back, as long as the deal has a 
 
 **Automatic sequences.** Your manager may enrol deals in a sequence: a planned series of reminders, calls and e-mails after a set number of days. It saves you from forgetting, but it does not replace a real conversation. Calls and tasks of a sequence appear as next steps on the deal.
 
-**E-mails suggested by a sequence.** By default the tool does not send anything by itself. When an e-mail step is due, it appears on the deal as a planned e-mail (in the Next step list, in CRM → Activities and, once late, on Home), with the suggested text already filled in. Click **Write / send** to open it. Read it, change it, and choose:
+**E-mails suggested by a sequence.** By default the tool does not send anything by itself. When an e-mail step is due, it appears on the deal as a planned e-mail (in the Next step list, in CRM → Activities and, once late, on Home), with the suggested text already filled in. Click the **envelope icon** (tooltip "Write / send"), or the title of the e-mail, to open it. Read it, change it, and choose:
 
 - **Send from here**: Dolibarr sends it to the address shown (the deal's contact by default) after a confirmation. It is recorded on the deal and the draft disappears.
 - **Open in my mail client**: your mail program opens with the recipient, subject and text filled in, and the archive address in copy. Send it from there. **Keep the subject**: it contains the deal reference in square brackets, such as `[OPP2026-0001]`, which is how the message finds its deal again. **Keep the archive address in copy.** Then come back and press **E-mail sent manually**, so the step is closed. If the text is too long for your mail program, use **Copy text** and paste it.

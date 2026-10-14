@@ -97,5 +97,6 @@ foreach ($deals as $deal) {
 }
 print '</table>';
 
+crmHelpToggle();
 llxFooter();
 $db->close();

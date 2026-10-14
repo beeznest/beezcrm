@@ -70,6 +70,65 @@ function crmStageLabel(string $label): string
 }
 
 /**
+ * An explanation, shown or hidden. A text of more than 12 words is an explanation an experienced user does
+ * not need on every visit: it is printed with the class crm-help, which the stylesheet hides until the "?" button of the
+ * page is clicked. A shorter text stays visible. A page that printed at least one hidden explanation calls
+ * crmHelpToggle() before its footer, which adds that button.
+ *
+ * @param string $html   The text, as HTML
+ * @param string $tag    p, span, div or ul
+ * @param bool   $break  For a span put after a field: also hide (or print) the line break before it
+ */
+function crmHelp(string $html, string $tag = 'p', bool $break = false): string
+{
+	global $crmHelpCount;
+	$long = crmWordCount($html) > 12;
+	if ($long) {
+		$crmHelpCount = (int) $crmHelpCount + 1;
+	}
+	$class = 'opacitymedium'.($long ? ' crm-help' : '');
+	return ($break ? '<br'.($long ? ' class="crm-help"' : '').'>' : '').'<'.$tag.' class="'.$class.'">'.$html.'</'.$tag.'>';
+}
+
+/**
+ * Add the "?" button that shows and hides the explanations of the page, in the top right corner of its title bar. Call it
+ * before llxFooter(). Nothing is printed when the page has no hidden explanation.
+ */
+function crmHelpToggle(): void
+{
+	global $crmHelpCount, $langs;
+	if ((int) $crmHelpCount <= 0) {
+		return;
+	}
+	$label = $langs->transnoentities('CrmHelpToggle');
+	$config = array('label' => $label, 'icon' => img_picto($label, 'fa-question-circle', 'class="valignmiddle"'));
+	print '<script nonce="'.dol_escape_htmltag(getNonce()).'">(function () {';
+	print 'var cfg = '.json_encode($config, JSON_HEX_TAG | JSON_HEX_AMP).';';
+	print 'var button = document.createElement("button");';
+	print 'button.type = "button"; button.className = "crm-help-toggle"; button.title = cfg.label; button.setAttribute("aria-label", cfg.label); button.setAttribute("aria-pressed", "false"); button.innerHTML = cfg.icon;';
+	print 'button.addEventListener("click", function () { var on = document.body.classList.toggle("crm-show-help"); button.setAttribute("aria-pressed", on ? "true" : "false"); });';
+	print 'var bar = document.querySelector(".table-fiche-title");';
+	print 'if (bar && bar.rows && bar.rows.length > 0) {';
+	print 'var cell = bar.querySelector("td.col-right");';
+	print 'if (!cell) { cell = bar.rows[0].insertCell(-1); cell.className = "nobordernopadding valignmiddle right col-right"; }';
+	print 'cell.appendChild(button);';
+	print '} else { button.className += " crm-help-toggle-fixed"; document.body.appendChild(button); }';
+	print '}());</script>';
+}
+
+/**
+ * An action shown as an icon instead of a text link. The label is the tooltip and the accessible name of the link.
+ *
+ * @param string $url    Address, with its token when the action changes data
+ * @param string $picto  Dolibarr picto name: edit, delete, check, or fa-xxx
+ * @param string $label  What the action does, already translated
+ */
+function crmIconLink(string $url, string $picto, string $label): string
+{
+	return '<a class="crm-icon-action" href="'.dol_escape_htmltag($url).'" title="'.dol_escape_htmltag($label).'" aria-label="'.dol_escape_htmltag($label).'">'.img_picto($label, $picto).'</a>';
+}
+
+/**
  * Pages call this after the bootstrap. It refuses a disabled module and a user with no read right.
  */
 function crmStartPage(): void

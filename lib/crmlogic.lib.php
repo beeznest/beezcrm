@@ -311,3 +311,15 @@ function crmLooksLikeHtml(string $text): bool
 {
 	return (bool) preg_match('#<(p|div|br|ul|ol|li|h[1-6]|table|strong|b|em|i|u|a|span|blockquote)(\s[^>]*)?/?>#i', $text);
 }
+
+/**
+ * Number of words in a text, tags ignored. Used to decide which explanations are long enough to be hidden by default.
+ */
+function crmWordCount(string $text): int
+{
+	$text = trim(html_entity_decode(strip_tags($text), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+	if ($text === '') {
+		return 0;
+	}
+	return count(preg_split('/\s+/u', $text) ?: array());
+}
