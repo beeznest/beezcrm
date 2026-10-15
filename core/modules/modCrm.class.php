@@ -229,13 +229,14 @@ class modCrm extends DolibarrModules
 			'target' => '',
 			'user' => 0,
 		);
+		// Automated sequences come right after Opportunities, which they work on, then Activities and Reports.
 		$this->menu[$r++] = array(
 			'fk_menu' => 'fk_mainmenu=crm',
 			'type' => 'left',
-			'titre' => 'CrmActivities',
+			'titre' => 'CrmSequences',
 			'mainmenu' => 'crm',
-			'leftmenu' => 'crmactivity',
-			'url' => '/crm/activity_list.php',
+			'leftmenu' => 'crmsequence',
+			'url' => '/crm/sequence_list.php',
 			'langs' => 'crm@crm',
 			'position' => 1000 + $r,
 			'enabled' => "isModEnabled('crm')",
@@ -246,10 +247,10 @@ class modCrm extends DolibarrModules
 		$this->menu[$r++] = array(
 			'fk_menu' => 'fk_mainmenu=crm',
 			'type' => 'left',
-			'titre' => 'CrmSequences',
+			'titre' => 'CrmActivities',
 			'mainmenu' => 'crm',
-			'leftmenu' => 'crmsequence',
-			'url' => '/crm/sequence_list.php',
+			'leftmenu' => 'crmactivity',
+			'url' => '/crm/activity_list.php',
 			'langs' => 'crm@crm',
 			'position' => 1000 + $r,
 			'enabled' => "isModEnabled('crm')",
