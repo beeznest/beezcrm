@@ -186,19 +186,39 @@ function crmTodayStart(): int
 }
 
 /**
- * Sender used by sequences and owner reminders.
+ * Where the sender address comes from: crm (the setting "Sender address"), main (the sender of Dolibarr's e-mail
+ * setup), company (the e-mail of the company), or an empty string when none is set.
+ */
+function crmSenderSource(): string
+{
+	global $mysoc;
+	if (getDolGlobalString('CRM_MAIL_FROM') !== '') {
+		return 'crm';
+	}
+	if (getDolGlobalString('MAIN_MAIL_EMAIL_FROM') !== '') {
+		return 'main';
+	}
+	if (!empty($mysoc->email)) {
+		return 'company';
+	}
+	return '';
+}
+
+/**
+ * Sender of every e-mail the module sends: the e-mail editor, sequences and owner reminders.
  */
 function crmSender(): string
 {
 	global $mysoc;
-	$from = getDolGlobalString('CRM_MAIL_FROM');
-	if ($from === '') {
-		$from = getDolGlobalString('MAIN_MAIL_EMAIL_FROM');
+	switch (crmSenderSource()) {
+		case 'crm':
+			return getDolGlobalString('CRM_MAIL_FROM');
+		case 'main':
+			return getDolGlobalString('MAIN_MAIL_EMAIL_FROM');
+		case 'company':
+			return (string) $mysoc->email;
 	}
-	if ($from === '' && !empty($mysoc->email)) {
-		$from = (string) $mysoc->email;
-	}
-	return $from;
+	return '';
 }
 
 /**

@@ -138,7 +138,16 @@ print '<input type="hidden" name="token" value="'.newToken().'">';
 print '<input type="hidden" name="id" value="'.((int) $draft->event->id).'">';
 $readonly = $canAct ? '' : ' readonly';
 print '<table class="border centpercent">';
-print '<tr><td class="titlefield">'.$langs->trans('CrmRecipient').'</td><td><input class="minwidth300" id="crm-to" name="to" value="'.dol_escape_htmltag($to).'"'.$readonly.'></td></tr>';
+// The address "Send from here" would use, shown as text (not a field) so that nobody takes it for something to fill in.
+$sender = crmSender();
+print '<tr><td class="titlefield">'.$langs->trans('CrmSender').'</td><td>';
+if ($sender !== '') {
+	print '<strong>'.dol_escape_htmltag($sender).'</strong> <span class="opacitymedium">('.$langs->trans('CrmSenderSource'.ucfirst(crmSenderSource())).')</span>';
+} else {
+	print '<div class="warning">'.$langs->trans('CrmNoSender').'</div>';
+}
+print crmHelp($langs->trans('CrmSenderHelp'), 'span', true).'</td></tr>';
+print '<tr><td>'.$langs->trans('CrmRecipient').'</td><td><input class="minwidth300" id="crm-to" name="to" value="'.dol_escape_htmltag($to).'"'.$readonly.'></td></tr>';
 print '<tr><td>'.$langs->trans('CrmSubject').'</td><td><input class="quatrevingtpercent" id="crm-subject" name="subject" value="'.dol_escape_htmltag($subject).'"'.$readonly.'></td></tr>';
 print '<tr><td>'.$langs->trans('CrmFormat').'</td><td>';
 print '<label><input type="radio" name="format" value="html"'.($format === 'html' ? ' checked' : '').($canAct ? '' : ' disabled').'> '.$langs->trans('CrmFormatHtml').'</label> &nbsp; ';
