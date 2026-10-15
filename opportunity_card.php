@@ -36,6 +36,7 @@ require_once __DIR__.'/class/pipeline.class.php';
 require_once __DIR__.'/class/stage.class.php';
 require_once __DIR__.'/class/qualification.class.php';
 require_once __DIR__.'/class/crmactivity.class.php';
+require_once __DIR__.'/class/sequence.class.php';
 crmStartPage();
 
 $action = GETPOST('action', 'aZ09');
@@ -604,6 +605,27 @@ foreach ($object->fetchHistory() as $hist) {
 	print '<tr class="oddeven"><td>'.dol_print_date($db->jdate($hist->datec), 'dayhour').'</td><td>'.dol_escape_htmltag($label).'</td><td>'.dol_escape_htmltag($who).'</td></tr>';
 }
 print '</table>';
+
+// The e-mails that sequences made for this deal, and on what ground: which sequence, which step, which day.
+$sequenceMails = (new Sequence($db))->fetchLogForOpportunity((int) $object->id);
+if (count($sequenceMails) > 0) {
+	print '<h2>'.$langs->trans('CrmSequenceMails').'</h2>';
+	print crmHelp($langs->trans('CrmSequenceMailsHelp'));
+	print '<table class="noborder centpercent">';
+	print '<tr class="liste_titre"><td>'.$langs->trans('CrmDate').'</td><td>'.$langs->trans('CrmSequence').'</td><td>'.$langs->trans('CrmLogWhyTitle').'</td><td>'.$langs->trans('CrmEmail').'</td><td>'.$langs->trans('CrmSubject').'</td><td>'.$langs->trans('CrmStatus').'</td><td></td></tr>';
+	foreach ($sequenceMails as $mail) {
+		print '<tr class="oddeven">';
+		print '<td>'.dol_print_date($db->jdate($mail->date_send), 'dayhour').'</td>';
+		print '<td><a href="'.dol_buildpath('/crm/sequence_card.php', 1).'?id='.(int) $mail->fk_sequence.'">'.dol_escape_htmltag((string) $mail->seq_ref).'</a> '.dol_escape_htmltag((string) $mail->seq_label).'</td>';
+		print '<td>'.dol_escape_htmltag(crmLogWhy($mail)).'</td>';
+		print '<td>'.dol_escape_htmltag((string) $mail->email).'</td>';
+		print '<td>'.dol_escape_htmltag((string) $mail->subject).'</td>';
+		print '<td>'.dol_escape_htmltag(crmLogStatusLabel((string) $mail->status)).($mail->error_msg !== null && (string) $mail->error_msg !== '' ? ' <span class="opacitymedium">('.dol_escape_htmltag((string) $mail->error_msg).')</span>' : '').'</td>';
+		print '<td class="right">'.crmLogViewLink((int) $mail->rowid).'</td>';
+		print '</tr>';
+	}
+	print '</table>';
+}
 
 crmHelpToggle();
 llxFooter();

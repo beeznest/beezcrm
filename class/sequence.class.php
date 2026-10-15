@@ -348,15 +348,176 @@ class Sequence
 	}
 
 	/**
+	 * SELECT of a journal line with what says why it exists: the enrolment date (for the day of the sequence), the deal and
+	 * the sequence.
+	 */
+	private function logSelect(): string
+	{
+		$prefix = $this->db->prefix();
+		$sql = 'SELECT l.*, e.date_enrol, e.fk_opportunity, e.fk_sequence, o.ref as deal_ref, o.label as deal_label, o.fk_user_resp,';
+		$sql .= ' s.ref as seq_ref, s.label as seq_label, st.position as current_step_position, st.delay_days as step_delay_days';
+		$sql .= ' FROM '.$prefix.'crm_sequence_log as l';
+		$sql .= ' INNER JOIN '.$prefix.'crm_sequence_enrol as e ON e.rowid = l.fk_enrol';
+		$sql .= ' INNER JOIN '.$prefix.'crm_sequence as s ON s.rowid = e.fk_sequence';
+		$sql .= ' INNER JOIN '.$prefix.'crm_opportunity as o ON o.rowid = e.fk_opportunity';
+		$sql .= ' LEFT JOIN '.$prefix.'crm_sequence_step as st ON st.rowid = l.fk_step';
+		return $sql;
+	}
+
+	/**
+	 * Journal of this sequence, newest first.
+	 *
 	 * @return array<int,object>
 	 */
 	public function fetchLog(): array
 	{
-		$sql = 'SELECT l.* FROM '.$this->db->prefix().'crm_sequence_log as l';
-		$sql .= ' INNER JOIN '.$this->db->prefix().'crm_sequence_enrol as e ON e.rowid = l.fk_enrol';
-		$sql .= ' WHERE e.fk_sequence = '.((int) $this->id);
-		$sql .= ' ORDER BY l.date_send DESC';
+		$sql = $this->logSelect().' WHERE e.fk_sequence = '.((int) $this->id).' ORDER BY l.date_send DESC, l.rowid DESC';
 		return $this->rows($sql);
+	}
+
+	/**
+	 * Every journal line of one deal, newest first: the e-mails the sequences made for it, with the sequence and the day.
+	 *
+	 * @return array<int,object>
+	 */
+	public function fetchLogForOpportunity(int $opportunityId): array
+	{
+		$sql = $this->logSelect().' WHERE e.fk_opportunity = '.((int) $opportunityId).' ORDER BY l.date_send DESC, l.rowid DESC';
+		return $this->rows($sql);
+	}
+
+	/**
+	 * One journal line, or null.
+	 *
+	 * @return object|null
+	 */
+	public function fetchLogLine(int $logId)
+	{
+		$rows = $this->rows($this->logSelect().' WHERE l.rowid = '.((int) $logId));
+		return $rows[0] ?? null;
+	}
+
+	/**
+	 * The e-mail of a journal line, kept in the database. A line written before the content was kept has none: it is found
+	 * again here and saved, so it can be read later. For a sent message the copy recorded on the deal is the real thing
+	 * (source "event"); otherwise the text is rebuilt from the step and the deal as they are now (source "rebuilt"), which
+	 * the caller must say, since it may differ from what was sent or planned. A line whose step is gone stays without content.
+	 *
+	 * @return object|null The line with its content, null when it does not exist or the table has no content column yet
+	 */
+	public function ensureLogContent(int $logId)
+	{
+		if (!crmLogContentSupported($this->db)) {
+			return null;
+		}
+		$line = $this->fetchLogLine($logId);
+		if ($line === null || (string) $line->body !== '' || (string) $line->content_source !== '') {
+			return $line;
+		}
+		$body = '';
+		$source = '';
+		$format = '';
+		$from = '';
+		$subject = (string) $line->subject;
+		if ((string) $line->status === 'sent') {
+			$sql = 'SELECT a.note, a.email_from FROM '.$this->db->prefix().'actioncomm as a';
+			$sql .= " WHERE a.elementtype = '".$this->db->escape(CrmActivity::ELEMENT_TYPE)."' AND a.fk_element = ".((int) $line->fk_opportunity);
+			$sql .= " AND a.code = 'AC_EMAIL' AND a.percent >= 100 AND a.email_subject = '".$this->db->escape($subject)."'";
+			$sent = (int) $this->db->jdate($line->date_send);
+			$sql .= " AND a.datep >= '".$this->db->idate($sent - 600)."' AND a.datep <= '".$this->db->idate($sent + 600)."'";
+			$sql .= ' ORDER BY a.id DESC'.$this->db->plimit(1, 0);
+			$resql = $this->db->query($sql);
+			if ($resql && ($obj = $this->db->fetch_object($resql)) && trim((string) $obj->note) !== '') {
+				$body = (string) $obj->note;
+				$format = crmLooksLikeHtml($body) ? 'html' : 'text';
+				$from = (string) $obj->email_from;
+				$source = 'event';
+			}
+		}
+		if ($source === '' && (int) $line->fk_step > 0) {
+			$step = $this->stepById((int) $line->fk_step);
+			$enrol = $this->enrolForBuild((int) $line->fk_enrol);
+			if ($step !== null && $enrol !== null) {
+				$built = $this->buildEmail($enrol, $step);
+				$body = $built['body'];
+				$subject = $built['subject'];
+				$format = $built['html'] ? 'html' : 'text';
+				$source = 'rebuilt';
+			}
+		}
+		if ($source === '') {
+			return $line;
+		}
+		$sql = 'UPDATE '.$this->db->prefix()."crm_sequence_log SET body = '".$this->db->escape($body)."', body_format = '".$this->db->escape($format)."'";
+		$sql .= ", content_source = '".$this->db->escape($source)."'";
+		if ($from !== '') {
+			$sql .= ", from_email = '".$this->db->escape($from)."'";
+		}
+		if ((int) ($line->step_position ?? 0) <= 0 && isset($line->current_step_position)) {
+			$sql .= ', step_position = '.((int) $line->current_step_position);
+		}
+		$sql .= ' WHERE rowid = '.((int) $logId);
+		$this->db->query($sql);
+		return $this->fetchLogLine($logId);
+	}
+
+	/**
+	 * @return object|null
+	 */
+	private function stepById(int $stepId)
+	{
+		$resql = $this->db->query('SELECT * FROM '.$this->db->prefix().'crm_sequence_step WHERE rowid = '.((int) $stepId));
+		return ($resql && ($obj = $this->db->fetch_object($resql))) ? $obj : null;
+	}
+
+	/**
+	 * An enrolment with the deal, account and contact columns that the text of a step is made from.
+	 *
+	 * @return object|null
+	 */
+	private function enrolForBuild(int $enrolId)
+	{
+		$sql = 'SELECT e.rowid as enrol_id, e.fk_opportunity, o.ref, o.label as deal_label, o.amount, o.fk_soc, o.fk_socpeople, o.fk_user_resp,';
+		$sql .= ' soc.nom as soc_name, sp.email as contact_email, sp.firstname, sp.lastname';
+		$sql .= ' FROM '.$this->db->prefix().'crm_sequence_enrol as e';
+		$sql .= ' INNER JOIN '.$this->db->prefix().'crm_opportunity as o ON o.rowid = e.fk_opportunity';
+		$sql .= ' LEFT JOIN '.$this->db->prefix().'societe as soc ON soc.rowid = o.fk_soc';
+		$sql .= ' LEFT JOIN '.$this->db->prefix().'socpeople as sp ON sp.rowid = o.fk_socpeople';
+		$sql .= ' WHERE e.rowid = '.((int) $enrolId);
+		$resql = $this->db->query($sql);
+		return ($resql && ($obj = $this->db->fetch_object($resql))) ? $obj : null;
+	}
+
+	/**
+	 * The subject and the text of an e-mail step for one enrolment, placeholders replaced. In HTML the values are inserted
+	 * as text, so a name with a "<" or a "&" cannot add markup to the message.
+	 *
+	 * @param object $enrol Enrolment row with the deal, account and contact columns
+	 * @param object $step  Step row
+	 * @return array{subject:string,body:string,html:bool}
+	 */
+	private function buildEmail($enrol, $step): array
+	{
+		$contact = trim((string) $enrol->firstname.' '.(string) $enrol->lastname);
+		$vars = array(
+			'DEAL' => (string) $enrol->deal_label,
+			'REF' => (string) $enrol->ref,
+			'AMOUNT' => (string) $enrol->amount,
+			'CONTACT' => $contact,
+			'CUSTOMER' => (string) $enrol->soc_name,
+		);
+		$isHtml = crmLooksLikeHtml((string) $step->body);
+		$bodyVars = $vars;
+		if ($isHtml) {
+			foreach ($bodyVars as $key => $value) {
+				$bodyVars[$key] = htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+			}
+		}
+		return array(
+			'subject' => crmReplacePlaceholders((string) $step->subject, $vars),
+			'body' => crmReplacePlaceholders((string) $step->body, $bodyVars),
+			'html' => $isHtml,
+		);
 	}
 
 	/**
@@ -445,25 +606,12 @@ class Sequence
 	private function runEmailStep(User $user, $enrol, $step, int $dry, bool $draftStep): string
 	{
 		global $conf;
-		$contact = trim((string) $enrol->firstname.' '.(string) $enrol->lastname);
-		$vars = array(
-			'DEAL' => (string) $enrol->deal_label,
-			'REF' => (string) $enrol->ref,
-			'AMOUNT' => (string) $enrol->amount,
-			'CONTACT' => $contact,
-			'CUSTOMER' => (string) $enrol->soc_name,
-		);
-		$subject = crmReplacePlaceholders((string) $step->subject, $vars);
-		// The text of a step is plain or HTML. In HTML the values are inserted as text, so a name with a "<" or a "&"
-		// cannot add markup to the message.
-		$isHtml = crmLooksLikeHtml((string) $step->body);
-		$bodyVars = $vars;
-		if ($isHtml) {
-			foreach ($bodyVars as $key => $value) {
-				$bodyVars[$key] = htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
-			}
-		}
-		$body = crmReplacePlaceholders((string) $step->body, $bodyVars);
+		$built = $this->buildEmail($enrol, $step);
+		$subject = $built['subject'];
+		$body = $built['body'];
+		$isHtml = $built['html'];
+		// What the message is sent from, or would be: the journal keeps it with the text.
+		$fromEmail = crmSender();
 		$email = trim((string) $enrol->contact_email);
 		$status = 'sent';
 		$error = '';
@@ -489,6 +637,7 @@ class Sequence
 				$status = 'error';
 				$error = $result['error'];
 			} else {
+				$fromEmail = (string) $result['from'];
 				// The full message goes on the deal. Its Message-ID lets the collector skip the archive-mailbox copy.
 				$activity = new CrmActivity($this->db);
 				$activity->createEmail($user, (int) $enrol->fk_opportunity, (int) $enrol->fk_soc, (int) $enrol->fk_socpeople, (int) $enrol->fk_user_resp, 'out', $subject, $body, dol_now(), array(
@@ -498,10 +647,16 @@ class Sequence
 				));
 			}
 		}
-		$sql = 'INSERT INTO '.$this->db->prefix().'crm_sequence_log (entity, fk_enrol, fk_step, date_send, email, subject, status, error_msg) VALUES (';
-		$sql .= ((int) $conf->entity).', '.((int) $enrol->enrol_id).', '.((int) $step->rowid).", '".$this->db->idate(dol_now())."'";
-		$sql .= ", '".$this->db->escape($email)."', '".$this->db->escape($subject)."', '".$this->db->escape($status)."', '".$this->db->escape($error)."')";
-		$this->db->query($sql);
+		// The text is kept as it was made, with the placeholders replaced, whatever the outcome (sent, simulated, draft or
+		// error), so the journal can show it later. An installation that has not run the schema step yet keeps the old columns.
+		$columns = 'entity, fk_enrol, fk_step, date_send, email, subject, status, error_msg';
+		$values = ((int) $conf->entity).', '.((int) $enrol->enrol_id).', '.((int) $step->rowid).", '".$this->db->idate(dol_now())."'";
+		$values .= ", '".$this->db->escape($email)."', '".$this->db->escape($subject)."', '".$this->db->escape($status)."', '".$this->db->escape($error)."'";
+		if (crmLogContentSupported($this->db)) {
+			$columns .= ', from_email, body, body_format, step_position, content_source';
+			$values .= ", '".$this->db->escape($fromEmail)."', '".$this->db->escape($body)."', '".($isHtml ? 'html' : 'text')."', ".((int) $step->position).", 'recorded'";
+		}
+		$this->db->query('INSERT INTO '.$this->db->prefix().'crm_sequence_log ('.$columns.') VALUES ('.$values.')');
 		return $status;
 	}
 

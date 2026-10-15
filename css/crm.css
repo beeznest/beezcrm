@@ -242,3 +242,11 @@ button.crm-help-toggle-fixed {
 	border-radius: 2px;
 	vertical-align: middle;
 }
+
+.crm-mail-body {
+	border: 1px solid #d0d0d0;
+	border-radius: 4px;
+	padding: 1em;
+	max-width: 60em;
+	overflow-wrap: anywhere;
+}

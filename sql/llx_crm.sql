@@ -170,6 +170,11 @@ CREATE TABLE llx_crm_sequence_log (
 	subject varchar(255) DEFAULT NULL,
 	status varchar(16) NOT NULL,
 	error_msg varchar(255) DEFAULT NULL,
+	from_email varchar(255) DEFAULT NULL,
+	body text,
+	body_format varchar(8) DEFAULT '' NOT NULL,
+	step_position integer DEFAULT NULL,
+	content_source varchar(16) DEFAULT '' NOT NULL,
 	KEY idx_crm_seqlog_enrol (fk_enrol)
 ) ENGINE=innodb;
 

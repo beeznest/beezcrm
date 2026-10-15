@@ -368,14 +368,21 @@ print '</table>';
 print '<h2>'.$langs->trans('CrmJournal').'</h2>';
 print crmHelp($langs->trans('CrmJournalHelp'));
 print '<table class="noborder centpercent">';
-print '<tr class="liste_titre"><td>'.$langs->trans('CrmDate').'</td><td>'.$langs->trans('CrmEmail').'</td><td>'.$langs->trans('CrmSubject').'</td><td>'.$langs->trans('CrmStatus').'</td><td>'.$langs->trans('Error').'</td></tr>';
+print '<tr class="liste_titre"><td>'.$langs->trans('CrmDate').'</td><td>'.$langs->trans('CrmOpportunity').'</td><td>'.$langs->trans('CrmLogWhyTitle').'</td><td>'.$langs->trans('CrmEmail').'</td><td>'.$langs->trans('CrmSubject').'</td><td>'.$langs->trans('CrmStatus').'</td><td>'.$langs->trans('Error').'</td><td></td></tr>';
+if (count($log) === 0) {
+	print '<tr class="oddeven"><td colspan="8">'.$langs->trans('CrmNoRows').'</td></tr>';
+}
 foreach ($log as $line) {
 	print '<tr class="oddeven">';
 	print '<td>'.dol_print_date($db->jdate($line->date_send), 'dayhour').'</td>';
+	print '<td><a href="'.dol_buildpath('/crm/opportunity_card.php', 1).'?id='.(int) $line->fk_opportunity.'">'.dol_escape_htmltag((string) $line->deal_ref).'</a></td>';
+	print '<td>'.dol_escape_htmltag(crmLogWhy($line)).'</td>';
 	print '<td>'.dol_escape_htmltag((string) $line->email).'</td>';
 	print '<td>'.dol_escape_htmltag((string) $line->subject).'</td>';
-	print '<td>'.dol_escape_htmltag((string) $line->status).'</td>';
+	print '<td>'.dol_escape_htmltag(crmLogStatusLabel((string) $line->status)).'</td>';
 	print '<td>'.dol_escape_htmltag((string) $line->error_msg).'</td>';
+	// The e-mail is kept for every line, sent or simulated; a line from before that is rebuilt and saved when opened.
+	print '<td class="right">'.crmLogViewLink((int) $line->rowid).'</td>';
 	print '</tr>';
 }
 print '</table>';

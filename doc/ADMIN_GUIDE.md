@@ -234,6 +234,8 @@ A sequence is an explicit follow-up plan for a **deal**, not a mass mailing. CRM
 
 An enrolment stops by itself when the deal is won or lost, when someone presses **Stop**, when **Mark replied** is pressed, or, if the e-mail history is set up, when the customer's answer is recorded. After the last step it becomes done. The enrolment screen shows the status, the next step and when it is due; the journal lists every e-mail attempt with its result: `sent`, `simulated`, `draft` or `error`.
 
+**The journal keeps the e-mail.** Each line records the e-mail as the step made it: the subject and the text with the placeholders replaced, the format (plain text or HTML), the address it goes to and the address it is sent from, the position of the step and the day of the sequence (counted from the enrolment) on which it ran. This is stored whatever the outcome, including in dry-run and for drafts, so a simulation can be reviewed before dry-run is turned off. The eye icon at the end of a line opens the e-mail (`sequence_log_view.php`): a simulated one is marked as not sent, a draft as a text that the sequence wrote and that the planned e-mail may have outgrown, an error with its reason. The same lines are listed on the deal card, under History → "E-mails from sequences", with the sequence, the step and the day that caused each one. Anyone who may read the deal may read its e-mails. A line written before the content was kept is completed when it is opened and saved from then on: for a sent e-mail, from the copy recorded on the deal; otherwise rebuilt from the step and the deal **as they are today** and marked as rebuilt, since it can differ from what was sent or planned; a line whose step has been deleted has nothing to rebuild. The content columns come with schema version 2: after updating the files, disable and enable the module (until then the journal works as before and the page says that the e-mails are not kept yet).
+
 **E-mail steps: draft or send.** The setting "Sequence e-mail steps" decides what a due e-mail step does.
 
 - **`draft` (the default).** Nothing is sent by the job. The step becomes a **planned e-mail** on the deal, owned by the deal owner, with the subject (the deal reference is appended in square brackets) and the suggested text. It appears in the deal's next steps, in CRM → Activities and on Home. The salesperson opens it, edits it, and sends it from Dolibarr, or from a mail client, then registers it. See the user guide, "E-mails suggested by a sequence". Dry-run does not apply to drafts, since nothing is sent; drafts do not count toward the per-run cap.
@@ -393,7 +395,7 @@ The 50 tools by the CRM right they need (a user without it does not see the tool
 **Watching it work**
 
 - Home → Setup → Scheduled jobs: last run and result of the CRM jobs and of the e-mail collector.
-- CRM → Sequences → a sequence → Journal: every e-mail attempt and its result.
+- CRM → Sequences → a sequence → Journal: every e-mail attempt and its result, with a link to the e-mail itself.
 - The Dolibarr log (`documents/dolibarr.log`) records the module's e-mail archive decisions (`CRM e-mail archive: recorded|duplicate|ignored|error`).
 - The e-mail collector card shows what each collection did.
 

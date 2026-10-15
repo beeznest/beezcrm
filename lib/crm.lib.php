@@ -246,13 +246,52 @@ function crmStepDraftMode(string $stepMode): bool
 }
 
 /**
+ * A status of the sequence journal, in the language of the user: sent, simulated, draft or error. Anything else is shown as stored.
+ */
+function crmLogStatusLabel(string $status): string
+{
+	global $langs;
+	crmLoadLangs();
+	$keys = array('sent' => 'CrmLogStatusSent', 'simulated' => 'CrmLogStatusSimulated', 'draft' => 'CrmLogStatusDraft', 'error' => 'CrmLogStatusError');
+	return isset($keys[$status]) ? $langs->trans($keys[$status]) : $status;
+}
+
+/**
+ * What caused a journal line: the step of the sequence and the day of the sequence, counted from the enrolment. The step
+ * number is the one recorded with the line; for an older line it is the current position of the step, or "?" when the step is gone.
+ *
+ * @param object $line Journal line from Sequence::fetchLog() or fetchLogForOpportunity()
+ */
+function crmLogWhy(object $line): string
+{
+	global $db, $langs;
+	crmLoadLangs();
+	$position = (int) ($line->step_position ?? 0);
+	if ($position <= 0) {
+		$position = (int) ($line->current_step_position ?? 0);
+	}
+	$day = crmSequenceDay((int) $db->jdate($line->date_enrol), (int) $db->jdate($line->date_send));
+	return $langs->trans('CrmLogWhy', $position > 0 ? (string) $position : '?', (string) $day);
+}
+
+/**
+ * Link to the page that shows the e-mail of a journal line, as an icon.
+ */
+function crmLogViewLink(int $logId): string
+{
+	global $langs;
+	crmLoadLangs();
+	return crmIconLink(dol_buildpath('/crm/sequence_log_view.php', 1).'?id='.$logId, 'fa-eye', $langs->trans('CrmViewEmail'));
+}
+
+/**
  * Version of the database schema this code expects. It is a whole number that grows by one with each schema change, and it
  * is not the version of the module: several releases can share a schema version. Each number has a step in
  * crmSchemaSteps(); the installed number is kept in the constant CRM_SCHEMA_VERSION.
  */
 function crmSchemaCurrent(): int
 {
-	return 1;
+	return 2;
 }
 
 /**
@@ -267,6 +306,7 @@ function crmSchemaSteps(): array
 {
 	return array(
 		1 => array('label' => 'Column send_mode of the sequence steps', 'run' => 'crmSchemaStep1'),
+		2 => array('label' => 'Content of the e-mails of the sequence journal', 'run' => 'crmSchemaStep2'),
 	);
 }
 
@@ -287,6 +327,47 @@ function crmSchemaStep1(DoliDB $db): bool
 		return false;
 	}
 	return true;
+}
+
+/**
+ * Schema version 2: the journal of the sequences keeps the e-mail itself (sender, text with the placeholders replaced, its
+ * format, where the text comes from) and the position of the step that made it, so it can be read again later.
+ */
+function crmSchemaStep2(DoliDB $db): bool
+{
+	$table = $db->prefix().'crm_sequence_log';
+	$columns = array(
+		'from_email' => 'varchar(255) DEFAULT NULL',
+		'body' => 'text',
+		'body_format' => "varchar(8) DEFAULT '' NOT NULL",
+		'step_position' => 'integer DEFAULT NULL',
+		'content_source' => "varchar(16) DEFAULT '' NOT NULL",
+	);
+	foreach ($columns as $name => $definition) {
+		$resql = $db->DDLDescTable($table, $name);
+		if ($resql && $db->fetch_object($resql)) {
+			continue;
+		}
+		if (!$db->query('ALTER TABLE '.$table.' ADD COLUMN '.$name.' '.$definition)) {
+			dol_syslog('CRM: could not add the column '.$name.' to '.$table.': '.$db->lasterror(), LOG_ERR);
+			return false;
+		}
+	}
+	return true;
+}
+
+/**
+ * True when the journal table has its content columns, so a page or the job still works on an installation where the
+ * module has not been re-enabled since they were added.
+ */
+function crmLogContentSupported(DoliDB $db): bool
+{
+	static $supported = null;
+	if ($supported === null) {
+		$resql = $db->DDLDescTable($db->prefix().'crm_sequence_log', 'body');
+		$supported = ($resql && $db->fetch_object($resql)) ? true : false;
+	}
+	return $supported;
 }
 
 /**

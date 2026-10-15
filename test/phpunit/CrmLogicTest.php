@@ -297,4 +297,18 @@ class CrmLogicTest extends TestCase
 		$this->assertSame('network', crmAiNoHttpKind(5, 120));
 		$this->assertSame('network', crmAiNoHttpKind(0, 30));
 	}
+
+	/**
+	 * The day of a sequence counts whole days from the enrolment.
+	 *
+	 * @return void
+	 */
+	public function testSequenceDay()
+	{
+		$this->assertSame(0, crmSequenceDay(1000, 1000));
+		$this->assertSame(0, crmSequenceDay(1000, 1000 + 86399));
+		$this->assertSame(1, crmSequenceDay(1000, 1000 + 86400));
+		$this->assertSame(3, crmSequenceDay(1000, 1000 + 3 * 86400 + 3600));
+		$this->assertSame(0, crmSequenceDay(5000, 1000));
+	}
 }

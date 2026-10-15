@@ -344,3 +344,15 @@ function crmAiNoHttpKind(int $elapsedSeconds, int $limitSeconds): string
 {
 	return ($elapsedSeconds >= $limitSeconds - 1) ? 'timeout' : 'network';
 }
+
+/**
+ * Day of a sequence on which something happened: 0 on the day of the enrolment, 3 three days (72 hours) after it. This is
+ * the number of the delay of a step, counted from the enrolment as crmDueTimestamp() does.
+ */
+function crmSequenceDay(int $enrolTs, int $eventTs): int
+{
+	if ($eventTs <= $enrolTs) {
+		return 0;
+	}
+	return intdiv($eventTs - $enrolTs, 86400);
+}

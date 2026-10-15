@@ -99,6 +99,12 @@ Closing lost requires a loss reason. Closing won asks for one and allows empty. 
 
 Win rate is won / (won + lost) by close date in the period. Cycle time is the mean of (close date − creation) on won deals only.
 
+## Journal of the sequences
+
+`Sequence::runEmailStep()` writes one `llx_crm_sequence_log` line for every e-mail step it runs, whatever the outcome, with the message as built by `buildEmail()` (the same method that makes what is sent): subject and text with the placeholders replaced (the values are escaped in an HTML text), format, recipient, sender (`crmSender()`, or the sender `crmSendMail()` used), the position of the step as a snapshot (the step can be edited or deleted later) and `content_source = 'recorded'`. The day of the sequence is not stored: it is `crmSequenceDay()` of the enrolment date and the date of the line, the same count `crmDueTimestamp()` uses for the delay of a step. `Sequence::fetchLog()` (one sequence) and `fetchLogForOpportunity()` (one deal) share `logSelect()`, which joins the enrolment, the sequence, the deal and the step, so every line says on what ground it exists.
+
+`sequence_log_view.php` shows one line. It refuses a line whose deal owner the user may not read (`crmCanReadOwner()`), and renders an HTML text through `dol_htmlwithnojs()`, a plain text escaped. The journal of a sequence and the History of a deal link to it. A line without content (written before schema 2) is completed by `Sequence::ensureLogContent()` when opened, and saved: a sent line takes the message recorded on the deal (an `AC_EMAIL` event of the same deal, same subject, within ten minutes, source `event`), otherwise the text is rebuilt from the step and the deal as they are now (source `rebuilt`, flagged on the page). A line whose step is gone stays empty. The code works before the schema step has run (`crmLogContentSupported()`): the old columns are written, and the page says the content is not kept yet.
+
 ## Next steps and lists
 
 A planned step can be changed (date, and for a call, meeting or task its kind and title) and deleted from the deal card and by MCP, through `CrmActivity::updateStep()` and `deleteStep()`. Both load the event with `loadStep()`, which refuses an event that is not linked to a deal, whose deal the user may not read (`crmCanReadOwner()`) or that belongs to another deal than the page's; `complete()` goes through it too. A done step is history (the e-mail thread, the stage timeline, the "latest done" used by rotting) and is refused. A planned e-mail keeps its subject and text, which the e-mail editor owns: only its date moves. Delete uses `ActionComm::delete()`, so core hooks and triggers run.
@@ -199,7 +205,7 @@ One file, `sql/llx_crm.sql`. Indexes are inside each `CREATE TABLE`. There is no
 | `llx_crm_sequence` | Label, active, stop flags |
 | `llx_crm_sequence_step` | Position, action, delay days, subject, body (plain text or HTML, recognised by `crmLooksLikeHtml`), send mode |
 | `llx_crm_sequence_enrol` | Deal, current step, next run, status, stop reason |
-| `llx_crm_sequence_log` | Recipient, subject, date, `sent` / `simulated` / `error` |
+| `llx_crm_sequence_log` | One line per e-mail step run: recipient, sender, subject, the text with the placeholders replaced and its format, step position, date, `sent` / `simulated` / `draft` / `error`, and where the text comes from (`recorded` when made, `event` or `rebuilt` for a line completed later) |
 | `llx_crm_reminder_log` | Owner reminder journal |
 
 Opportunity columns: `ref` (`OPP` + year + sequence), `label`, `fk_soc`, `fk_socpeople`, `fk_pipeline`, `fk_stage`, `amount`, `date_close_expected`, `fk_source`, `fk_user_resp`, `description`, `status` (`open` / `won` / `lost`), `date_close`, `fk_loss_reason`, `loss_note`, `datec`, `tms`, `fk_user_creat`. Probability is not a column.
