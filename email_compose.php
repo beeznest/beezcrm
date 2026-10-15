@@ -42,6 +42,13 @@ require_once DOL_DOCUMENT_ROOT.'/core/class/doleditor.class.php';
 crmStartPage();
 
 $action = GETPOST('action', 'aZ09');
+// The buttons are input elements, like Dolibarr's own (the theme styles input.button and not <button>): their value is their
+// label, so each one has its own name, act_<action>, and only the one that was clicked is posted.
+foreach (array('aisuggest', 'save', 'send', 'sentmanually', 'discard') as $buttonAction) {
+	if (GETPOSTISSET('act_'.$buttonAction)) {
+		$action = $buttonAction;
+	}
+}
 $draft = new CrmEmailDraft($db);
 if ($draft->fetch(GETPOSTINT('id')) <= 0 || !crmCanReadOwner($user, (int) $draft->deal->fk_user_resp)) {
 	accessforbidden();
@@ -215,8 +222,8 @@ if ($aiAvailable) {
 	print $langs->trans(getDolGlobalInt('AI_PRIVACY_REDACTION', 0) ? 'CrmAiMasked' : 'CrmAiNotMasked').'</p>';
 	print crmHelp($langs->trans('CrmAiIntro', dol_escape_htmltag(CrmAiReply::serviceLabel())));
 	print '<textarea class="quatrevingtpercent" id="crm-ai-prompt" name="aiprompt" rows="6">'.dol_escape_htmltag($aiPrompt, 0, 1).'</textarea><br>';
-	print '<button type="submit" class="button" name="action" value="aisuggest">'.$langs->trans('CrmAiSuggest').'</button> ';
-	print '<button type="button" class="button" id="crm-ai-restore">'.$langs->trans('CrmAiRestorePrompt').'</button>';
+	print '<input type="submit" class="button" name="act_aisuggest" value="'.dol_escape_htmltag($langs->trans('CrmAiSuggest')).'"> ';
+	print '<input type="button" class="button" id="crm-ai-restore" value="'.dol_escape_htmltag($langs->trans('CrmAiRestorePrompt')).'">';
 	print crmHelp($langs->trans('CrmAiHelp'), 'span', true);
 	print '</td></tr>';
 }
@@ -227,12 +234,12 @@ print '</table>';
 
 if ($canAct) {
 	print '<div class="center marginbottomonly">';
-	print '<button type="submit" class="button" name="action" value="save">'.$langs->trans('CrmSaveDraft').'</button> ';
-	print '<button type="submit" class="button" name="action" value="send" data-with-sender="1" data-confirm="'.dol_escape_htmltag($langs->trans('CrmConfirmSend')).'">'.$langs->trans('CrmSendFromHere').'</button> ';
-	print '<button type="button" class="button" id="crm-mailto">'.$langs->trans('CrmOpenMailClient').'</button> ';
-	print '<button type="button" class="button" id="crm-copy">'.$langs->trans('CrmCopyText').'</button> ';
-	print '<button type="submit" class="button" name="action" value="sentmanually" data-confirm="'.dol_escape_htmltag($langs->trans('CrmConfirmSentManually')).'">'.$langs->trans('CrmSentManually').'</button> ';
-	print '<button type="submit" class="button butActionDelete" name="action" value="discard" data-confirm="'.dol_escape_htmltag($langs->trans('CrmConfirmDiscard')).'">'.$langs->trans('CrmDiscardDraft').'</button>';
+	print '<input type="submit" class="button" name="act_save" value="'.dol_escape_htmltag($langs->trans('CrmSaveDraft')).'"> ';
+	print '<input type="submit" class="button" name="act_send" value="'.dol_escape_htmltag($langs->trans('CrmSendFromHere')).'" data-with-sender="1" data-confirm="'.dol_escape_htmltag($langs->trans('CrmConfirmSend')).'"> ';
+	print '<input type="button" class="button" id="crm-mailto" value="'.dol_escape_htmltag($langs->trans('CrmOpenMailClient')).'"> ';
+	print '<input type="button" class="button" id="crm-copy" value="'.dol_escape_htmltag($langs->trans('CrmCopyText')).'"> ';
+	print '<input type="submit" class="button" name="act_sentmanually" value="'.dol_escape_htmltag($langs->trans('CrmSentManually')).'" data-confirm="'.dol_escape_htmltag($langs->trans('CrmConfirmSentManually')).'"> ';
+	print '<input type="submit" class="button butActionDelete" name="act_discard" value="'.dol_escape_htmltag($langs->trans('CrmDiscardDraft')).'" data-confirm="'.dol_escape_htmltag($langs->trans('CrmConfirmDiscard')).'">';
 	print '</div>';
 	$helpItems = '';
 	foreach (array('CrmHelpSave', 'CrmHelpSend', 'CrmHelpMailClient', 'CrmHelpSentManually', 'CrmHelpDiscard') as $key) {
@@ -314,7 +321,7 @@ $js = <<<'JS'
 	});
 
 	form.addEventListener("click", function (event) {
-		var button = event.target.closest("button[data-confirm]");
+		var button = event.target.closest("input[data-confirm]");
 		if (!button) { return; }
 		var message = button.getAttribute("data-confirm");
 		var senderSelect = document.getElementById("crm-sender");
@@ -332,8 +339,8 @@ $js = <<<'JS'
 		var e = editor();
 		if (e) { e.updateElement(); }
 		var button = event.submitter;
-		if (button && button.value === "aisuggest") {
-			window.setTimeout(function () { button.textContent = cfg.aiWaiting; }, 0);
+		if (button && button.name === "act_aisuggest") {
+			window.setTimeout(function () { button.value = cfg.aiWaiting; }, 0);
 		}
 	});
 

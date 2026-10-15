@@ -293,7 +293,7 @@ if ($user->hasRight('crm', 'sequence')) {
 	print '<div>';
 	print '<input type="submit" class="button" value="'.$langs->trans($isEdit ? 'CrmUpdateStep' : 'CrmAddStep').'"> ';
 	// Disabled from the start: the script enables it when the kind is e-mail and the subject is filled.
-	print '<button type="button" class="button" id="crm-ai-step" disabled'.($aiStepAvailable ? ' title="'.dol_escape_htmltag($langs->trans('CrmAiStepNeedSubject')).'"' : ' title="'.dol_escape_htmltag($langs->trans('CrmAiStepOff')).'"').'>'.$langs->trans('CrmAiStepSuggest').'</button> ';
+	print '<input type="button" class="button" id="crm-ai-step" disabled value="'.dol_escape_htmltag($langs->trans('CrmAiStepSuggest')).'"'.($aiStepAvailable ? ' title="'.dol_escape_htmltag($langs->trans('CrmAiStepNeedSubject')).'"' : ' title="'.dol_escape_htmltag($langs->trans('CrmAiStepOff')).'"').'> ';
 	print '<span id="crm-ai-step-msg" class="opacitymedium"></span>';
 	if ($aiStepAvailable) {
 		print crmHelp($langs->trans('CrmAiStepHelp'), 'span', true);

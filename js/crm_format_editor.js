@@ -114,7 +114,7 @@
 				var filled = subject && subject.value.trim() !== "";
 				aiButton.disabled = busy || !(isEmail && filled);
 				aiButton.title = !isEmail ? ai.needEmail : (!filled ? ai.needSubject : "");
-				if (!busy) { aiButton.textContent = hasText() ? ai.improve : ai.suggest; }
+				if (!busy) { aiButton.value = hasText() ? ai.improve : ai.suggest; }
 			};
 			if (ai.enabled) {
 				["input", "keyup", "change"].forEach(function (name) {
@@ -134,7 +134,7 @@
 					if (aiButton.disabled) { return; }
 					busy = true;
 					aiButton.disabled = true;
-					aiButton.textContent = ai.waiting;
+					aiButton.value = ai.waiting;
 					aiMessage.textContent = "";
 					var existing = hasText() ? (format === "html" ? getHtml() : plain.value) : "";
 					var body = new URLSearchParams({ token: cfg.token, action: "aitemplate", id: cfg.id, subject: subject.value, format: format, existing: existing });
