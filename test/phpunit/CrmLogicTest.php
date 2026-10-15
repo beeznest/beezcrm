@@ -311,4 +311,23 @@ class CrmLogicTest extends TestCase
 		$this->assertSame(3, crmSequenceDay(1000, 1000 + 3 * 86400 + 3600));
 		$this->assertSame(0, crmSequenceDay(5000, 1000));
 	}
+
+	/**
+	 * The archive mailbox and the sender's own copy: who is in Cc and Bcc, without duplicates.
+	 *
+	 * @return void
+	 */
+	public function testCopyRecipients()
+	{
+		$this->assertSame(array('cc' => '', 'bcc' => 'crm@example.com'), crmCopyRecipients('crm@example.com', 'bcc', '', true));
+		$this->assertSame(array('cc' => 'crm@example.com', 'bcc' => ''), crmCopyRecipients('crm@example.com', 'cc', '', true));
+		$this->assertSame(array('cc' => '', 'bcc' => 'crm@example.com,me@example.com'), crmCopyRecipients('crm@example.com', 'bcc', 'me@example.com', true));
+		$this->assertSame(array('cc' => 'crm@example.com', 'bcc' => 'me@example.com'), crmCopyRecipients('crm@example.com', 'cc', 'me@example.com', true));
+		$this->assertSame(array('cc' => '', 'bcc' => 'me@example.com'), crmCopyRecipients('crm@example.com', 'bcc', 'me@example.com', false));
+		$this->assertSame(array('cc' => '', 'bcc' => 'me@example.com'), crmCopyRecipients('', 'bcc', 'me@example.com', true));
+		$this->assertSame(array('cc' => '', 'bcc' => 'crm@example.com'), crmCopyRecipients('crm@example.com', 'bcc', 'CRM@example.com', true));
+		$this->assertSame(array('cc' => '', 'bcc' => ''), crmCopyRecipients('', 'bcc', 'not an address', true));
+		$this->assertSame(array('cc' => '', 'bcc' => 'a@example.com, me@example.com'), crmCopyRecipients('a@example.com, me@example.com', 'bcc', 'ME@example.com', true));
+		$this->assertSame(array('cc' => '', 'bcc' => 'crm@example.com'), crmCopyRecipients('crm@example.com', 'bcc', 'x; Bcc: evil@example.com', true));
+	}
 }

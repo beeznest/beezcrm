@@ -112,10 +112,12 @@ class CrmEmailDraft
 	/**
 	 * Send the message through Dolibarr, record it on the deal, remove the draft.
 	 *
-	 * @param bool $html True when the text is HTML: it is sent with a plain-text alternative
+	 * @param bool   $html True when the text is HTML: it is sent with a plain-text alternative
+	 * @param string $from Sender address chosen among crmSenderChoices(), empty for the sender of the module
+	 * @param string $copyToMe Address of the user who sends, for a hidden copy to themselves; empty for none
 	 * @return int 1 if OK, -1 on error. When the mail left but could not be recorded, error says so.
 	 */
-	public function send(User $user, string $to, string $subject, string $body, bool $html = false): int
+	public function send(User $user, string $to, string $subject, string $body, bool $html = false, string $from = '', string $copyToMe = ''): int
 	{
 		if (!$this->event || !$this->deal) {
 			return -1;
@@ -130,7 +132,7 @@ class CrmEmailDraft
 			$this->error = 'CrmErrorSubjectRequired';
 			return -1;
 		}
-		$result = crmSendMail($to, $subject, $body, (int) $this->deal->rowid, $html);
+		$result = crmSendMail($to, $subject, $body, (int) $this->deal->rowid, $html, $from, $copyToMe);
 		if (!$result['ok']) {
 			$this->error = $result['error'] !== '' ? $result['error'] : 'CrmErrorSendFailed';
 			return -1;
@@ -146,9 +148,10 @@ class CrmEmailDraft
 	 * The person sent the message from a mail client. Record it as done now, without a Message-ID: when the
 	 * collector reads the copy, CrmMailArchive replaces this event with the real message.
 	 *
+	 * @param string $from Address the person sent it from, empty for the sender of the module
 	 * @return int 1 if OK, -1 on error
 	 */
-	public function markSentManually(User $user, string $to, string $subject, string $body): int
+	public function markSentManually(User $user, string $to, string $subject, string $body, string $from = ''): int
 	{
 		if (!$this->event || !$this->deal) {
 			return -1;
@@ -160,7 +163,7 @@ class CrmEmailDraft
 		}
 		return $this->replaceWithDone($user, 'out', $subject, $body, array(
 			'msgid' => '',
-			'from' => crmSender(),
+			'from' => ($from !== '' && isValidEmail($from)) ? $from : crmSender(),
 			'to' => trim($to),
 		), 'CrmErrorSentNotRecorded');
 	}

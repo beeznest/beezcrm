@@ -99,6 +99,12 @@ Closing lost requires a loss reason. Closing won asks for one and allows empty. 
 
 Win rate is won / (won + lost) by close date in the period. Cycle time is the mean of (close date − creation) on won deals only.
 
+## Sender of the e-mails written in the editor
+
+`crmSenderChoices()` builds the choice list: `default` (`crmSender()`), `user` (the e-mail of the user) and `lead<id>` (`crmLeadCollectorMailboxes()`: active `emailcollector_emailcollector` rows with an active action of type `project`, or the reference `Collect_Leads`, whose `login` is an address). `email_compose.php` posts the code `sender`; `crmSenderChoiceFor()` takes the posted code, else the remembered one (`CRM_MAIL_FROM_CHOICE`, saved with `dol_set_user_param()` after a send or a manual registration), else the default; an unknown code is ignored. The address goes through `CrmEmailDraft::send()` and `crmSendMail()`, which refuses anything that is not an address, and is recorded as the sender of the event. The module reads the collector's setup but writes none of it and talks to no mailbox.
+
+A hidden copy to the sender (`bccme`, ticked on the first display, kept as posted afterwards, offered only when the user's e-mail is valid) goes to `crmSendMail()` as `$copyToMe`. `crmCopyRecipients()` decides, in one place, who is in Cc and Bcc: the archive mailbox for a message about a deal (Cc or Bcc by `CRM_ARCHIVE_COPY`, as the administrator wrote it) and the sender's own address always as Bcc, once when it is the same address.
+
 ## Journal of the sequences
 
 `Sequence::runEmailStep()` writes one `llx_crm_sequence_log` line for every e-mail step it runs, whatever the outcome, with the message as built by `buildEmail()` (the same method that makes what is sent): subject and text with the placeholders replaced (the values are escaped in an HTML text), format, recipient, sender (`crmSender()`, or the sender `crmSendMail()` used), the position of the step as a snapshot (the step can be edited or deleted later) and `content_source = 'recorded'`. The day of the sequence is not stored: it is `crmSequenceDay()` of the enrolment date and the date of the line, the same count `crmDueTimestamp()` uses for the delay of a step. `Sequence::fetchLog()` (one sequence) and `fetchLogForOpportunity()` (one deal) share `logSelect()`, which joins the enrolment, the sequence, the deal and the step, so every line says on what ground it exists.

@@ -356,3 +356,45 @@ function crmSequenceDay(int $enrolTs, int $eventTs): int
 	}
 	return intdiv($eventTs - $enrolTs, 86400);
 }
+
+/**
+ * Who gets a copy of a message sent from the CRM. The archive mailbox gets one for a message about a deal, as Cc or Bcc
+ * by the setting; the sender may ask for a hidden copy to their own address, always as Bcc. An address that would get
+ * two copies, the sender's own being the archive mailbox for instance, gets one. The archive setting is used as the
+ * administrator wrote it (it may list several addresses); the address of the sender must be a valid one, or no copy is made.
+ *
+ * @param string $archive      Archive mailbox, empty for none
+ * @param string $archiveCopy  'cc' to show the archive mailbox, anything else for a hidden copy
+ * @param string $mine         Address of the sender for a hidden copy to themselves, empty for none
+ * @param bool   $aboutDeal    True when the message belongs to a deal (only then is the archive mailbox copied)
+ * @return array{cc:string,bcc:string} Comma separated addresses
+ */
+function crmCopyRecipients(string $archive, string $archiveCopy, string $mine, bool $aboutDeal): array
+{
+	$cc = array();
+	$bcc = array();
+	$archive = trim($archive);
+	if ($aboutDeal && $archive !== '') {
+		if ($archiveCopy === 'cc') {
+			$cc[] = $archive;
+		} else {
+			$bcc[] = $archive;
+		}
+	}
+	$mine = trim($mine);
+	if ($mine !== '' && filter_var($mine, FILTER_VALIDATE_EMAIL)) {
+		$already = false;
+		foreach (array_merge($cc, $bcc) as $listed) {
+			foreach (preg_split('/[\s,;]+/', $listed) ?: array() as $address) {
+				if (strtolower(trim($address, '<>')) === strtolower($mine)) {
+					$already = true;
+				}
+			}
+		}
+		if (!$already) {
+			$bcc[] = $mine;
+		}
+	}
+	return array('cc' => implode(',', $cc), 'bcc' => implode(',', $bcc));
+}
+

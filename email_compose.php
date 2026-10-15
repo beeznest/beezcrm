@@ -51,6 +51,18 @@ $dealUrl = dol_buildpath('/crm/opportunity_card.php', 1).'?id='.$dealId;
 $self = $_SERVER['PHP_SELF'].'?id='.((int) $draft->event->id);
 $canAct = $user->hasRight('crm', 'activity');
 
+// The sender is one of the addresses crmSenderChoices() offers: the code posted by the form is looked up there, never used
+// as an address. Without a choice posted, the one this user took last, else the default of the module.
+$senderChoices = crmSenderChoices($db, $user);
+$senderCode = crmSenderChoiceFor($senderChoices, GETPOST('sender', 'aZ09'), (string) ($user->conf->CRM_MAIL_FROM_CHOICE ?? ''));
+$senderAddress = isset($senderChoices[$senderCode]) ? $senderChoices[$senderCode]['address'] : '';
+
+// A hidden copy to the address of the user who sends, ticked by default. A posted form carries the box only when it is
+// ticked, so "posted" is told by another field of the form.
+$myAddress = trim((string) $user->email);
+$canCopyMe = ($myAddress !== '' && isValidEmail($myAddress));
+$copyMe = $canCopyMe && (GETPOSTISSET('format') ? GETPOSTINT('bccme') === 1 : true);
+
 $to = GETPOSTISSET('to') ? trim(GETPOST('to', 'nohtml')) : $draft->contactEmail();
 $subject = GETPOSTISSET('subject') ? GETPOST('subject', 'nohtml') : $draft->subject();
 
@@ -102,10 +114,10 @@ if ($action !== '' && $action !== 'view') {
 		$result = $draft->save($user, $subject, $content);
 		$done = 'RecordSaved';
 	} elseif ($action === 'send') {
-		$result = $draft->send($user, $to, $subject, $content, $format === 'html');
+		$result = $draft->send($user, $to, $subject, $content, $format === 'html', $senderAddress, $copyMe ? $myAddress : '');
 		$done = 'CrmEmailSentOk';
 	} elseif ($action === 'sentmanually') {
-		$result = $draft->markSentManually($user, $to, $subject, $content);
+		$result = $draft->markSentManually($user, $to, $subject, $content, $senderAddress);
 		$done = 'CrmEmailSentManuallyOk';
 	} elseif ($action === 'discard') {
 		$result = $draft->discard($user);
@@ -114,6 +126,10 @@ if ($action !== '' && $action !== 'view') {
 		accessforbidden();
 	}
 	if ($result > 0) {
+		// The sender used is remembered for this user: the next e-mail starts from it.
+		if (($action === 'send' || $action === 'sentmanually') && $senderCode !== '' && ($user->conf->CRM_MAIL_FROM_CHOICE ?? '') !== $senderCode) {
+			dol_set_user_param($db, $conf, $user, array('CRM_MAIL_FROM_CHOICE' => $senderCode));
+		}
 		setEventMessages($langs->trans($done), null);
 		header('Location: '.($action === 'save' ? $self : $dealUrl));
 		exit;
@@ -138,16 +154,46 @@ print '<input type="hidden" name="token" value="'.newToken().'">';
 print '<input type="hidden" name="id" value="'.((int) $draft->event->id).'">';
 $readonly = $canAct ? '' : ' readonly';
 print '<table class="border centpercent">';
-// The address "Send from here" would use, shown as text (not a field) so that nobody takes it for something to fill in.
-$sender = crmSender();
+// The address "Send from here" sends from: the default of the module, the user's own address or the mailbox of a lead
+// collector, to choose among. With a single address it is shown as text.
 print '<tr><td class="titlefield">'.$langs->trans('CrmSender').'</td><td>';
-if ($sender !== '') {
-	print '<strong>'.dol_escape_htmltag($sender).'</strong> <span class="opacitymedium">('.$langs->trans('CrmSenderSource'.ucfirst(crmSenderSource())).')</span>';
-} else {
+if (count($senderChoices) === 0) {
 	print '<div class="warning">'.$langs->trans('CrmNoSender').'</div>';
+} else {
+	$senderLabel = function (string $code) use ($senderChoices, $langs): string {
+		$choice = $senderChoices[$code];
+		if ($choice['kind'] === 'user') {
+			return $langs->transnoentities('CrmSenderOptionUser', $choice['address']);
+		}
+		if ($choice['kind'] === 'lead') {
+			return $langs->transnoentities('CrmSenderOptionLead', $choice['address'], $choice['ref']);
+		}
+		$source = crmSenderSource();
+		return $langs->transnoentities('CrmSenderOptionDefault', $choice['address'], $source !== '' ? $langs->transnoentities('CrmSenderSource'.ucfirst($source)) : '');
+	};
+	if (count($senderChoices) === 1) {
+		print '<strong>'.dol_escape_htmltag($senderLabel($senderCode)).'</strong>';
+		print '<input type="hidden" name="sender" value="'.dol_escape_htmltag($senderCode).'">';
+	} else {
+		print '<select name="sender" id="crm-sender"'.($canAct ? '' : ' disabled').'>';
+		foreach ($senderChoices as $code => $choice) {
+			print '<option value="'.dol_escape_htmltag((string) $code).'"'.($code === $senderCode ? ' selected' : '').'>'.dol_escape_htmltag($senderLabel((string) $code)).'</option>';
+		}
+		print '</select>';
+	}
+}
+if (!isset($senderChoices['user']) && !isValidEmail(trim((string) $user->email)) && count($senderChoices) > 0) {
+	print ' <span class="opacitymedium">'.$langs->trans('CrmSenderNoUserEmail').'</span>';
 }
 print crmHelp($langs->trans('CrmSenderHelp'), 'span', true).'</td></tr>';
 print '<tr><td>'.$langs->trans('CrmRecipient').'</td><td><input class="minwidth300" id="crm-to" name="to" value="'.dol_escape_htmltag($to).'"'.$readonly.'></td></tr>';
+print '<tr><td>'.$langs->trans('CrmCopyToMe').'</td><td>';
+if ($canCopyMe) {
+	print '<label><input type="checkbox" id="crm-bccme" name="bccme" value="1"'.($copyMe ? ' checked' : '').($canAct ? '' : ' disabled').' data-label="'.dol_escape_htmltag($langs->transnoentities('CrmCopyToMeSend', $myAddress)).'"> '.$langs->trans('CrmCopyToMeLabel', dol_escape_htmltag($myAddress)).'</label>';
+} else {
+	print '<span class="opacitymedium">'.$langs->trans('CrmCopyToMeNoEmail').'</span>';
+}
+print '</td></tr>';
 print '<tr><td>'.$langs->trans('CrmSubject').'</td><td><input class="quatrevingtpercent" id="crm-subject" name="subject" value="'.dol_escape_htmltag($subject).'"'.$readonly.'></td></tr>';
 print '<tr><td>'.$langs->trans('CrmFormat').'</td><td>';
 print '<label><input type="radio" name="format" value="html"'.($format === 'html' ? ' checked' : '').($canAct ? '' : ' disabled').'> '.$langs->trans('CrmFormatHtml').'</label> &nbsp; ';
@@ -182,7 +228,7 @@ print '</table>';
 if ($canAct) {
 	print '<div class="center marginbottomonly">';
 	print '<button type="submit" class="button" name="action" value="save">'.$langs->trans('CrmSaveDraft').'</button> ';
-	print '<button type="submit" class="button" name="action" value="send" data-confirm="'.dol_escape_htmltag($langs->trans('CrmConfirmSend')).'">'.$langs->trans('CrmSendFromHere').'</button> ';
+	print '<button type="submit" class="button" name="action" value="send" data-with-sender="1" data-confirm="'.dol_escape_htmltag($langs->trans('CrmConfirmSend')).'">'.$langs->trans('CrmSendFromHere').'</button> ';
 	print '<button type="button" class="button" id="crm-mailto">'.$langs->trans('CrmOpenMailClient').'</button> ';
 	print '<button type="button" class="button" id="crm-copy">'.$langs->trans('CrmCopyText').'</button> ';
 	print '<button type="submit" class="button" name="action" value="sentmanually" data-confirm="'.dol_escape_htmltag($langs->trans('CrmConfirmSentManually')).'">'.$langs->trans('CrmSentManually').'</button> ';
@@ -269,7 +315,18 @@ $js = <<<'JS'
 
 	form.addEventListener("click", function (event) {
 		var button = event.target.closest("button[data-confirm]");
-		if (button && !window.confirm(button.getAttribute("data-confirm"))) { event.preventDefault(); }
+		if (!button) { return; }
+		var message = button.getAttribute("data-confirm");
+		var senderSelect = document.getElementById("crm-sender");
+		// A send names the address it is sent from, as chosen in the list.
+		if (button.hasAttribute("data-with-sender") && senderSelect && senderSelect.selectedIndex >= 0) {
+			message += "\n\n" + senderSelect.options[senderSelect.selectedIndex].text;
+		}
+		var copyBox = document.getElementById("crm-bccme");
+		if (button.hasAttribute("data-with-sender") && copyBox && copyBox.checked) {
+			message += "\n" + copyBox.getAttribute("data-label");
+		}
+		if (!window.confirm(message)) { event.preventDefault(); }
 	});
 	form.addEventListener("submit", function (event) {
 		var e = editor();

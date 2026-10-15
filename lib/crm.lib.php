@@ -222,6 +222,81 @@ function crmSender(): string
 }
 
 /**
+ * The mailboxes of the e-mail collector module that collect leads: active collectors that have the operation "create a
+ * lead" (type project) or the reference of the example Collect_Leads, whose login is an e-mail address. The login of a
+ * collector is the mailbox it reads, so it is an address that e-mail can be sent from.
+ *
+ * @return array<int,array{id:int,ref:string,address:string}>
+ */
+function crmLeadCollectorMailboxes(DoliDB $db): array
+{
+	if (!isModEnabled('emailcollector')) {
+		return array();
+	}
+	$prefix = $db->prefix();
+	$sql = 'SELECT c.rowid, c.ref, c.login FROM '.$prefix.'emailcollector_emailcollector as c';
+	$sql .= ' WHERE c.entity IN ('.getEntity('emailcollector').') AND c.status = 1';
+	$sql .= " AND (c.ref = 'Collect_Leads' OR EXISTS (SELECT 1 FROM ".$prefix."emailcollector_emailcollectoraction as a";
+	$sql .= " WHERE a.fk_emailcollector = c.rowid AND a.type = 'project' AND a.status = 1))";
+	$sql .= ' ORDER BY c.rowid ASC';
+	$list = array();
+	$resql = $db->query($sql);
+	if ($resql) {
+		while ($obj = $db->fetch_object($resql)) {
+			$address = trim((string) $obj->login);
+			if ($address !== '' && isValidEmail($address)) {
+				$list[] = array('id' => (int) $obj->rowid, 'ref' => (string) $obj->ref, 'address' => $address);
+			}
+		}
+	}
+	return $list;
+}
+
+/**
+ * The addresses a salesperson may send a message from, by choice code: "default" (the sender of the module, see
+ * crmSender()), "user" (the e-mail of the user) and "lead<id>" (the mailbox of a lead collector). An address that appears
+ * twice is listed once, under the first choice; an empty or invalid one is left out. Nothing else can be chosen: a
+ * posted code is looked up here, never taken as an address.
+ *
+ * @return array<string,array{address:string,kind:string,ref:string}>
+ */
+function crmSenderChoices(DoliDB $db, User $user): array
+{
+	$candidates = array('default' => array(crmSender(), 'default', ''));
+	$candidates['user'] = array(trim((string) $user->email), 'user', '');
+	foreach (crmLeadCollectorMailboxes($db) as $mailbox) {
+		$candidates['lead'.$mailbox['id']] = array($mailbox['address'], 'lead', $mailbox['ref']);
+	}
+	$choices = array();
+	$seen = array();
+	foreach ($candidates as $code => $candidate) {
+		$address = $candidate[0];
+		if ($address === '' || !isValidEmail($address) || isset($seen[strtolower($address)])) {
+			continue;
+		}
+		$seen[strtolower($address)] = true;
+		$choices[$code] = array('address' => $address, 'kind' => $candidate[1], 'ref' => $candidate[2]);
+	}
+	return $choices;
+}
+
+/**
+ * The choice to preselect: the one the user took last (kept in their own settings) when it is still offered, else the
+ * default one, else the first available.
+ *
+ * @param array<string,array{address:string,kind:string,ref:string}> $choices
+ */
+function crmSenderChoiceFor(array $choices, string $requested, string $remembered): string
+{
+	foreach (array($requested, $remembered, 'default') as $code) {
+		if ($code !== '' && isset($choices[$code])) {
+			return $code;
+		}
+	}
+	return (string) (array_key_first($choices) ?? '');
+}
+
+/**
  * True when a sequence e-mail step is turned into a draft for the salesperson instead of being sent by the cron.
  * Anything other than "send" means draft, so a missing or mistyped value never sends mail by itself.
  */
@@ -462,26 +537,27 @@ function crmStepModeSupported(DoliDB $db): bool
  * @param int  $dealId Deal the message belongs to, 0 for none
  * @param bool $html   True when $body is HTML. It is then sent as multipart/alternative: the HTML and a plain-text
  *                     version made from it, so a client that shows no HTML still reads the message
+ * @param string $from Sender address, empty for the sender of the module (crmSender())
+ * @param string $copyToMe Address that gets a hidden copy (Bcc) of this message, in addition to the archive mailbox; empty for none
  * @return array{ok:bool,error:string,msgid:string,from:string}
  */
-function crmSendMail(string $to, string $subject, string $body, int $dealId = 0, bool $html = false): array
+function crmSendMail(string $to, string $subject, string $body, int $dealId = 0, bool $html = false, string $from = '', string $copyToMe = ''): array
 {
 	global $conf;
 	require_once DOL_DOCUMENT_ROOT.'/core/class/CMailFile.class.php';
-	$from = crmSender();
+	// A sender is chosen by the caller among the addresses crmSenderChoices() offers; without one, or with one that is not an
+	// address, the sender of the module is used.
+	$from = trim($from);
+	if ($from === '' || !isValidEmail($from)) {
+		$from = crmSender();
+	}
 	if ($from === '' || $to === '') {
 		return array('ok' => false, 'error' => 'Missing sender or recipient', 'msgid' => '', 'from' => $from);
 	}
-	$cc = '';
-	$bcc = '';
-	$archive = trim(getDolGlobalString('CRM_ARCHIVE_MAILBOX'));
-	if ($dealId > 0 && $archive !== '') {
-		if (getDolGlobalString('CRM_ARCHIVE_COPY') === 'cc') {
-			$cc = $archive;
-		} else {
-			$bcc = $archive;
-		}
-	}
+	// The archive mailbox (for a message about a deal) and, on request, a hidden copy for the sender.
+	$copies = crmCopyRecipients(getDolGlobalString('CRM_ARCHIVE_MAILBOX'), getDolGlobalString('CRM_ARCHIVE_COPY'), $copyToMe, $dealId > 0);
+	$cc = $copies['cc'];
+	$bcc = $copies['bcc'];
 	$trackId = ($dealId > 0) ? crmTrackId($dealId) : '';
 	if ($html) {
 		$body = crmHtmlForMail($body);

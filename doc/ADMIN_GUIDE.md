@@ -124,7 +124,7 @@ The settings that are only on or off are **on/off switches** (the same switches 
 | Default rotting days for a new stage | `CRM_ROTTING_DAYS` (15) | The value offered in the "rotting days" field when you add a stage (Stages tab). A deal is **rotting** when it is open and its latest completed activity (or its creation, when none) is older than the stage's rotting days. It is a warning on the board and on Home, never an automatic move. A stage with 0 never rots |
 | Forecast window (months) | `CRM_FORECAST_MONTHS` (3) | How many months ahead the forecast on Home and in Reports covers |
 | Maximum e-mails per cron run | `CRM_MAX_EMAILS_PER_RUN` (50) | Stops one run of the sequence job after this many sent or simulated e-mails; the rest wait for the next run. Drafts do not count |
-| Sender address | `CRM_MAIL_FROM` (empty) | Sender of the customer e-mails and of the reminders. Empty: the Dolibarr sender (`MAIN_MAIL_EMAIL_FROM`), then the company e-mail. The e-mail editor shows the address chosen and which of the three it comes from, and warns when none is set |
+| Sender address | `CRM_MAIL_FROM` (empty) | Sender of the customer e-mails and of the reminders. Empty: the Dolibarr sender (`MAIN_MAIL_EMAIL_FROM`), then the company e-mail. The e-mail editor offers it as the default of a list of senders and warns when none is set |
 | Customer sequences enabled | `CRM_SEQUENCES_ON` (0) | Master switch of the sequence job. While 0 no step is run, draft or send |
 | Sequence e-mail steps | `CRM_SEQUENCE_EMAIL_MODE` (`draft`) | A drop-down: **Draft for the salesperson** (default) or **Send automatically**. See [Sequences](#sequences) |
 | Sequence dry-run | `CRM_DRY_RUN` (1) | In send mode, journal only: nothing is sent and nothing is copied to the archive. Not used in draft mode |
@@ -220,6 +220,20 @@ Two parts of the module can send mail: the **reminders** (to the deal owner) and
 Customer e-mails go to the **contact** of the deal, never to the company address. A deal with no contact address gets no automatic e-mail.
 
 Dry-run keeps the first runs harmless: with dry-run on, a run only writes the journal (reminders: `llx_crm_reminder_log`; sequences: the sequence's journal) and nothing is sent. Check the journal, then switch dry-run off.
+
+## Sender of the e-mails written in the editor
+
+In `email_compose.php` the salesperson picks the address "Send from here" sends from, among at most three:
+
+1. the **default** sender of the CRM (the setting "Sender address", else the sender of the Dolibarr e-mail setup, else the company e-mail, see the Parameters tab);
+2. the **e-mail of the user**, from their profile (offered only when it is a valid address);
+3. the **mailbox of the lead e-mail collector**: the login of each active collector of the E-mail collector module that has the operation "Create a project/lead" (or the reference of the example `Collect_Leads`), when that login is an e-mail address. A collector whose login is not an address (a user name) is not offered.
+
+An address offered twice is listed once. Nothing else can be chosen: the form sends a code, and the server looks it up in this list, so no other address can be forced through the form. The choice applies to that message (the recorded e-mail names it as sender) and is kept in the user's own settings (`CRM_MAIL_FROM_CHOICE`, in `llx_user_param`) as the preselection of the next e-mail. The sequences and the owner reminders always use the default sender.
+
+**Copy to the sender.** The editor has a box "Send me a hidden copy (Bcc)", ticked by default (it is shown only when the user has a valid e-mail address in their profile). Ticked, "Send from here" adds that address as a Bcc, next to the archive mailbox (`CRM_ARCHIVE_MAILBOX`, as Cc or Bcc by `CRM_ARCHIVE_COPY`); an address that would get two copies gets one. The copy is not recorded anywhere else: the event on the deal names the real recipient only. Sequences and reminders never copy anyone.
+
+Your mail server decides whether it accepts a sender: sending from a mailbox that the SMTP account may not use is refused, or accepted and marked as spam (SPF, DKIM). Test each address once. A reply goes to the sender's mailbox: sent from the lead mailbox, it is read by the collector (the reply is recorded on the deal when the archive mailbox is that mailbox, see [E-mail history](#e-mail-history)); sent from a personal address, it is only recorded if the salesperson's mailbox is also read by the collector.
 
 ## Sequences
 
