@@ -155,6 +155,63 @@ class CrmAiReply
 	}
 
 	/**
+	 * Call the AI service of Dolibarr with the time limit of the CRM.
+	 *
+	 * Dolibarr stops an outgoing call after 30 seconds (MAIN_USE_RESPONSE_TIMEOUT), which a long e-mail asked of a
+	 * reasoning model can exceed. For this call alone the limit is raised, in memory, to the CRM setting
+	 * CRM_AI_TIMEOUT, never lowered below the one the administrator set for Dolibarr. Nothing is saved.
+	 *
+	 * @param string $text   Instructions
+	 * @param string $format '' or html
+	 * @return string|array<string,mixed> The text, or an array with a 'message' on failure
+	 */
+	private function callAi(string $text, string $format)
+	{
+		require_once DOL_DOCUMENT_ROOT.'/ai/class/ai.class.php';
+		$ai = new Ai($this->db);
+		return $this->runWithTimeLimit(static function () use ($ai, $text, $format) {
+			return $ai->generateContent($text, 'auto', 'textgenerationemail', $format);
+		});
+	}
+
+	/**
+	 * Run a call to the AI service under the CRM time limit, and explain a failure that has no HTTP answer.
+	 *
+	 * @param callable $call The call, returning what Ai::generateContent() returns
+	 * @return mixed What the call returned. A failure without any HTTP code comes back with a message that says how long
+	 *               it took and what it probably is.
+	 */
+	public function runWithTimeLimit(callable $call)
+	{
+		global $conf, $langs;
+		crmLoadLangs();
+		$limit = max(crmAiTimeoutSeconds(getDolGlobalInt('CRM_AI_TIMEOUT', 120)), getDolGlobalInt('MAIN_USE_RESPONSE_TIMEOUT', 30));
+		$previousTimeout = $conf->global->MAIN_USE_RESPONSE_TIMEOUT ?? null;
+		$conf->global->MAIN_USE_RESPONSE_TIMEOUT = (string) $limit;
+		// The page itself must outlive the call: a PHP limit shorter than the call would cut it, whatever the HTTP limit.
+		$phpLimit = (int) ini_get('max_execution_time');
+		if ($phpLimit > 0 && $phpLimit < $limit + 30 && function_exists('set_time_limit')) {
+			@set_time_limit($limit + 30);
+		}
+		$start = microtime(true);
+		try {
+			$answer = $call();
+		} finally {
+			if ($previousTimeout === null) {
+				unset($conf->global->MAIN_USE_RESPONSE_TIMEOUT);
+			} else {
+				$conf->global->MAIN_USE_RESPONSE_TIMEOUT = $previousTimeout;
+			}
+		}
+		$elapsed = (int) round(microtime(true) - $start);
+		if (is_array($answer) && stripos((string) ($answer['message'] ?? ''), 'No http received') !== false) {
+			$key = (crmAiNoHttpKind($elapsed, $limit) === 'timeout') ? 'CrmAiNoHttpTimeout' : 'CrmAiNoHttpNetwork';
+			$answer['message'] = $langs->transnoentitiesnoconv($key, $elapsed, $limit);
+		}
+		return $answer;
+	}
+
+	/**
 	 * Ask the AI service for the next e-mail.
 	 *
 	 * @param int           $dealId    Deal id
@@ -195,9 +252,7 @@ class CrmAiReply
 		if ($generator !== null) {
 			$answer = $generator($text);
 		} else {
-			require_once DOL_DOCUMENT_ROOT.'/ai/class/ai.class.php';
-			$ai = new Ai($this->db);
-			$answer = $ai->generateContent($text, 'auto', 'textgenerationemail', '');
+			$answer = $this->callAi($text, '');
 		}
 		if (is_array($answer)) {
 			$this->error = !empty($answer['message']) ? (string) $answer['message'] : 'CrmErrorAiNoAnswer';
@@ -292,9 +347,7 @@ class CrmAiReply
 		if ($generator !== null) {
 			$answer = $generator($text);
 		} else {
-			require_once DOL_DOCUMENT_ROOT.'/ai/class/ai.class.php';
-			$ai = new Ai($this->db);
-			$answer = $ai->generateContent($text, 'auto', 'textgenerationemail', $html ? 'html' : '');
+			$answer = $this->callAi($text, $html ? 'html' : '');
 		}
 		if (is_array($answer)) {
 			$this->error = !empty($answer['message']) ? (string) $answer['message'] : 'CrmErrorAiNoAnswer';

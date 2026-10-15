@@ -43,6 +43,7 @@ class CrmReportTool extends CrmMcpTool
 		'CRM_REQUIRE_NEXT_STEP',
 		'CRM_AI_EMAIL_ASSIST',
 		'CRM_AI_EMAIL_PROMPT',
+		'CRM_AI_TIMEOUT',
 		'CRM_ARCHIVE_MAILBOX',
 		'CRM_ARCHIVE_COPY',
 	);

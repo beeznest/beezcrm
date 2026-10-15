@@ -339,3 +339,7 @@ CrmSenderSourceMain=sender of the Dolibarr e-mail setup
 CrmSenderSourceCompany=e-mail address of the company
 CrmNoSender=No sender address is set, so "Send from here" fails. Set one in CRM → Setup → Parameters (Sender address) or in Home → Setup → Emails.
 CrmSenderHelp=The address is chosen in this order: the CRM setting "Sender address", the sender of the Dolibarr e-mail setup, then the e-mail address of your company. Your mail server may still replace it.
+CrmAiTimeout=AI time limit (seconds, 10 to 600)
+CrmAiTimeoutHelp=How long the e-mail editor and the step text button wait for the AI service before they give up. Dolibarr stops an outgoing call after 30 seconds (MAIN_USE_RESPONSE_TIMEOUT), which a long e-mail asked of a reasoning model can exceed: this setting raises that limit for the CRM calls only, never below the Dolibarr one. The web server must allow it too (time limits of PHP-FPM, nginx or Apache).
+CrmAiNoHttpTimeout=no answer after %s seconds, the time limit of %s seconds ran out. Raise the setting "AI time limit" in CRM → Setup → Parameters, and check that the web server allows a request that long.
+CrmAiNoHttpNetwork=no HTTP answer after %s seconds, well before the limit of %s seconds, so the connection failed rather than timed out (name not resolved, connection refused or reset, TLS error, proxy or firewall). The exact error is in the Dolibarr log, on the line "getURLContent response array" (the log level must be Info or lower).

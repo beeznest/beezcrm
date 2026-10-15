@@ -446,6 +446,7 @@ function crmEnsureConstants(DoliDB $db): void
 		'CRM_SEQUENCE_EMAIL_MODE' => 'draft',
 		'CRM_AI_EMAIL_ASSIST' => '0',
 		'CRM_AI_EMAIL_PROMPT' => '',
+		'CRM_AI_TIMEOUT' => '120',
 		'CRM_ARCHIVE_MAILBOX' => '',
 		'CRM_ARCHIVE_COPY' => 'bcc',
 		// Read by the theme: without it the top menu icon is overridden by a generic glyph.

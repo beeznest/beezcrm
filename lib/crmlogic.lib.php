@@ -323,3 +323,24 @@ function crmWordCount(string $text): int
 	}
 	return count(preg_split('/\s+/u', $text) ?: array());
 }
+
+/**
+ * Seconds the CRM waits for the AI service before it gives up. The setting is kept between 10 and 600; an empty or
+ * invalid value means 120. Dolibarr's own limit for an outgoing call is 30 seconds, too short for a long e-mail.
+ */
+function crmAiTimeoutSeconds(int $setting): int
+{
+	if ($setting <= 0) {
+		return 120;
+	}
+	return max(10, min(600, $setting));
+}
+
+/**
+ * Why a call to the AI service returned no HTTP code at all: "timeout" when it ran up to the limit, "network" when it
+ * stopped well before (name not resolved, connection refused or reset, TLS error, blocked by a proxy or a firewall).
+ */
+function crmAiNoHttpKind(int $elapsedSeconds, int $limitSeconds): string
+{
+	return ($elapsedSeconds >= $limitSeconds - 1) ? 'timeout' : 'network';
+}

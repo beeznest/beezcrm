@@ -316,6 +316,8 @@ In the e-mail editor of a planned e-mail (Write / send), an **AI assistant** blo
 - The prompt you set as default (`CRM_AI_EMAIL_PROMPT`) should say what you expect: tone, length, what never to promise, signature, language. The built-in one asks for a polite, concise, concrete reply in the language of the prospect's last message that answers every question, invents no price, date or commitment, and proposes a dated next step.
 - Dolibarr's own AI settings still apply on top: a custom pre-prompt for "e-mail text generation" set in the AI module (Custom prompt tab) is added by the AI module to every call.
 
+**Time limit.** Dolibarr stops an outgoing call after **30 seconds** (`MAIN_USE_RESPONSE_TIMEOUT`, and 5 seconds to connect, `MAIN_USE_CONNECT_TIMEOUT`). The test buttons of the AI setup send a short prompt and stay under it, but a full e-mail asked of a reasoning model can take longer, and the call then ends with "API request failed. No http received". The CRM therefore waits for the AI service up to **`CRM_AI_TIMEOUT`** seconds (Parameters tab, "AI time limit", default 120, kept between 10 and 600), for its own calls only: the limit is raised in memory for the duration of the call and put back afterwards, never below the Dolibarr one, and nothing global is changed. The web server must allow a request that long too: PHP-FPM `request_terminate_timeout`, nginx `fastcgi_read_timeout` or `proxy_read_timeout`, Apache `Timeout` or `ProxyTimeout` (the page raises the PHP `max_execution_time` itself when it is lower). When the call still fails without any HTTP answer, the message says how many seconds it took and whether the limit ran out (raise the setting) or the connection failed earlier (name not resolved, refused or reset, TLS, proxy, firewall). For the exact network error, set the Dolibarr log level to Info or lower and read the line `getURLContent response array` in `dolibarr.log`.
+
 **What is sent to the AI service** (and nothing else)
 
 - The prompt as written or edited by the salesperson.
@@ -414,6 +416,7 @@ The 50 tools by the CRM right they need (a user without it does not see the tool
 | `CRM_REMINDER_DRY_RUN` | 1 | Reminders: journal only |
 | `CRM_REQUIRE_NEXT_STEP` | 1 | Refuse a stage change without a future next step |
 | `CRM_AI_EMAIL_ASSIST` | 0 | Show the AI reply suggestion block in the e-mail editor (needs the AI module) |
+| `CRM_AI_TIMEOUT` | 120 | Seconds the CRM waits for the AI service (e-mail editor and step text button), 10 to 600. Dolibarr's own limit is 30 seconds, raised for these calls only |
 | `CRM_AI_EMAIL_PROMPT` | empty | Default AI prompt; empty uses the built-in one |
 | `CRM_ARCHIVE_MAILBOX` | empty | Archive mailbox address; empty means no copy |
 | `CRM_ARCHIVE_COPY` | `bcc` | `bcc` or `cc` |
@@ -438,6 +441,8 @@ The 50 tools by the CRM right they need (a user without it does not see the tool
 | The top menu shows a generic icon | `MAIN_MODULE_CRM_ICON` missing | Set it to `fa-handshake` and reload with a cleared cache |
 | The AI block is missing from the e-mail editor | The AI module is off, `CRM_AI_EMAIL_ASSIST` is 0 (the default), or the user cannot write e-mail steps | Enable the module, set the constant to 1, check the user's rights |
 | "The AI service did not answer" | The AI module has no key, URL or model, or the provider refused the call | Fix it in Home → Setup → AI and test there; the message gives the provider's reason |
+| "The AI service did not answer: no answer after N seconds, the time limit … ran out" | The AI service is slower than `CRM_AI_TIMEOUT`, or the web server cuts the request earlier | Raise "AI time limit" and the web server time limits (see "Time limit" in the AI section) |
+| "… no HTTP answer after N seconds, well before the limit" | The connection failed: name not resolved, refused or reset, TLS error, proxy or firewall | Read `getURLContent response array` in `dolibarr.log` (log level Info or lower) |
 | The MCP tabs are missing | `MAIN_FEATURES_LEVEL` is 0 | Set it to 1, or open `ai/admin/server_mcp.php` directly |
 | An MCP client gets "MCP Server Disabled" | The AI module or `AI_MCP_ENABLED` is off | Enable them |
 | An MCP tool is not listed | The user lacks the right, or the tool is not in the allowed list | Check the user's CRM rights and the tool access control |

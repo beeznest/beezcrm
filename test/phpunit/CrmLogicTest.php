@@ -270,4 +270,31 @@ class CrmLogicTest extends TestCase
 		$this->assertSame(13, crmWordCount($twelve.' thirteen'));
 		$this->assertSame(4, crmWordCount("Rédiger\n l'e-mail  du client"));
 	}
+
+	/**
+	 * The AI time limit is kept between 10 and 600 seconds, and an empty value means 120.
+	 *
+	 * @return void
+	 */
+	public function testAiTimeoutSeconds()
+	{
+		$this->assertSame(120, crmAiTimeoutSeconds(0));
+		$this->assertSame(120, crmAiTimeoutSeconds(-5));
+		$this->assertSame(10, crmAiTimeoutSeconds(3));
+		$this->assertSame(90, crmAiTimeoutSeconds(90));
+		$this->assertSame(600, crmAiTimeoutSeconds(5000));
+	}
+
+	/**
+	 * A call that ran up to the limit timed out; one that stopped early failed on the network.
+	 *
+	 * @return void
+	 */
+	public function testAiNoHttpKind()
+	{
+		$this->assertSame('timeout', crmAiNoHttpKind(120, 120));
+		$this->assertSame('timeout', crmAiNoHttpKind(119, 120));
+		$this->assertSame('network', crmAiNoHttpKind(5, 120));
+		$this->assertSame('network', crmAiNoHttpKind(0, 30));
+	}
 }

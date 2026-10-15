@@ -64,6 +64,7 @@ $constants = array(
 	'CRM_REQUIRE_NEXT_STEP' => 'CrmRequireNextStep',
 	'CRM_AI_EMAIL_ASSIST' => 'CrmAiEmailAssist',
 	'CRM_AI_EMAIL_PROMPT' => 'CrmAiEmailPrompt',
+	'CRM_AI_TIMEOUT' => 'CrmAiTimeout',
 	'CRM_ARCHIVE_MAILBOX' => 'CrmArchiveMailbox',
 	'CRM_ARCHIVE_COPY' => 'CrmArchiveCopy',
 );
@@ -285,6 +286,11 @@ if ($tab === 'parameters') {
 			$copy = (getDolGlobalString($name) === 'cc') ? 'cc' : 'bcc';
 			print '<td><select name="'.$name.'"><option value="bcc"'.($copy === 'bcc' ? ' selected' : '').'>'.$langs->trans('CrmArchiveCopyBcc').'</option>';
 			print '<option value="cc"'.($copy === 'cc' ? ' selected' : '').'>'.$langs->trans('CrmArchiveCopyCc').'</option></select></td></tr>';
+			continue;
+		}
+		if ($name === 'CRM_AI_TIMEOUT') {
+			print '<td><input type="number" min="10" max="600" class="width75" name="'.$name.'" value="'.dol_escape_htmltag(getDolGlobalString($name, '120')).'">';
+			print crmHelp($langs->trans('CrmAiTimeoutHelp'), 'span', true).'</td></tr>';
 			continue;
 		}
 		print '<td><input class="minwidth300" name="'.$name.'" value="'.dol_escape_htmltag(getDolGlobalString($name)).'"></td></tr>';
