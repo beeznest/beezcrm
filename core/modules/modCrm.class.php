@@ -45,7 +45,7 @@ class modCrm extends DolibarrModules
 		$this->descriptionlong = 'ModuleCrmDesc';
 		$this->editor_name = 'CRM';
 		$this->editor_url = '';
-		$this->version = '1.0.0';
+		$this->version = '1.1.0';
 		$this->const_name = 'MAIN_MODULE_'.dol_strtoupper($this->name);
 		$this->picto = 'fa-handshake';
 

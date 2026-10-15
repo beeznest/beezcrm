@@ -27,6 +27,7 @@ function crmDictLabel(string $label): string
 	$map = array(
 		'Commercial pipeline' => 'CrmPipelineCommercial',
 		'New' => 'CrmStageNew',
+		'Replied to outreach' => 'CrmStageReplied',
 		'Qualified' => 'CrmStageQualified',
 		'Proposal sent' => 'CrmStageProposalSent',
 		'Negotiation' => 'CrmStageNegotiation',
@@ -366,7 +367,7 @@ function crmLogViewLink(int $logId): string
  */
 function crmSchemaCurrent(): int
 {
-	return 2;
+	return 3;
 }
 
 /**
@@ -382,6 +383,7 @@ function crmSchemaSteps(): array
 	return array(
 		1 => array('label' => 'Column send_mode of the sequence steps', 'run' => 'crmSchemaStep1'),
 		2 => array('label' => 'Content of the e-mails of the sequence journal', 'run' => 'crmSchemaStep2'),
+		3 => array('label' => 'Stage "Replied to outreach" and the column is_reply of the stages', 'run' => 'crmSchemaStep3'),
 	);
 }
 
@@ -429,6 +431,76 @@ function crmSchemaStep2(DoliDB $db): bool
 		}
 	}
 	return true;
+}
+
+/**
+ * Schema version 3: the column is_reply of llx_crm_stage marks the stage a deal moves to when the prospect replies, and
+ * every pipeline that has no such stage gets one, "Replied to outreach", right after its first open stage. A pipeline of an
+ * installation that is created later gets it from the seed. Safe to run twice: a pipeline that has a reply stage is left alone.
+ */
+function crmSchemaStep3(DoliDB $db): bool
+{
+	global $conf;
+	$table = $db->prefix().'crm_stage';
+	$resql = $db->DDLDescTable($table, 'is_reply');
+	if (!($resql && $db->fetch_object($resql))) {
+		if (!$db->query('ALTER TABLE '.$table." ADD COLUMN is_reply smallint DEFAULT 0 NOT NULL")) {
+			dol_syslog('CRM: could not add the column is_reply to '.$table.': '.$db->lasterror(), LOG_ERR);
+			return false;
+		}
+	}
+	$pipelines = $db->query('SELECT rowid, entity FROM '.$db->prefix().'crm_pipeline');
+	if (!$pipelines) {
+		return false;
+	}
+	while ($pipeline = $db->fetch_object($pipelines)) {
+		crmEnsureReplyStage($db, (int) $pipeline->rowid, (int) $pipeline->entity);
+	}
+	return true;
+}
+
+/**
+ * Give a pipeline its reply stage when it has none: "Replied to outreach", an open stage placed after the first open stage
+ * (between the first and the second open stage when there is room). A pipeline without an open stage is left alone.
+ *
+ * @return int Id of the stage created, 0 when nothing was needed or possible
+ */
+function crmEnsureReplyStage(DoliDB $db, int $pipelineId, int $entity): int
+{
+	$prefix = $db->prefix();
+	$resql = $db->query('SELECT rowid FROM '.$prefix.'crm_stage WHERE fk_pipeline = '.$pipelineId.' AND is_reply = 1');
+	if (!$resql || $db->num_rows($resql) > 0) {
+		return 0;
+	}
+	$open = array();
+	$resql = $db->query('SELECT position FROM '.$prefix.'crm_stage WHERE fk_pipeline = '.$pipelineId.' AND is_won = 0 AND is_lost = 0 ORDER BY position ASC, rowid ASC');
+	while ($resql && ($obj = $db->fetch_object($resql))) {
+		$open[] = (int) $obj->position;
+	}
+	if (count($open) === 0) {
+		return 0;
+	}
+	$position = isset($open[1]) ? intdiv($open[0] + $open[1], 2) : $open[0] + 1;
+	$sql = 'INSERT INTO '.$prefix.'crm_stage (entity, fk_pipeline, label, position, color, probability, rotting_days, forecast_category, is_won, is_lost, active, is_reply) VALUES (';
+	$sql .= $entity.', '.$pipelineId.", 'Replied to outreach', ".$position.", '#20c997', 15, 10, 'pipeline', 0, 0, 1, 1)";
+	if (!$db->query($sql)) {
+		return 0;
+	}
+	return (int) $db->last_insert_id($prefix.'crm_stage');
+}
+
+/**
+ * True when the stage table has its is_reply column, so the code still works on an installation where the module has not
+ * been re-enabled since the column was added.
+ */
+function crmStageReplySupported(DoliDB $db): bool
+{
+	static $supported = null;
+	if ($supported === null) {
+		$resql = $db->DDLDescTable($db->prefix().'crm_stage', 'is_reply');
+		$supported = ($resql && $db->fetch_object($resql)) ? true : false;
+	}
+	return $supported;
 }
 
 /**
@@ -600,6 +672,7 @@ function crmEnsureConstants(DoliDB $db): void
 		'CRM_REMINDERS_ON' => '1',
 		'CRM_REMINDER_DRY_RUN' => '1',
 		'CRM_REQUIRE_NEXT_STEP' => '1',
+		'CRM_REPLY_MOVES_DEAL' => '1',
 		'CRM_SEQUENCE_EMAIL_MODE' => 'draft',
 		'CRM_AI_EMAIL_ASSIST' => '0',
 		'CRM_AI_EMAIL_PROMPT' => '',
@@ -644,6 +717,7 @@ function crmSeedIfEmpty(DoliDB $db): void
 
 	$stages = array(
 		array('New', 0, '#6c757d', 10, 10, 'pipeline', 0, 0),
+		array('Replied to outreach', 5, '#20c997', 15, 10, 'pipeline', 0, 0, 1),
 		array('Qualified', 10, '#0d6efd', 25, 15, 'pipeline', 0, 0),
 		array('Proposal sent', 20, '#fd7e14', 50, 20, 'upside', 0, 0),
 		array('Negotiation', 30, '#6f42c1', 75, 10, 'commit', 0, 0),
@@ -651,8 +725,8 @@ function crmSeedIfEmpty(DoliDB $db): void
 		array('Lost', 50, '#dc3545', 0, 0, 'lost', 0, 1),
 	);
 	foreach ($stages as $stage) {
-		$sqlStage = "INSERT INTO ".$db->prefix()."crm_stage (entity, fk_pipeline, label, position, color, probability, rotting_days, forecast_category, is_won, is_lost, active) VALUES (";
-		$sqlStage .= $entity.", ".$pipelineId.", '".$db->escape($stage[0])."', ".((int) $stage[1]).", '".$db->escape($stage[2])."', ".((int) $stage[3]).", ".((int) $stage[4]).", '".$db->escape($stage[5])."', ".((int) $stage[6]).", ".((int) $stage[7]).", 1)";
+		$sqlStage = "INSERT INTO ".$db->prefix()."crm_stage (entity, fk_pipeline, label, position, color, probability, rotting_days, forecast_category, is_won, is_lost, active, is_reply) VALUES (";
+		$sqlStage .= $entity.", ".$pipelineId.", '".$db->escape($stage[0])."', ".((int) $stage[1]).", '".$db->escape($stage[2])."', ".((int) $stage[3]).", ".((int) $stage[4]).", '".$db->escape($stage[5])."', ".((int) $stage[6]).", ".((int) $stage[7]).", 1, ".((int) ($stage[8] ?? 0)).")";
 		$db->query($sqlStage);
 	}
 

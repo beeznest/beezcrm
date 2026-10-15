@@ -83,7 +83,7 @@ class CrmSequenceTool extends CrmMcpTool
 			$this->definition('change_crm_sequence_enrolment_to_stopped', 'Stop one enrolment.', array(
 				'enrol_id' => array('type' => 'integer'),
 			), array('enrol_id')),
-			$this->definition('update_crm_opportunity_replied', 'Stop an enrolment because the contact replied. The module does not read the mailbox.', array(
+			$this->definition('update_crm_opportunity_replied', 'Stop an enrolment because the contact replied, and move its deal to the reply stage of its pipeline (Replied to outreach) when it is earlier in the pipeline. The module does not read the mailbox.', array(
 				'enrol_id' => array('type' => 'integer'),
 			), array('enrol_id')),
 		);
@@ -245,7 +245,7 @@ class CrmSequenceTool extends CrmMcpTool
 				return $this->fail('Enrolment not found');
 			}
 			$reason = ($toolName === 'update_crm_opportunity_replied') ? 'replied' : 'manual';
-			if ($sequence->stopEnrolment($enrolId, $reason) <= 0) {
+			if (($reason === 'replied' ? $sequence->markReplied($this->user, $enrolId) : $sequence->stopEnrolment($enrolId, $reason)) <= 0) {
 				return $this->fail($sequence->error !== '' ? $sequence->error : 'Could not stop the enrolment');
 			}
 			return array(array('enrol_id' => $enrolId, 'status' => 'stopped', 'stop_reason' => $reason));

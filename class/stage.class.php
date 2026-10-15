@@ -38,6 +38,8 @@ class Stage
 	public $is_lost = 0;
 	/** @var int */
 	public $active = 1;
+	/** @var int 1 for the stage a deal moves to when the prospect replies (one per pipeline) */
+	public $is_reply = 0;
 	/** @var string */
 	public $error = '';
 
@@ -113,16 +115,29 @@ class Stage
 		if (!$this->validate()) {
 			return -1;
 		}
-		$sql = 'INSERT INTO '.$this->db->prefix().'crm_stage (entity, fk_pipeline, label, position, color, probability, rotting_days, forecast_category, is_won, is_lost, active) VALUES (';
+		$replySupported = crmStageReplySupported($this->db);
+		$sql = 'INSERT INTO '.$this->db->prefix().'crm_stage (entity, fk_pipeline, label, position, color, probability, rotting_days, forecast_category, is_won, is_lost, active'.($replySupported ? ', is_reply' : '').') VALUES (';
 		$sql .= ((int) $conf->entity).', '.((int) $this->fk_pipeline).", '".$this->db->escape($this->label)."', ".((int) $this->position);
 		$sql .= ", '".$this->db->escape($this->color)."', ".((int) $this->probability).', '.((int) $this->rotting_days);
-		$sql .= ", '".$this->db->escape($this->forecast_category)."', ".((int) $this->is_won).', '.((int) $this->is_lost).', '.((int) $this->active).')';
+		$sql .= ", '".$this->db->escape($this->forecast_category)."', ".((int) $this->is_won).', '.((int) $this->is_lost).', '.((int) $this->active);
+		$sql .= ($replySupported ? ', '.($this->is_reply ? 1 : 0) : '').')';
 		if (!$this->db->query($sql)) {
 			$this->error = $this->db->lasterror();
 			return -1;
 		}
 		$this->id = (int) $this->db->last_insert_id($this->db->prefix().'crm_stage');
+		$this->keepOneReplyStage();
 		return $this->id;
+	}
+
+	/**
+	 * A pipeline has one reply stage: when this one is the reply stage, the others of its pipeline stop being so.
+	 */
+	private function keepOneReplyStage(): void
+	{
+		if ($this->is_reply && $this->id > 0 && crmStageReplySupported($this->db)) {
+			$this->db->query('UPDATE '.$this->db->prefix().'crm_stage SET is_reply = 0 WHERE fk_pipeline = '.((int) $this->fk_pipeline).' AND rowid <> '.((int) $this->id));
+		}
 	}
 
 	/**
@@ -136,6 +151,10 @@ class Stage
 		}
 		if ($this->is_won && $this->is_lost) {
 			$this->error = 'CrmErrorStageWonAndLost';
+			return false;
+		}
+		if ($this->is_reply && ($this->is_won || $this->is_lost)) {
+			$this->error = 'CrmErrorStageReplyClosed';
 			return false;
 		}
 		return true;
@@ -159,11 +178,15 @@ class Stage
 		$sql .= ', is_won = '.((int) $this->is_won);
 		$sql .= ', is_lost = '.((int) $this->is_lost);
 		$sql .= ', active = '.((int) $this->active);
+		if (crmStageReplySupported($this->db)) {
+			$sql .= ', is_reply = '.($this->is_reply ? 1 : 0);
+		}
 		$sql .= ' WHERE rowid = '.((int) $this->id);
 		if (!$this->db->query($sql)) {
 			$this->error = $this->db->lasterror();
 			return -1;
 		}
+		$this->keepOneReplyStage();
 		return 1;
 	}
 
@@ -216,5 +239,6 @@ class Stage
 		$this->is_won = (int) $obj->is_won;
 		$this->is_lost = (int) $obj->is_lost;
 		$this->active = (int) $obj->active;
+		$this->is_reply = (int) ($obj->is_reply ?? 0);
 	}
 }

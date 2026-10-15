@@ -11,8 +11,8 @@ All menus are under **CRM** in the top bar.
 | **Home** | Your work to do (deals with no next step, overdue steps, past expected close, rotting) and the forecast |
 | **Pipeline** | The board: one column per stage, one card per open deal. Drag a card to move it |
 | **Opportunities** | The list of deals, filtered by status (open, won, lost, all) and by a search text, sorted by clicking a column title and split in pages (the number of rows per page is the one of your Dolibarr user settings, changeable above the list). **New opportunity** is here |
+| **Automated sequences** | Automatic follow-up plans. You only see this one in use if you manage them |
 | **Activities** | Your next steps and history, with filters: overdue, today, planned, done; sortable and in pages like the deal list |
-| **Sequences** | Automatic follow-up plans. You only see this one in use if you manage them |
 | **Reports** | Win rate, conversion, loss reasons and more. Needs a right your administrator gives |
 | **Setup** | For administrators only |
 
@@ -25,7 +25,7 @@ The general search box at the top of Dolibarr also has an entry **CRM opportunit
 - **Account**: the company you sell to. It is a normal Dolibarr third party, so the same record is used by invoices and by your colleagues.
 - **Contact**: the person you talk to at that company.
 - **Deal** (also called opportunity): one chance to sell something to that account. One account can have several deals.
-- **Stage**: where the deal stands in your sales process. Each stage has a probability of winning. With the standard setup: New 10%, Qualified 25%, Proposal sent 50%, Negotiation 75%, then Won and Lost.
+- **Stage**: where the deal stands in your sales process. Each stage has a probability of winning. With the standard setup: New 10%, Replied to outreach 15%, Qualified 25%, Proposal sent 50%, Negotiation 75%, then Won and Lost. **Replied to outreach** is where a deal lands by itself when the prospect answers an approach (an e-mail of a sequence, or any e-mail recorded on the deal): it is the signal to qualify the lead. A deal that is already further on stays where it is.
 - **Next step**: the next thing you will do on the deal, with a date: a call, a meeting, a task or an e-mail to write. It is an event in the Dolibarr agenda.
 
 ## Three rules that make everything else work

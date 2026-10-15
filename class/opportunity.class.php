@@ -286,6 +286,47 @@ class Opportunity extends CommonObject
 	}
 
 	/**
+	 * The prospect replied: move the deal to the reply stage of its pipeline ("Replied to outreach"), so that it shows on the
+	 * board as a lead that answered and waits for qualification. Only an open deal that is before that stage moves: one that
+	 * is already at or beyond it, or closed, stays where it is. This is the module reacting to an event, not a salesperson
+	 * dragging a card, so the rule "a next step is required to change stage" does not apply. Off when the setting
+	 * CRM_REPLY_MOVES_DEAL is 0.
+	 *
+	 * @param User $user User recorded in the stage history (the collector's, or the one who marked the reply)
+	 * @return int 1 if moved, 0 if nothing to do (no reply stage, setting off, deal already there or beyond, closed), -1 on error
+	 */
+	public function moveToReplyStage(User $user): int
+	{
+		require_once __DIR__.'/stage.class.php';
+		if ($this->id <= 0 || !getDolGlobalInt('CRM_REPLY_MOVES_DEAL', 1) || !crmStageReplySupported($this->db)) {
+			return 0;
+		}
+		$sql = 'SELECT rowid FROM '.$this->db->prefix().'crm_stage WHERE fk_pipeline = '.((int) $this->fk_pipeline).' AND is_reply = 1 AND active = 1';
+		$resql = $this->db->query($sql);
+		$row = $resql ? $this->db->fetch_object($resql) : null;
+		if (!$row) {
+			return 0;
+		}
+		$target = new Stage($this->db);
+		$current = new Stage($this->db);
+		if ($target->fetch((int) $row->rowid) <= 0 || $current->fetch((int) $this->fk_stage) <= 0) {
+			return 0;
+		}
+		if ((string) $this->status !== 'open' || $current->isClosed() || !crmStageComesBefore((int) $current->position, (int) $current->id, (int) $target->position, (int) $target->id)) {
+			return 0;
+		}
+		$update = 'UPDATE '.$this->db->prefix().'crm_opportunity SET fk_stage = '.((int) $target->id).' WHERE rowid = '.((int) $this->id);
+		if (!$this->db->query($update)) {
+			$this->error = $this->db->lasterror();
+			return -1;
+		}
+		$from = (int) $this->fk_stage;
+		$this->fk_stage = (int) $target->id;
+		$this->addHistory($user, $from, (int) $target->id);
+		return 1;
+	}
+
+	/**
 	 * Delete the deal and its module rows. Agenda events stay.
 	 *
 	 * @param User $user User deleting

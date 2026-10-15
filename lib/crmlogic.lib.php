@@ -398,3 +398,14 @@ function crmCopyRecipients(string $archive, string $archiveCopy, string $mine, b
 	return array('cc' => implode(',', $cc), 'bcc' => implode(',', $bcc));
 }
 
+/**
+ * True when a stage comes before another one on the board: stages are ordered by position, and by id for the same position.
+ */
+function crmStageComesBefore(int $position, int $id, int $otherPosition, int $otherId): bool
+{
+	if ($position !== $otherPosition) {
+		return $position < $otherPosition;
+	}
+	return $id < $otherId;
+}
+

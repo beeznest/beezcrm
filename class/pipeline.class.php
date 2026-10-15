@@ -167,6 +167,7 @@ class Pipeline
 			$stage->is_won = (int) $one->is_won;
 			$stage->is_lost = (int) $one->is_lost;
 			$stage->active = (int) $one->active;
+			$stage->is_reply = (int) $one->is_reply;
 			if ($stage->create() <= 0) {
 				$this->error = $stage->error;
 				return -1;

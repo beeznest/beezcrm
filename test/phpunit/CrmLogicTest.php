@@ -330,4 +330,18 @@ class CrmLogicTest extends TestCase
 		$this->assertSame(array('cc' => '', 'bcc' => 'a@example.com, me@example.com'), crmCopyRecipients('a@example.com, me@example.com', 'bcc', 'ME@example.com', true));
 		$this->assertSame(array('cc' => '', 'bcc' => 'crm@example.com'), crmCopyRecipients('crm@example.com', 'bcc', 'x; Bcc: evil@example.com', true));
 	}
+
+	/**
+	 * Stage order: by position, then by id.
+	 *
+	 * @return void
+	 */
+	public function testStageComesBefore()
+	{
+		$this->assertTrue(crmStageComesBefore(0, 5, 10, 2));
+		$this->assertFalse(crmStageComesBefore(10, 2, 0, 5));
+		$this->assertTrue(crmStageComesBefore(10, 2, 10, 3));
+		$this->assertFalse(crmStageComesBefore(10, 3, 10, 3));
+		$this->assertFalse(crmStageComesBefore(10, 4, 10, 3));
+	}
 }

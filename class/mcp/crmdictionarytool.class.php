@@ -60,6 +60,7 @@ class CrmDictionaryTool extends CrmMcpTool
 				'forecast_category' => array('type' => 'string', 'enum' => array('pipeline', 'upside', 'commit', 'closed', 'lost')),
 				'is_won' => array('type' => 'integer'),
 				'is_lost' => array('type' => 'integer'),
+				'is_reply' => array('type' => 'integer', 'description' => '1 for the stage a deal moves to when the prospect replies (one per pipeline)'),
 				'active' => array('type' => 'integer'),
 			), array('pipeline_id', 'label')),
 			$this->definition('delete_crm_stage', 'Delete a stage that contains no deals.', $id, array('id')),
@@ -237,6 +238,7 @@ class CrmDictionaryTool extends CrmMcpTool
 			'forecast_category' => $stage->forecast_category,
 			'is_won' => (int) $stage->is_won,
 			'is_lost' => (int) $stage->is_lost,
+			'is_reply' => (int) $stage->is_reply,
 			'active' => (int) $stage->active,
 		);
 	}
@@ -274,6 +276,9 @@ class CrmDictionaryTool extends CrmMcpTool
 		}
 		if (isset($args['is_lost'])) {
 			$stage->is_lost = $this->argInt($args, 'is_lost') ? 1 : 0;
+		}
+		if (isset($args['is_reply'])) {
+			$stage->is_reply = $this->argInt($args, 'is_reply') ? 1 : 0;
 		}
 		if (isset($args['active'])) {
 			$stage->active = $this->argInt($args, 'active') ? 1 : 0;

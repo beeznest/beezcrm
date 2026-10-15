@@ -316,6 +316,30 @@ class Sequence
 	}
 
 	/**
+	 * Someone says the contact of an enrolment replied: stop that enrolment as "replied" and move its deal to the reply stage.
+	 *
+	 * @return int 1 if OK, -1 on error with the reason in ->error
+	 */
+	public function markReplied(User $user, int $enrolId): int
+	{
+		$resql = $this->db->query('SELECT fk_opportunity FROM '.$this->db->prefix().'crm_sequence_enrol WHERE rowid = '.((int) $enrolId));
+		$enrol = $resql ? $this->db->fetch_object($resql) : null;
+		if (!$enrol) {
+			$this->error = 'CrmErrorEnrolmentNotFound';
+			return -1;
+		}
+		if ($this->stopEnrolment($enrolId, 'replied') <= 0) {
+			return -1;
+		}
+		require_once __DIR__.'/opportunity.class.php';
+		$deal = new Opportunity($this->db);
+		if ($deal->fetch((int) $enrol->fk_opportunity) > 0) {
+			$deal->moveToReplyStage($user);
+		}
+		return 1;
+	}
+
+	/**
 	 * The customer answered: stop every running enrolment of the deal whose sequence stops on reply.
 	 *
 	 * @return int Number of enrolments stopped, -1 on error

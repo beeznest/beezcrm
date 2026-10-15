@@ -216,6 +216,12 @@ class CrmMailArchive
 		}
 		if ($direction === 'in') {
 			(new Sequence($this->db))->stopOnReply($dealId);
+			// The prospect answered: the deal goes to the reply stage of its pipeline, to be qualified.
+			require_once __DIR__.'/opportunity.class.php';
+			$dealObject = new Opportunity($this->db);
+			if ($dealObject->fetch($dealId) > 0) {
+				$dealObject->moveToReplyStage($user);
+			}
 		}
 		return array('status' => 'recorded', 'deal' => $dealId, 'event' => $eventId);
 	}

@@ -165,8 +165,12 @@ if ($action === 'enrol') {
 
 if ($action === 'stop' || $action === 'replied') {
 	crmRequireRight('sequence');
-	$reason = ($action === 'replied') ? 'replied' : 'manual';
-	$sequence->stopEnrolment(GETPOSTINT('enrolid'), $reason);
+	if ($action === 'replied') {
+		// The deal also moves to the reply stage of its pipeline.
+		$sequence->markReplied($user, GETPOSTINT('enrolid'));
+	} else {
+		$sequence->stopEnrolment(GETPOSTINT('enrolid'), 'manual');
+	}
 	header('Location: '.$back);
 	exit;
 }

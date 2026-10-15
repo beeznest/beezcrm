@@ -62,6 +62,7 @@ $constants = array(
 	'CRM_REMINDERS_ON' => 'CrmRemindersOn',
 	'CRM_REMINDER_DRY_RUN' => 'CrmReminderDryRun',
 	'CRM_REQUIRE_NEXT_STEP' => 'CrmRequireNextStep',
+	'CRM_REPLY_MOVES_DEAL' => 'CrmReplyMovesDeal',
 	'CRM_AI_EMAIL_ASSIST' => 'CrmAiEmailAssist',
 	'CRM_AI_EMAIL_PROMPT' => 'CrmAiEmailPrompt',
 	'CRM_AI_TIMEOUT' => 'CrmAiTimeout',
@@ -71,7 +72,7 @@ $constants = array(
 
 // Settings that are only on or off are switches, saved at once. They are stored as 1 or 0, never deleted: a deleted
 // constant would be recreated with its default the next time the module is enabled.
-$switches = array('CRM_SEQUENCES_ON', 'CRM_DRY_RUN', 'CRM_REMINDERS_ON', 'CRM_REMINDER_DRY_RUN', 'CRM_REQUIRE_NEXT_STEP', 'CRM_AI_EMAIL_ASSIST');
+$switches = array('CRM_SEQUENCES_ON', 'CRM_DRY_RUN', 'CRM_REMINDERS_ON', 'CRM_REMINDER_DRY_RUN', 'CRM_REQUIRE_NEXT_STEP', 'CRM_REPLY_MOVES_DEAL', 'CRM_AI_EMAIL_ASSIST');
 $switchName = '';
 $switchValue = 0;
 if ($action === 'toggle') {
@@ -162,6 +163,7 @@ if ($action === 'savestage') {
 	}
 	$stage->is_won = GETPOSTINT('is_won') ? 1 : 0;
 	$stage->is_lost = GETPOSTINT('is_lost') ? 1 : 0;
+	$stage->is_reply = GETPOSTINT('is_reply') ? 1 : 0;
 	$result = ($stageId > 0) ? $stage->update() : $stage->create();
 	if ($result <= 0) {
 		setEventMessages(crmErrorText($stage->error), null, 'errors');
@@ -268,7 +270,8 @@ if ($tab === 'parameters') {
 			continue;
 		}
 		if (in_array($name, $switches, true)) {
-			$on = getDolGlobalInt($name, 0) !== 0;
+			// A switch that is on until someone turns it off shows as on before the module has been enabled again to create it.
+			$on = getDolGlobalInt($name, $name === 'CRM_REPLY_MOVES_DEAL' ? 1 : 0) !== 0;
 			// A confirmation before the two switches that have a consequence outside the module.
 			$confirmOn = ($name === 'CRM_AI_EMAIL_ASSIST') ? $langs->trans('CrmConfirmAiOn') : '';
 			$confirmOff = ($name === 'CRM_DRY_RUN') ? $langs->trans('CrmConfirmDryRunOff') : (($name === 'CRM_REMINDER_DRY_RUN') ? $langs->trans('CrmConfirmReminderDryRunOff') : '');
@@ -278,6 +281,9 @@ if ($tab === 'parameters') {
 			print '<span class="crm-sw-on">'.img_picto($langs->trans('Enabled'), 'switch_on').'</span><span class="crm-sw-off">'.img_picto($langs->trans('Disabled'), 'switch_off').'</span></a>';
 			if ($name === 'CRM_AI_EMAIL_ASSIST') {
 				print crmHelp($langs->trans('CrmAiEmailAssistHelp'), 'span', true);
+			}
+			if ($name === 'CRM_REPLY_MOVES_DEAL') {
+				print crmHelp($langs->trans('CrmReplyMovesDealHelp'), 'span', true);
 			}
 			print '</td></tr>';
 			continue;
@@ -361,6 +367,7 @@ if ($tab === 'stages') {
 		$out .= '</select> ';
 		$out .= '<label><input type="checkbox" name="is_won" value="1"'.(($one && $one->is_won) ? ' checked' : '').'> '.$langs->trans('CrmWonStage').'</label> ';
 		$out .= '<label><input type="checkbox" name="is_lost" value="1"'.(($one && $one->is_lost) ? ' checked' : '').'> '.$langs->trans('CrmLostStage').'</label> ';
+		$out .= '<label title="'.dol_escape_htmltag($langs->trans('CrmReplyStageTip')).'"><input type="checkbox" name="is_reply" value="1"'.(($one && $one->is_reply) ? ' checked' : '').'> '.$langs->trans('CrmReplyStage').'</label> ';
 		return $out;
 	};
 	print '<table class="noborder centpercent"><tr class="liste_titre"><td>'.$langs->trans('CrmLabel').'</td><td>'.$langs->trans('CrmPosition').'</td><td>'.$langs->trans('CrmProbability').'</td><td>'.$langs->trans('CrmForecastCategory').'</td><td></td></tr>';
@@ -375,7 +382,7 @@ if ($tab === 'stages') {
 				print '</form></td></tr>';
 				continue;
 			}
-			$flags = ($stage->is_won ? ' · '.$langs->trans('CrmWonStage') : '').($stage->is_lost ? ' · '.$langs->trans('CrmLostStage') : '');
+			$flags = ($stage->is_won ? ' · '.$langs->trans('CrmWonStage') : '').($stage->is_lost ? ' · '.$langs->trans('CrmLostStage') : '').($stage->is_reply ? ' · '.$langs->trans('CrmReplyStage') : '');
 			print '<tr class="oddeven'.($stage->active ? '' : ' opacitymedium').'"><td><span class="crm-swatch" style="background:'.dol_escape_htmltag($stage->color).'"></span> '.dol_escape_htmltag(crmStageLabel((string) $stage->label));
 			if (!$stage->active) {
 				print ' <span class="badge badge-status8">'.$langs->trans('CrmInactive').'</span>';

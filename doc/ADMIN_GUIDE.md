@@ -84,7 +84,7 @@ Then, as an administrator:
 
 - Creates the tables `llx_crm_*`.
 - Creates the constants `CRM_*` with their defaults (see [Settings reference](#settings-reference)).
-- Seeds, only when the entity has no pipeline: one **Commercial pipeline** with six stages (New 10%, Qualified 25%, Proposal sent 50%, Negotiation 75%, Won, Lost), seven lead sources (website, referral, inbound call, event, partner, prospecting, inbound e-mail), four qualification items (need, budget, decision maker, timeline) and six loss reasons (price, no budget, competitor, timing, no decision, no answer). Later enables do not seed again and do not reset your constants.
+- Seeds, only when the entity has no pipeline: one **Commercial pipeline** with seven stages (New 10%, Replied to outreach 15%, Qualified 25%, Proposal sent 50%, Negotiation 75%, Won, Lost), seven lead sources (website, referral, inbound call, event, partner, prospecting, inbound e-mail), four qualification items (need, budget, decision maker, timeline) and six loss reasons (price, no budget, competitor, timing, no decision, no answer). Later enables do not seed again and do not reset your constants.
 - Registers the menus, the rights, a home box ("CRM follow-up") and two scheduled jobs.
 - Registers hooks (see [Maintenance](#maintenance)).
 
@@ -113,7 +113,7 @@ Two more rights matter outside CRM: creating a prospect from the deal form needs
 
 **Explanations are hidden by default.** On every page, a text of more than 12 words that explains something (a list, a field, a rule) is hidden until the **"?" button** at the top right of the page title is clicked; click again to hide it. Warnings, errors, confirmations and the notice of the e-mail editor that says which AI service the text goes to, and whether names are masked, are always visible. The About tab is page content and stays visible. This is also the place where the setup explanations of this guide appear on screen (the notes under the Parameters table, the help under each setting, the notes on pipelines).
 
-Everything the module lets you configure is under **CRM → Setup** (needs "Configure CRM"), plus the **Sequences** screens. The gear icon of the module in Home → Setup → Modules opens the same Setup screen.
+Everything the module lets you configure is under **CRM → Setup** (needs "Configure CRM"), plus the **Automated sequences** screens. The gear icon of the module in Home → Setup → Modules opens the same Setup screen.
 
 ### CRM → Setup → Parameters
 
@@ -152,8 +152,11 @@ Pipelines and their stages. From top to bottom:
    - *Probability* (%): the chance of winning at this stage, 0 to 100. A deal has no percentage of its own; the weighted forecast is amount × stage probability.
    - *Rotting days*: see the Parameters tab. 0 disables the warning.
    - *Forecast category*: `pipeline`, `upside` or `commit` for open stages (the forecast groups by it: commit is what you would bet on); `closed` for a won stage; `lost` for a lost stage. Won and lost deals are never forecast.
+   - *Reply stage* checkbox: the stage a deal moves to when the prospect replies ("Replied to outreach" by default). A pipeline has one: ticking it on a stage unticks it on the others, and it must be an open stage (not won or lost). See "Prospects who reply" below.
    - *Won stage* / *Lost stage* checkboxes. A deal moved into a won stage becomes **won**: it gets its closing date and leaves the board and the forecast. A deal moved into a lost stage becomes **lost** and **requires a loss reason**. Tick neither for an open stage.
 5. **New pipeline.** Reference (letters, digits, underscore, dash; stored in capitals; unique; never changes), label, and **Copy the stages of**: pick a pipeline to start from its stages, probabilities, colours and flags, or "Nothing (empty pipeline)". Create, and the page opens the new pipeline.
+
+**Prospects who reply.** When the answer of a prospect is recorded on an open deal, the deal moves by itself to the **reply stage** of its pipeline, so that it stands out on the board as a lead that answered and waits for qualification. Two things record an answer: the e-mail collector, when it reads an incoming message that belongs to the deal (see [E-mail history](#e-mail-history)), and "Mark replied" on an enrolment of an automated sequence (the MCP tool `update_crm_opportunity_replied` does the same). The same event also stops the running sequences of the deal that have the rule "stop when the contact replies". The deal moves only when it is still **before** the reply stage in the pipeline: a deal that is already at that stage or beyond it (Qualified, Negotiation...) or closed stays where it is, and a message the salesperson sent does not move anything. The move is written in the stage history, and the rule "a future next step is needed to change stage" does not apply to it, since nobody dragged the card: the deal then shows in "no next step" on Home, which is the prompt to qualify it. The setting "Move a deal to the reply stage when the prospect replies" (`CRM_REPLY_MOVES_DEAL`, on by default, a switch of the Parameters tab) turns the whole thing off. A pipeline without an active reply stage does not move anything. A pipeline created by hand has no reply stage until you tick the box on one of its stages.
 
 Rules when you design stages: a pipeline needs at least one **open**, one **won** and one **lost** stage; a new deal starts in the first open stage by position, and without one nobody can create a deal in that pipeline. Typical shape: New → Qualified → Proposal sent → Negotiation → Won / Lost, with probabilities rising from 10% to 75%.
 
@@ -179,7 +182,7 @@ For these three lists a **turned-off** entry is no longer offered, but the deals
 
 A short note on what the module keeps in Dolibarr and what disabling it leaves behind.
 
-### CRM → Sequences
+### CRM → Automated sequences
 
 Not in the Setup screen, but it is configuration, and it needs "Manage customer sequences". The list (reference, label, active, number of steps) has a form to create a sequence: **label** and **Active** checkbox. The reference is generated at first (`SEQ0001`, `SEQ0002`…) and can be changed later. Open a sequence to change it (reference, label, active, stop rules), manage its steps and enrolments and read its journal: see [Sequences](#sequences). An inactive sequence runs nothing.
 
@@ -237,7 +240,7 @@ Your mail server decides whether it accepts a sender: sending from a mailbox tha
 
 ## Sequences
 
-A sequence is an explicit follow-up plan for a **deal**, not a mass mailing. CRM → Sequences (needs "Manage customer sequences").
+Automated sequences are made for prospecting at scale: a prospect that was picked beforehand is enrolled, one deal at a time, and receives the planned series of e-mails, calls and tasks; there is no bulk enrolment. As soon as the prospect replies, the sequence stops (rule "stop when the contact replies") and the deal moves to the reply stage of its pipeline for the salesperson to qualify. CRM → Automated sequences (needs "Manage customer sequences"). The explanation at the top of the list says the same, behind the "?" button.
 
 1. Create the sequence (label, active). Open it. At the top of the card, a form lets you **change it later** with the **Update** button: the reference (short code, unique, letters, digits, underscore and dash, 32 characters at most; the generated `SEQ0001`-style reference can be replaced by a meaningful one), the label, the **Active** flag, and the three **stop rules** (stop an enrolment when the contact replies, when the deal is won, when the deal is lost). Changing these does not touch the steps or the enrolments: a running enrolment goes on under the new rules, and the enrolments of a sequence made inactive simply wait, then resume when it is active again (steps already due then run at the next job run). The MCP tool `update_crm_sequence` does the same.
 2. Add **steps** in the order they should run. Each step has a kind (**e-mail**, **call**, **task**), a **delay in days after enrolment** (not after the previous step), a subject and a body. Subject and body accept the placeholders `__DEAL__`, `__REF__`, `__AMOUNT__`, `__CONTACT__`, `__CUSTOMER__`; an unknown placeholder stays as written. The add-step form has the kind, the delay, the e-mail mode and the subject on the first line, and the text of the message below them. For an e-mail step the text is **plain or formatted (HTML)**, chosen with the same **Format** switch and tabs as the e-mail editor: a WYSIWYG editor for HTML, with the plain-text version shown read-only, made from the HTML when the message is sent. The text of a step is stored as written (HTML or plain) and a step in HTML is marked "(HTML)" in the steps table. In HTML, the values that replace the placeholders (a contact or company name, for example) are inserted as text, so a `<` or `&` in a name cannot add markup. A draft made from an HTML step opens in HTML in the e-mail editor, and an automatic send goes out as HTML with a plain-text part. The kind selector hides the text and the mode for a call or a task, which have no message. The MCP tool `add_crm_sequence_step` takes the body as given: HTML or text.
@@ -409,7 +412,7 @@ The 50 tools by the CRM right they need (a user without it does not see the tool
 **Watching it work**
 
 - Home → Setup → Scheduled jobs: last run and result of the CRM jobs and of the e-mail collector.
-- CRM → Sequences → a sequence → Journal: every e-mail attempt and its result, with a link to the e-mail itself.
+- CRM → Automated sequences → a sequence → Journal: every e-mail attempt and its result, with a link to the e-mail itself.
 - The Dolibarr log (`documents/dolibarr.log`) records the module's e-mail archive decisions (`CRM e-mail archive: recorded|duplicate|ignored|error`).
 - The e-mail collector card shows what each collection did.
 
@@ -431,6 +434,7 @@ The 50 tools by the CRM right they need (a user without it does not see the tool
 | `CRM_REMINDERS_ON` | 1 | Owner reminders on or off |
 | `CRM_REMINDER_DRY_RUN` | 1 | Reminders: journal only |
 | `CRM_REQUIRE_NEXT_STEP` | 1 | Refuse a stage change without a future next step |
+| `CRM_REPLY_MOVES_DEAL` | 1 | Move an open deal to the reply stage of its pipeline when the prospect replies |
 | `CRM_AI_EMAIL_ASSIST` | 0 | Show the AI reply suggestion block in the e-mail editor (needs the AI module) |
 | `CRM_AI_TIMEOUT` | 120 | Seconds the CRM waits for the AI service (e-mail editor and step text button), 10 to 600. Dolibarr's own limit is 30 seconds, raised for these calls only |
 | `CRM_AI_EMAIL_PROMPT` | empty | Default AI prompt; empty uses the built-in one |

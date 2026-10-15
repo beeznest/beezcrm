@@ -25,6 +25,7 @@ CREATE TABLE llx_crm_stage (
 	is_won smallint DEFAULT 0 NOT NULL,
 	is_lost smallint DEFAULT 0 NOT NULL,
 	active smallint DEFAULT 1 NOT NULL,
+	is_reply smallint DEFAULT 0 NOT NULL,
 	KEY idx_crm_stage_pipeline (fk_pipeline)
 ) ENGINE=innodb;
 
