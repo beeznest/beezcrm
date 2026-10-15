@@ -24,7 +24,7 @@ Core modules are different. Their pages live in `htdocs/<modulename>/` and their
 
 On this instance the two alt-root lines in `htdocs/conf/conf.php` are commented. The fallback above still points at `htdocs/custom`, so a module installed there is found. No file under `htdocs/core`, `htdocs/comm`, `htdocs/societe`, `htdocs/projet`, or `htdocs/ai` is modified.
 
-Technical name `crm`: rights, `isModEnabled('crm')`, tables `llx_crm_*`, constants `CRM_*`, MCP tools `crm_*`. Dolibarr already uses `crm` as a module family (the category commercial modules are filed under). No core module has this name, and no core table or constant uses those prefixes.
+Technical name `crm`: rights, `isModEnabled('crm')`, tables `llx_crm_*`, constants `CRM_*`, MCP tools named verb first with `crm` after the verb (`list_crm_stages`, `create_crm_opportunity`), because Dolibarr's tool access screen judges a tool by the first word of its name. Dolibarr already uses `crm` as a module family (the category commercial modules are filed under). No core module has this name, and no core table or constant uses those prefixes.
 
 The paths in the file tree below are this directory. The symlink exposes them as `htdocs/custom/crm/`.
 
@@ -228,23 +228,23 @@ CRM tools:
 
 | Tool | Writes |
 | --- | --- |
-| `crm_list_pipelines`, `crm_list_stages`, `crm_list_sources`, `crm_list_loss_reasons`, `crm_list_qualifications` | no |
-| `crm_upsert_pipeline`, `crm_upsert_stage`, `crm_delete_stage`, `crm_upsert_source`, `crm_upsert_loss_reason`, `crm_upsert_qualification` | yes |
-| `crm_list_opportunities`, `crm_get_opportunity`, `crm_list_stage_history` | no |
-| `crm_create_opportunity`, `crm_update_opportunity`, `crm_move_opportunity` | yes |
-| `crm_mark_won`, `crm_mark_lost`, `crm_delete_opportunity` | yes |
-| `crm_link_proposal`, `crm_unlink_proposal`, `crm_set_qualification` | yes |
-| `crm_list_activities` | no |
-| `crm_create_activity`, `crm_complete_activity`, `crm_update_activity`, `crm_delete_activity` | yes, agenda events |
-| `crm_list_sequences`, `crm_get_sequence` | no |
-| `crm_create_sequence`, `crm_update_sequence`, `crm_add_sequence_step`, `crm_update_sequence_step`, `crm_delete_sequence_step` | yes |
-| `crm_enrol_sequence`, `crm_stop_sequence`, `crm_mark_replied` | yes |
-| `crm_get_dashboard`, `crm_get_forecast`, `crm_get_conversion`, `crm_get_loss_reasons` | no |
-| `crm_get_win_rate`, `crm_get_cycle_time`, `crm_get_by_owner`, `crm_get_by_source` | no |
-| `crm_get_settings` | no |
-| `crm_set_settings`, `crm_run_sequences`, `crm_run_owner_reminders` | yes |
+| `list_crm_pipelines`, `list_crm_stages`, `list_crm_sources`, `list_crm_loss_reasons`, `list_crm_qualifications` | no |
+| `create_or_update_crm_pipeline`, `create_or_update_crm_stage`, `delete_crm_stage`, `create_or_update_crm_source`, `create_or_update_crm_loss_reason`, `create_or_update_crm_qualification` | yes |
+| `list_crm_opportunities`, `get_crm_opportunity`, `list_crm_stage_history` | no |
+| `create_crm_opportunity`, `update_crm_opportunity`, `change_crm_opportunity_stage` | yes |
+| `change_crm_opportunity_to_won`, `change_crm_opportunity_to_lost`, `delete_crm_opportunity` | yes |
+| `add_crm_proposal_link`, `remove_crm_proposal_link`, `update_crm_qualification_answers` | yes |
+| `list_crm_activities` | no |
+| `create_crm_activity`, `change_crm_activity_to_done`, `update_crm_activity`, `delete_crm_activity` | yes, agenda events |
+| `list_crm_sequences`, `get_crm_sequence` | no |
+| `create_crm_sequence`, `update_crm_sequence`, `add_crm_sequence_step`, `update_crm_sequence_step`, `delete_crm_sequence_step` | yes |
+| `add_crm_sequence_enrolment`, `change_crm_sequence_enrolment_to_stopped`, `update_crm_opportunity_replied` | yes |
+| `get_crm_dashboard`, `get_crm_forecast`, `get_crm_conversion`, `get_crm_loss_reasons` | no |
+| `get_crm_win_rate`, `get_crm_cycle_time`, `get_crm_by_owner`, `get_crm_by_source` | no |
+| `get_crm_settings` | no |
+| `update_crm_settings`, `send_crm_due_sequence_steps`, `send_crm_owner_reminders` | yes |
 
-There is no core tool to search users. Owner and assignee arguments are numeric user ids. There is no `crm_list_users`.
+There is no core tool to search users. Owner and assignee arguments are numeric user ids. There is no `list_crm_users`.
 
 ## Permissions
 
@@ -348,5 +348,5 @@ Kanban drag and drop posts to `pipeline.php` with a CSRF token. No third-party s
 1. Customer sequences ship disabled, with dry-run on, and their e-mail steps are drafts for the salesperson, not automatic sends. Owner reminders ship enabled, also dry-run until that is turned off.
 2. Calls and meetings are agenda events and are kept after the module is disabled.
 3. An open deal cannot change stage until it has a future next step (`CRM_REQUIRE_NEXT_STEP`, default on).
-4. Owners in MCP are numeric user ids. There is no `crm_list_users`.
+4. Owners in MCP are numeric user ids. There is no `list_crm_users`.
 5. The module lives in `/var/www/dolibarr-crm` and is reached by the `htdocs/custom/crm` symlink. The empty alternate-root fallback already scans `htdocs/custom`, so the two `conf.php` lines stay commented.

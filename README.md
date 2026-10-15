@@ -13,7 +13,7 @@ Sales pipeline module for [Dolibarr](https://www.dolibarr.org). Accounts, contac
 - An e-mail editor with a **formatted (HTML) mode**, sent with an automatic plain-text version, or plain text.
 - An optional **AI assistant** in the e-mail editor that proposes the next e-mail from the exchange so far, with an editable prompt, using the AI module of Dolibarr.
 - **E-mail history** kept on the deal, read from a dedicated mailbox by Dolibarr's e-mail collector.
-- **MCP tools** (`crm_*`) so an AI assistant can work on deals within the user's rights.
+- **MCP tools** (`list_crm_opportunities`, `create_crm_activity`...) so an AI assistant can work on deals within the user's rights.
 - An entry in Dolibarr's general **search box**.
 
 ## Documentation

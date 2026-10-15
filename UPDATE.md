@@ -21,6 +21,8 @@ New files are active at once, but the database changes only when the module is *
 5. **Disable the module, then enable it again**: Home → Setup → Modules, family CRM. This applies the schema steps and registers again what a version can change: rights, menus, the home box, scheduled jobs and hooks.
 6. **Check**: CRM → Setup → About shows "up to date" (installed = expected), the notice has gone, Home → Setup → Scheduled jobs still lists the two CRM jobs, and CRM → Home and a deal card open without error.
 
+7. **MCP only:** if you use the MCP tools and the tool access control already holds a list (`ai/admin/configure_tools.php`), a tool that the new version adds is hidden until you tick it there. The changelog names the new tools. Reload PHP if it caches files (opcache) so that the new tool classes are read. See [INSTALL.md](INSTALL.md), step 7.
+
 You can skip versions: going from 1.0.0 to a much later one runs every missing step in order.
 
 ## What an update does and does not touch

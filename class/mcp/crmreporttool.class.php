@@ -58,22 +58,22 @@ class CrmReportTool extends CrmMcpTool
 			'pipeline_id' => array('type' => 'integer'),
 		);
 		return array(
-			$this->definition('crm_get_dashboard', 'Counts of deals with no next step, overdue steps, past expected close and rotting deals, plus the forecast.', array()),
-			$this->definition('crm_get_forecast', 'Open amount by expected-close month and category pipeline, upside or commit. Lost deals are excluded.', array(
+			$this->definition('get_crm_dashboard', 'Counts of deals with no next step, overdue steps, past expected close and rotting deals, plus the forecast.', array()),
+			$this->definition('get_crm_forecast', 'Open amount by expected-close month and category pipeline, upside or commit. Lost deals are excluded.', array(
 				'months' => array('type' => 'integer'),
 			)),
-			$this->definition('crm_get_conversion', 'Cohort conversion from stage history for deals created in the period.', $range),
-			$this->definition('crm_get_loss_reasons', 'Lost deals in the period, grouped by reason.', $range),
-			$this->definition('crm_get_win_rate', 'Won divided by won plus lost, by close date.', $range),
-			$this->definition('crm_get_cycle_time', 'Mean days from creation to close, won deals only.', $range),
-			$this->definition('crm_get_by_owner', 'Open amount and closes in the period, by owner.', $range),
-			$this->definition('crm_get_by_source', 'Open amount and closes in the period, by source.', $range),
-			$this->definition('crm_get_settings', 'Read CRM constants.', array()),
-			$this->definition('crm_set_settings', 'Change known CRM constants only.', array(
+			$this->definition('get_crm_conversion', 'Cohort conversion from stage history for deals created in the period.', $range),
+			$this->definition('get_crm_loss_reasons', 'Lost deals in the period, grouped by reason.', $range),
+			$this->definition('get_crm_win_rate', 'Won divided by won plus lost, by close date.', $range),
+			$this->definition('get_crm_cycle_time', 'Mean days from creation to close, won deals only.', $range),
+			$this->definition('get_crm_by_owner', 'Open amount and closes in the period, by owner.', $range),
+			$this->definition('get_crm_by_source', 'Open amount and closes in the period, by source.', $range),
+			$this->definition('get_crm_settings', 'Read CRM constants.', array()),
+			$this->definition('update_crm_settings', 'Change known CRM constants only.', array(
 				'values' => array('type' => 'object', 'description' => 'Map of CRM_* constant name to value'),
 			), array('values')),
-			$this->definition('crm_run_sequences', 'Run due sequence steps now, same method as the cron job.', array()),
-			$this->definition('crm_run_owner_reminders', 'Send or simulate the owner digest now, same method as the cron job.', array()),
+			$this->definition('send_crm_due_sequence_steps', 'Run due sequence steps now, same method as the cron job.', array()),
+			$this->definition('send_crm_owner_reminders', 'Send or simulate the owner digest now, same method as the cron job.', array()),
 		);
 	}
 
@@ -82,10 +82,10 @@ class CrmReportTool extends CrmMcpTool
 	 */
 	public function getRequiredRights(string $toolName)
 	{
-		if ($toolName === 'crm_get_settings' || $toolName === 'crm_set_settings' || $toolName === 'crm_run_owner_reminders') {
+		if ($toolName === 'get_crm_settings' || $toolName === 'update_crm_settings' || $toolName === 'send_crm_owner_reminders') {
 			return array(array('crm', 'setup'));
 		}
-		if ($toolName === 'crm_run_sequences') {
+		if ($toolName === 'send_crm_due_sequence_steps') {
 			return array(array('crm', 'sequence'));
 		}
 		return array(array('crm', 'report'));
@@ -96,18 +96,18 @@ class CrmReportTool extends CrmMcpTool
 	 */
 	public function writeConfirmationPreview(string $toolName, array $args)
 	{
-		if ($toolName === 'crm_set_settings') {
+		if ($toolName === 'update_crm_settings') {
 			$names = array();
 			if (isset($args['values']) && is_array($args['values'])) {
 				$names = array_keys($args['values']);
 			}
 			return 'Update CRM settings: '.implode(', ', $names).'.';
 		}
-		if ($toolName === 'crm_run_sequences') {
+		if ($toolName === 'send_crm_due_sequence_steps') {
 			$dry = getDolGlobalInt('CRM_DRY_RUN') ? 'Dry-run is on.' : 'Dry-run is off, so e-mail can be sent.';
 			return 'Run CRM customer sequences now. '.$dry;
 		}
-		if ($toolName === 'crm_run_owner_reminders') {
+		if ($toolName === 'send_crm_owner_reminders') {
 			$dry = getDolGlobalInt('CRM_REMINDER_DRY_RUN') ? 'Dry-run is on.' : 'Dry-run is off, so e-mail can be sent.';
 			return 'Run CRM owner reminders now. '.$dry;
 		}
@@ -126,7 +126,7 @@ class CrmReportTool extends CrmMcpTool
 		}
 		require_once __DIR__.'/../crmreport.class.php';
 		$report = new CrmReport($this->db);
-		if ($toolName === 'crm_get_dashboard') {
+		if ($toolName === 'get_crm_dashboard') {
 			$hygiene = $report->hygiene($this->user);
 			return array(array(
 				'no_next' => count($hygiene['no_next']),
@@ -136,11 +136,11 @@ class CrmReportTool extends CrmMcpTool
 				'forecast' => $this->forecastRows($report->forecast($this->user)),
 			));
 		}
-		if ($toolName === 'crm_get_forecast') {
+		if ($toolName === 'get_crm_forecast') {
 			return $this->forecastRows($report->forecast($this->user, $this->argInt($args, 'months')));
 		}
 		$range = $this->range($args);
-		if ($toolName === 'crm_get_conversion') {
+		if ($toolName === 'get_crm_conversion') {
 			$pipelineId = $this->argInt($args, 'pipeline_id');
 			if ($pipelineId <= 0) {
 				require_once __DIR__.'/../pipeline.class.php';
@@ -151,31 +151,31 @@ class CrmReportTool extends CrmMcpTool
 			$result = $report->conversion($this->user, $pipelineId, $range[0], $range[1]);
 			return array(array('pipeline_id' => $pipelineId, 'cohort' => $result['cohort'], 'stages' => $result['stages']));
 		}
-		if ($toolName === 'crm_get_loss_reasons') {
+		if ($toolName === 'get_crm_loss_reasons') {
 			return $report->lossReasons($this->user, $range[0], $range[1]);
 		}
-		if ($toolName === 'crm_get_win_rate') {
+		if ($toolName === 'get_crm_win_rate') {
 			return array($report->winRate($this->user, $range[0], $range[1]));
 		}
-		if ($toolName === 'crm_get_cycle_time') {
+		if ($toolName === 'get_crm_cycle_time') {
 			return array($report->cycleTime($this->user, $range[0], $range[1]));
 		}
-		if ($toolName === 'crm_get_by_owner') {
+		if ($toolName === 'get_crm_by_owner') {
 			return $report->byOwner($this->user, $range[0], $range[1]);
 		}
-		if ($toolName === 'crm_get_by_source') {
+		if ($toolName === 'get_crm_by_source') {
 			return $report->bySource($this->user, $range[0], $range[1]);
 		}
-		if ($toolName === 'crm_get_settings') {
+		if ($toolName === 'get_crm_settings') {
 			return array($this->currentSettings());
 		}
-		if ($toolName === 'crm_set_settings') {
+		if ($toolName === 'update_crm_settings') {
 			return $this->saveSettings($args);
 		}
-		if ($toolName === 'crm_run_sequences' || $toolName === 'crm_run_owner_reminders') {
+		if ($toolName === 'send_crm_due_sequence_steps' || $toolName === 'send_crm_owner_reminders') {
 			require_once __DIR__.'/../crmcron.class.php';
 			$cron = new CrmCron($this->db);
-			if ($toolName === 'crm_run_sequences') {
+			if ($toolName === 'send_crm_due_sequence_steps') {
 				$cron->runSequences();
 			} else {
 				$cron->runOwnerReminders();

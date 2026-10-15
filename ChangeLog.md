@@ -11,7 +11,7 @@ First version.
 - Deals (opportunities) with several **pipelines**, each with its own stages, probabilities, colours, rotting delays and forecast categories. A pipeline can be created (empty or copying the stages of another one), renamed and deactivated.
 - Kanban board with drag and drop, deal and activity lists with filters, sortable columns and paging, and a deal card in the order a salesperson works: details, next step, qualification, stage, proposals, history.
 - A short editable **qualification** checklist, **loss reasons** (required to close a deal as lost) and lead **sources**. Stages, qualification items, loss reasons and sources are edited in place in the Setup screen and can be turned off: a turned-off entry is no longer offered but stays on the deals that use it, and an entry that is in use (or a stage that deals have passed through) cannot be deleted, only turned off. Deleting asks for a confirmation. The entries seeded at the first enable are shown in the language of the user.
-- **Next steps** are Dolibarr agenda events linked to the deal, and a planned one can be changed (date, kind, title) or deleted from the deal card and by MCP (`crm_update_activity`, `crm_delete_activity`); a done step is history and stays; completing, changing or deleting a step is refused when the deal is not one the user may see; a deal cannot change stage between open stages without a planned next step (setting `CRM_REQUIRE_NEXT_STEP`).
+- **Next steps** are Dolibarr agenda events linked to the deal, and a planned one can be changed (date, kind, title) or deleted from the deal card and by MCP (`update_crm_activity`, `delete_crm_activity`); a done step is history and stays; completing, changing or deleting a step is refused when the deal is not one the user may see; a deal cannot change stage between open stages without a planned next step (setting `CRM_REQUIRE_NEXT_STEP`).
 - Proposals of the Proposals module can be linked to a deal.
 - Home page work lists (no next step, overdue, past expected close, rotting) and forecast by month and category, a home box, and an entry "CRM opportunities" in the general search box of Dolibarr.
 - **Reports**: forecast, cohort conversion from the stage history, win rate, cycle time, loss reasons, by owner, by source.
@@ -28,7 +28,7 @@ First version.
 ### Administration
 
 - Setup screen: parameters (on/off switches saved at once), pipelines and stages, qualification, loss reasons, sources; rights, scheduled jobs and hooks registered at the enable; seeded data inserted once.
-- **MCP tools** `crm_*` for an AI assistant, within the rights of the user; they check their own rights, as Dolibarr 24.0.0 does not check the rights a tool declares.
+- **MCP tools** (50, named like `list_crm_opportunities` or `update_crm_activity`) for an AI assistant, within the rights of the user; they check their own rights, as Dolibarr 24.0.0 does not check the rights a tool declares.
 - Explanations of more than 12 words are hidden until the "?" button of the page is clicked; row actions are icons.
 - English and French, and a machine translation (not reviewed by a native speaker) for the other languages Dolibarr supplies. Errors shown by the module are translated.
 - Documentation: administrator guide (`doc/ADMIN_GUIDE.md`), user guide (`doc/USER_GUIDE.md`), design record (`doc/STRUCTURE_ANALYSIS.md`), `README.md`, `AGENTS.md`.
@@ -36,6 +36,6 @@ First version.
 ### Compatibility
 
 - Dolibarr 24.0.0 and 25.0.0 alpha (tested); 21 to 23 are accepted by the descriptor and have not been tested. PHP 8.1 or later.
-- The MCP server and the AI features need the AI module (Dolibarr 24 or later). The `crm_*` tools are registered the way the 24.0.0 loader requires (checked against a 24.0.0 core and the 25 alpha one).
+- The MCP server and the AI features need the AI module (Dolibarr 24 or later). The MCP tools are named verb first, as the core tools are, so that the tool access screen of Dolibarr classes a tool that changes data as "Modify" and its "View only" preset leaves it out. They are registered the way the 24.0.0 loader requires (checked against a 24.0.0 core and the 25 alpha one).
 - Schema: the tables `llx_crm_*` are created at the first enable. The module keeps its own schema version (`CRM_SCHEMA_VERSION`, shown in CRM → Setup → About) and runs the missing numbered steps when it is disabled and enabled again, with a notice to administrators when an update is waiting for that. See `INSTALL.md` and `UPDATE.md`.
 - Documentation: `INSTALL.md` (installation) and `UPDATE.md` (update procedure and how to release a version).

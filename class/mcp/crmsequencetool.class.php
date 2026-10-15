@@ -35,18 +35,18 @@ class CrmSequenceTool extends CrmMcpTool
 	public function getDefinitions(): array
 	{
 		return array(
-			$this->definition('crm_list_sequences', 'List customer sequences.', array()),
-			$this->definition('crm_get_sequence', 'Get one sequence with its steps, enrolments and journal.', array(
+			$this->definition('list_crm_sequences', 'List customer sequences.', array()),
+			$this->definition('get_crm_sequence', 'Get one sequence with its steps, enrolments and journal.', array(
 				'id' => array('type' => 'integer'),
 			), array('id')),
-			$this->definition('crm_create_sequence', 'Create a sequence. It sends nothing until CRM_SEQUENCES_ON is on.', array(
+			$this->definition('create_crm_sequence', 'Create a sequence. It sends nothing until CRM_SEQUENCES_ON is on.', array(
 				'label' => array('type' => 'string'),
 				'active' => array('type' => 'integer'),
 				'stop_on_reply' => array('type' => 'integer'),
 				'stop_on_won' => array('type' => 'integer'),
 				'stop_on_lost' => array('type' => 'integer'),
 			), array('label')),
-			$this->definition('crm_update_sequence', 'Change the reference, label, active flag or stop rules of a sequence. Only the fields given are changed. Steps and enrolments are untouched: a running enrolment goes on, and one on an inactive sequence waits until the sequence is active again.', array(
+			$this->definition('update_crm_sequence', 'Change the reference, label, active flag or stop rules of a sequence. Only the fields given are changed. Steps and enrolments are untouched: a running enrolment goes on, and one on an inactive sequence waits until the sequence is active again.', array(
 				'id' => array('type' => 'integer'),
 				'ref' => array('type' => 'string', 'description' => 'Letters, digits, underscore, dash; unique; stored in capitals.'),
 				'label' => array('type' => 'string'),
@@ -55,7 +55,7 @@ class CrmSequenceTool extends CrmMcpTool
 				'stop_on_won' => array('type' => 'integer'),
 				'stop_on_lost' => array('type' => 'integer'),
 			), array('id')),
-			$this->definition('crm_add_sequence_step', 'Add a step. delay_days is counted from the enrolment date, not from the previous step.', array(
+			$this->definition('add_crm_sequence_step', 'Add a step. delay_days is counted from the enrolment date, not from the previous step.', array(
 				'id' => array('type' => 'integer', 'description' => 'Sequence id'),
 				'action' => array('type' => 'string', 'enum' => array('email', 'call', 'task')),
 				'delay_days' => array('type' => 'integer'),
@@ -63,7 +63,7 @@ class CrmSequenceTool extends CrmMcpTool
 				'body' => array('type' => 'string', 'description' => 'Placeholders: __DEAL__ __REF__ __AMOUNT__ __CONTACT__ __CUSTOMER__'),
 				'send_mode' => array('type' => 'string', 'enum' => array('', 'draft', 'send'), 'description' => 'E-mail steps only. draft: the step becomes a planned e-mail for the salesperson to review and send. send: the job sends it (dry-run applies). Empty: follow the global setting CRM_SEQUENCE_EMAIL_MODE.'),
 			), array('id', 'action')),
-			$this->definition('crm_update_sequence_step', 'Change a step of a sequence. Only the fields given are changed. The step keeps its position. An enrolment already waiting for this step keeps the due date it was given, so a new delay applies to the steps scheduled from now on; the kind, subject, body and send_mode apply the next time the step runs.', array(
+			$this->definition('update_crm_sequence_step', 'Change a step of a sequence. Only the fields given are changed. The step keeps its position. An enrolment already waiting for this step keeps the due date it was given, so a new delay applies to the steps scheduled from now on; the kind, subject, body and send_mode apply the next time the step runs.', array(
 				'id' => array('type' => 'integer', 'description' => 'Sequence id'),
 				'step_id' => array('type' => 'integer'),
 				'action' => array('type' => 'string', 'enum' => array('email', 'call', 'task')),
@@ -72,18 +72,18 @@ class CrmSequenceTool extends CrmMcpTool
 				'body' => array('type' => 'string', 'description' => 'Plain text or HTML. Placeholders: __DEAL__ __REF__ __AMOUNT__ __CONTACT__ __CUSTOMER__'),
 				'send_mode' => array('type' => 'string', 'enum' => array('', 'draft', 'send'), 'description' => 'E-mail steps only. Empty follows the global setting.'),
 			), array('id', 'step_id')),
-			$this->definition('crm_delete_sequence_step', 'Delete one step.', array(
+			$this->definition('delete_crm_sequence_step', 'Delete one step.', array(
 				'id' => array('type' => 'integer'),
 				'step_id' => array('type' => 'integer'),
 			), array('id', 'step_id')),
-			$this->definition('crm_enrol_sequence', 'Enrol a deal. The first step is scheduled from now plus its delay.', array(
+			$this->definition('add_crm_sequence_enrolment', 'Enrol a deal. The first step is scheduled from now plus its delay.', array(
 				'id' => array('type' => 'integer'),
 				'opportunity_id' => array('type' => 'integer'),
 			), array('id', 'opportunity_id')),
-			$this->definition('crm_stop_sequence', 'Stop one enrolment.', array(
+			$this->definition('change_crm_sequence_enrolment_to_stopped', 'Stop one enrolment.', array(
 				'enrol_id' => array('type' => 'integer'),
 			), array('enrol_id')),
-			$this->definition('crm_mark_replied', 'Stop an enrolment because the contact replied. The module does not read the mailbox.', array(
+			$this->definition('update_crm_opportunity_replied', 'Stop an enrolment because the contact replied. The module does not read the mailbox.', array(
 				'enrol_id' => array('type' => 'integer'),
 			), array('enrol_id')),
 		);
@@ -94,7 +94,7 @@ class CrmSequenceTool extends CrmMcpTool
 	 */
 	public function getRequiredRights(string $toolName)
 	{
-		if ($toolName === 'crm_list_sequences' || $toolName === 'crm_get_sequence') {
+		if ($toolName === 'list_crm_sequences' || $toolName === 'get_crm_sequence') {
 			return array(array('crm', 'read'));
 		}
 		return array(array('crm', 'sequence'));
@@ -105,25 +105,25 @@ class CrmSequenceTool extends CrmMcpTool
 	 */
 	public function writeConfirmationPreview(string $toolName, array $args)
 	{
-		if ($toolName === 'crm_list_sequences' || $toolName === 'crm_get_sequence') {
+		if ($toolName === 'list_crm_sequences' || $toolName === 'get_crm_sequence') {
 			return self::NO_WRITE;
 		}
-		if ($toolName === 'crm_create_sequence') {
+		if ($toolName === 'create_crm_sequence') {
 			return 'Create CRM sequence "'.$this->argString($args, 'label').'".';
 		}
-		if ($toolName === 'crm_update_sequence') {
+		if ($toolName === 'update_crm_sequence') {
 			return 'Update CRM sequence '.$this->argInt($args, 'id').'.';
 		}
-		if ($toolName === 'crm_update_sequence_step') {
+		if ($toolName === 'update_crm_sequence_step') {
 			return 'Update step '.$this->argInt($args, 'step_id').' of CRM sequence '.$this->argInt($args, 'id').'.';
 		}
-		if ($toolName === 'crm_enrol_sequence') {
+		if ($toolName === 'add_crm_sequence_enrolment') {
 			return 'Enrol CRM deal '.$this->argInt($args, 'opportunity_id').' on sequence '.$this->argInt($args, 'id').'.';
 		}
-		if ($toolName === 'crm_mark_replied') {
+		if ($toolName === 'update_crm_opportunity_replied') {
 			return 'Mark enrolment '.$this->argInt($args, 'enrol_id').' as replied and stop it.';
 		}
-		if ($toolName === 'crm_stop_sequence') {
+		if ($toolName === 'change_crm_sequence_enrolment_to_stopped') {
 			return 'Stop CRM sequence enrolment '.$this->argInt($args, 'enrol_id').'.';
 		}
 		return 'Update CRM sequence '.$this->argInt($args, 'id').'.';
@@ -141,7 +141,7 @@ class CrmSequenceTool extends CrmMcpTool
 		}
 		require_once __DIR__.'/../sequence.class.php';
 		$sequence = new Sequence($this->db);
-		if ($toolName === 'crm_list_sequences') {
+		if ($toolName === 'list_crm_sequences') {
 			$rows = array();
 			foreach ($sequence->fetchAll() as $obj) {
 				$rows[] = array(
@@ -155,13 +155,13 @@ class CrmSequenceTool extends CrmMcpTool
 			}
 			return $rows;
 		}
-		if ($toolName === 'crm_get_sequence') {
+		if ($toolName === 'get_crm_sequence') {
 			if ($sequence->fetch($this->argInt($args, 'id')) <= 0) {
 				return $this->fail('Sequence not found');
 			}
 			return array($this->detail($sequence));
 		}
-		if ($toolName === 'crm_create_sequence') {
+		if ($toolName === 'create_crm_sequence') {
 			$sequence->label = $this->argString($args, 'label');
 			$sequence->active = isset($args['active']) ? $this->argInt($args, 'active') : 1;
 			$sequence->stop_on_reply = isset($args['stop_on_reply']) ? $this->argInt($args, 'stop_on_reply') : 1;
@@ -173,10 +173,10 @@ class CrmSequenceTool extends CrmMcpTool
 			}
 			return array(array('id' => $id, 'ref' => $sequence->ref));
 		}
-		if ($sequence->fetch($this->argInt($args, 'id')) <= 0 && $toolName !== 'crm_stop_sequence' && $toolName !== 'crm_mark_replied') {
+		if ($sequence->fetch($this->argInt($args, 'id')) <= 0 && $toolName !== 'change_crm_sequence_enrolment_to_stopped' && $toolName !== 'update_crm_opportunity_replied') {
 			return $this->fail('Sequence not found');
 		}
-		if ($toolName === 'crm_update_sequence') {
+		if ($toolName === 'update_crm_sequence') {
 			if (isset($args['ref'])) {
 				$sequence->ref = $this->argString($args, 'ref');
 			}
@@ -193,7 +193,7 @@ class CrmSequenceTool extends CrmMcpTool
 			}
 			return array($this->detail($sequence));
 		}
-		if ($toolName === 'crm_add_sequence_step') {
+		if ($toolName === 'add_crm_sequence_step') {
 			$action = $this->argString($args, 'action');
 			if (!in_array($action, array('email', 'call', 'task'), true)) {
 				return $this->fail('Step action must be email, call or task');
@@ -204,7 +204,7 @@ class CrmSequenceTool extends CrmMcpTool
 			}
 			return array(array('step_id' => $stepId, 'sequence_id' => (int) $sequence->id));
 		}
-		if ($toolName === 'crm_update_sequence_step') {
+		if ($toolName === 'update_crm_sequence_step') {
 			$current = $sequence->fetchStep($this->argInt($args, 'step_id'));
 			if ($current === null) {
 				return $this->fail('Step not found');
@@ -222,13 +222,13 @@ class CrmSequenceTool extends CrmMcpTool
 			}
 			return array(array('step_id' => (int) $current->rowid, 'sequence_id' => (int) $sequence->id));
 		}
-		if ($toolName === 'crm_delete_sequence_step') {
+		if ($toolName === 'delete_crm_sequence_step') {
 			if ($sequence->deleteStep($this->argInt($args, 'step_id')) <= 0) {
 				return $this->fail($sequence->error !== '' ? $sequence->error : 'Could not delete the step');
 			}
 			return array(array('step_id' => $this->argInt($args, 'step_id'), 'deleted' => 1));
 		}
-		if ($toolName === 'crm_enrol_sequence') {
+		if ($toolName === 'add_crm_sequence_enrolment') {
 			$deal = $this->loadDeal($this->argInt($args, 'opportunity_id'));
 			if ($deal === null) {
 				return $this->fail('Deal not found');
@@ -239,12 +239,12 @@ class CrmSequenceTool extends CrmMcpTool
 			}
 			return array(array('enrol_id' => $enrolId, 'opportunity_id' => (int) $deal->id));
 		}
-		if ($toolName === 'crm_stop_sequence' || $toolName === 'crm_mark_replied') {
+		if ($toolName === 'change_crm_sequence_enrolment_to_stopped' || $toolName === 'update_crm_opportunity_replied') {
 			$enrolId = $this->argInt($args, 'enrol_id');
 			if (!$this->enrolVisible($enrolId)) {
 				return $this->fail('Enrolment not found');
 			}
-			$reason = ($toolName === 'crm_mark_replied') ? 'replied' : 'manual';
+			$reason = ($toolName === 'update_crm_opportunity_replied') ? 'replied' : 'manual';
 			if ($sequence->stopEnrolment($enrolId, $reason) <= 0) {
 				return $this->fail($sequence->error !== '' ? $sequence->error : 'Could not stop the enrolment');
 			}

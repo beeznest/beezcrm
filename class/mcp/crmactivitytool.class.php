@@ -35,27 +35,27 @@ class CrmActivityTool extends CrmMcpTool
 	public function getDefinitions(): array
 	{
 		return array(
-			$this->definition('crm_list_activities', 'List CRM agenda events. scope is overdue, today, planned or done. Pass id to list one deal.', array(
+			$this->definition('list_crm_activities', 'List CRM agenda events. scope is overdue, today, planned or done. Pass id to list one deal.', array(
 				'id' => array('type' => 'integer', 'description' => 'Opportunity id. Omit to list across deals.'),
 				'scope' => array('type' => 'string', 'enum' => array('overdue', 'today', 'planned', 'done')),
 			)),
-			$this->definition('crm_create_activity', 'Create a call, meeting, task or logged e-mail on a deal. A future unfinished event is a next step.', array(
+			$this->definition('create_crm_activity', 'Create a call, meeting, task or logged e-mail on a deal. A future unfinished event is a next step.', array(
 				'id' => array('type' => 'integer'),
 				'kind' => array('type' => 'string', 'enum' => array('call', 'meeting', 'task', 'email')),
 				'label' => array('type' => 'string'),
 				'date' => array('type' => 'string', 'description' => 'YYYY-MM-DD or unix time'),
 				'percentage' => array('type' => 'integer', 'description' => '0 for a next step, 100 for a completed step'),
 			), array('id', 'kind', 'label', 'date')),
-			$this->definition('crm_complete_activity', 'Mark a CRM agenda event done.', array(
+			$this->definition('change_crm_activity_to_done', 'Mark a CRM agenda event done.', array(
 				'event_id' => array('type' => 'integer'),
 			), array('event_id')),
-			$this->definition('crm_update_activity', 'Change a planned CRM step: its date and, for a call, meeting or task, its kind and title. A planned e-mail only changes date. A done step cannot be changed.', array(
+			$this->definition('update_crm_activity', 'Change a planned CRM step: its date and, for a call, meeting or task, its kind and title. A planned e-mail only changes date. A done step cannot be changed.', array(
 				'event_id' => array('type' => 'integer'),
 				'date' => array('type' => 'string', 'description' => 'YYYY-MM-DD or unix time'),
 				'kind' => array('type' => 'string', 'enum' => array('call', 'meeting', 'task')),
 				'label' => array('type' => 'string'),
 			), array('event_id', 'date')),
-			$this->definition('crm_delete_activity', 'Delete a planned CRM step. A done step is history and cannot be deleted.', array(
+			$this->definition('delete_crm_activity', 'Delete a planned CRM step. A done step is history and cannot be deleted.', array(
 				'event_id' => array('type' => 'integer'),
 			), array('event_id')),
 		);
@@ -66,7 +66,7 @@ class CrmActivityTool extends CrmMcpTool
 	 */
 	public function getRequiredRights(string $toolName)
 	{
-		if ($toolName === 'crm_list_activities') {
+		if ($toolName === 'list_crm_activities') {
 			return array(array('crm', 'read'));
 		}
 		return array(array('crm', 'activity'));
@@ -77,16 +77,16 @@ class CrmActivityTool extends CrmMcpTool
 	 */
 	public function writeConfirmationPreview(string $toolName, array $args)
 	{
-		if ($toolName === 'crm_list_activities') {
+		if ($toolName === 'list_crm_activities') {
 			return self::NO_WRITE;
 		}
-		if ($toolName === 'crm_complete_activity') {
+		if ($toolName === 'change_crm_activity_to_done') {
 			return 'Mark CRM agenda event '.$this->argInt($args, 'event_id').' as done.';
 		}
-		if ($toolName === 'crm_update_activity') {
+		if ($toolName === 'update_crm_activity') {
 			return 'Change the planned CRM agenda event '.$this->argInt($args, 'event_id').'.';
 		}
-		if ($toolName === 'crm_delete_activity') {
+		if ($toolName === 'delete_crm_activity') {
 			return 'Delete the planned CRM agenda event '.$this->argInt($args, 'event_id').'.';
 		}
 		return 'Create a '.$this->argString($args, 'kind').' "'.$this->argString($args, 'label').'" on CRM deal '.$this->argInt($args, 'id').'.';
@@ -104,7 +104,7 @@ class CrmActivityTool extends CrmMcpTool
 		}
 		require_once __DIR__.'/../crmactivity.class.php';
 		$activity = new CrmActivity($this->db);
-		if ($toolName === 'crm_list_activities') {
+		if ($toolName === 'list_crm_activities') {
 			$id = $this->argInt($args, 'id');
 			if ($id > 0) {
 				$deal = $this->loadDeal($id);
@@ -143,7 +143,7 @@ class CrmActivityTool extends CrmMcpTool
 			}
 			return $rows;
 		}
-		if ($toolName === 'crm_create_activity') {
+		if ($toolName === 'create_crm_activity') {
 			$deal = $this->loadDeal($this->argInt($args, 'id'));
 			if ($deal === null) {
 				return $this->fail('Deal not found');
@@ -159,7 +159,7 @@ class CrmActivityTool extends CrmMcpTool
 			}
 			return array(array('event_id' => $eventId, 'opportunity_id' => (int) $deal->id));
 		}
-		if ($toolName === 'crm_complete_activity') {
+		if ($toolName === 'change_crm_activity_to_done') {
 			$eventId = $this->argInt($args, 'event_id');
 			require_once DOL_DOCUMENT_ROOT.'/comm/action/class/actioncomm.class.php';
 			$event = new ActionComm($this->db);
@@ -178,7 +178,7 @@ class CrmActivityTool extends CrmMcpTool
 			}
 			return array(array('event_id' => $eventId, 'percent' => 100));
 		}
-		if ($toolName === 'crm_update_activity') {
+		if ($toolName === 'update_crm_activity') {
 			$date = $this->argDate($args, 'date');
 			if ($date <= 0) {
 				return $this->fail('A date is required');
@@ -189,7 +189,7 @@ class CrmActivityTool extends CrmMcpTool
 			}
 			return array(array('event_id' => $eventId, 'updated' => 1));
 		}
-		if ($toolName === 'crm_delete_activity') {
+		if ($toolName === 'delete_crm_activity') {
 			$eventId = $this->argInt($args, 'event_id');
 			if ($activity->deleteStep($this->user, $eventId) <= 0) {
 				return $this->fail(crmErrorText($activity->error !== '' ? $activity->error : 'Error'));

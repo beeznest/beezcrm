@@ -36,16 +36,16 @@ class CrmOpportunityTool extends CrmMcpTool
 	{
 		$dealId = array('id' => array('type' => 'integer', 'description' => 'Opportunity id'));
 		return array(
-			$this->definition('crm_list_opportunities', 'List deals visible to the caller. Use search_thirdparties for accounts.', array(
+			$this->definition('list_crm_opportunities', 'List deals visible to the caller. Use search_thirdparties for accounts.', array(
 				'status' => array('type' => 'string', 'enum' => array('open', 'won', 'lost', '')),
 				'pipeline_id' => array('type' => 'integer'),
 				'owner_id' => array('type' => 'integer', 'description' => 'Dolibarr user id. Ignored without the readall right.'),
 				'search' => array('type' => 'string'),
 				'limit' => array('type' => 'integer'),
 			)),
-			$this->definition('crm_get_opportunity', 'Get one deal, its qualification, proposals, history and agenda events.', $dealId, array('id')),
-			$this->definition('crm_list_stage_history', 'Stage moves of one deal.', $dealId, array('id')),
-			$this->definition('crm_create_opportunity', 'Create a deal in the first open stage. Owner is a numeric user id.', array(
+			$this->definition('get_crm_opportunity', 'Get one deal, its qualification, proposals, history and agenda events.', $dealId, array('id')),
+			$this->definition('list_crm_stage_history', 'Stage moves of one deal.', $dealId, array('id')),
+			$this->definition('create_crm_opportunity', 'Create a deal in the first open stage. Owner is a numeric user id.', array(
 				'label' => array('type' => 'string'),
 				'pipeline_id' => array('type' => 'integer'),
 				'socid' => array('type' => 'integer', 'description' => 'Third party id'),
@@ -56,7 +56,7 @@ class CrmOpportunityTool extends CrmMcpTool
 				'source_id' => array('type' => 'integer'),
 				'description' => array('type' => 'string'),
 			), array('label', 'pipeline_id')),
-			$this->definition('crm_update_opportunity', 'Update deal fields. The stage is changed by crm_move_opportunity.', array(
+			$this->definition('update_crm_opportunity', 'Update deal fields. The stage is changed by change_crm_opportunity_stage.', array(
 				'id' => array('type' => 'integer'),
 				'label' => array('type' => 'string'),
 				'socid' => array('type' => 'integer'),
@@ -67,31 +67,31 @@ class CrmOpportunityTool extends CrmMcpTool
 				'source_id' => array('type' => 'integer'),
 				'description' => array('type' => 'string'),
 			), array('id')),
-			$this->definition('crm_move_opportunity', 'Move a deal to a stage of the same pipeline. An open move needs a future next step when that rule is on.', array(
+			$this->definition('change_crm_opportunity_stage', 'Move a deal to a stage of the same pipeline. An open move needs a future next step when that rule is on.', array(
 				'id' => array('type' => 'integer'),
 				'stage_id' => array('type' => 'integer'),
 				'loss_reason_id' => array('type' => 'integer'),
 				'note' => array('type' => 'string'),
 			), array('id', 'stage_id')),
-			$this->definition('crm_mark_won', 'Move the deal to the won stage of its pipeline.', array(
+			$this->definition('change_crm_opportunity_to_won', 'Move the deal to the won stage of its pipeline.', array(
 				'id' => array('type' => 'integer'),
 				'note' => array('type' => 'string'),
 			), array('id')),
-			$this->definition('crm_mark_lost', 'Move the deal to the lost stage. A loss reason is required.', array(
+			$this->definition('change_crm_opportunity_to_lost', 'Move the deal to the lost stage. A loss reason is required.', array(
 				'id' => array('type' => 'integer'),
 				'loss_reason_id' => array('type' => 'integer'),
 				'note' => array('type' => 'string'),
 			), array('id', 'loss_reason_id')),
-			$this->definition('crm_delete_opportunity', 'Delete the deal and its CRM rows. Agenda events are kept.', $dealId, array('id')),
-			$this->definition('crm_link_proposal', 'Link an existing proposal. The deal amount is left unchanged.', array(
+			$this->definition('delete_crm_opportunity', 'Delete the deal and its CRM rows. Agenda events are kept.', $dealId, array('id')),
+			$this->definition('add_crm_proposal_link', 'Link an existing proposal. The deal amount is left unchanged.', array(
 				'id' => array('type' => 'integer'),
 				'propal_id' => array('type' => 'integer'),
 			), array('id', 'propal_id')),
-			$this->definition('crm_unlink_proposal', 'Remove a proposal link.', array(
+			$this->definition('remove_crm_proposal_link', 'Remove a proposal link.', array(
 				'id' => array('type' => 'integer'),
 				'propal_id' => array('type' => 'integer'),
 			), array('id', 'propal_id')),
-			$this->definition('crm_set_qualification', 'Save yes/no answers. Keys are qualification ids.', array(
+			$this->definition('update_crm_qualification_answers', 'Save yes/no answers. Keys are qualification ids.', array(
 				'id' => array('type' => 'integer'),
 				'answers' => array('type' => 'object', 'description' => 'Map of qualification id to 0 or 1'),
 			), array('id', 'answers')),
@@ -103,10 +103,10 @@ class CrmOpportunityTool extends CrmMcpTool
 	 */
 	public function getRequiredRights(string $toolName)
 	{
-		if ($toolName === 'crm_delete_opportunity') {
+		if ($toolName === 'delete_crm_opportunity') {
 			return array(array('crm', 'delete'));
 		}
-		$reads = array('crm_list_opportunities', 'crm_get_opportunity', 'crm_list_stage_history');
+		$reads = array('list_crm_opportunities', 'get_crm_opportunity', 'list_crm_stage_history');
 		if (in_array($toolName, $reads, true)) {
 			return array(array('crm', 'read'));
 		}
@@ -118,24 +118,24 @@ class CrmOpportunityTool extends CrmMcpTool
 	 */
 	public function writeConfirmationPreview(string $toolName, array $args)
 	{
-		$reads = array('crm_list_opportunities', 'crm_get_opportunity', 'crm_list_stage_history');
+		$reads = array('list_crm_opportunities', 'get_crm_opportunity', 'list_crm_stage_history');
 		if (in_array($toolName, $reads, true)) {
 			return self::NO_WRITE;
 		}
 		$id = $this->argInt($args, 'id');
-		if ($toolName === 'crm_create_opportunity') {
+		if ($toolName === 'create_crm_opportunity') {
 			return 'Create CRM deal "'.$this->argString($args, 'label').'" for amount '.$this->argString($args, 'amount').'.';
 		}
-		if ($toolName === 'crm_delete_opportunity') {
+		if ($toolName === 'delete_crm_opportunity') {
 			return 'Delete CRM deal '.$id.'. Agenda events stay.';
 		}
-		if ($toolName === 'crm_move_opportunity') {
+		if ($toolName === 'change_crm_opportunity_stage') {
 			return 'Move CRM deal '.$id.' to stage '.$this->argInt($args, 'stage_id').'.';
 		}
-		if ($toolName === 'crm_mark_won') {
+		if ($toolName === 'change_crm_opportunity_to_won') {
 			return 'Mark CRM deal '.$id.' as won.';
 		}
-		if ($toolName === 'crm_mark_lost') {
+		if ($toolName === 'change_crm_opportunity_to_lost') {
 			return 'Mark CRM deal '.$id.' as lost with reason '.$this->argInt($args, 'loss_reason_id').'.';
 		}
 		return 'Update CRM deal '.$id.' via '.$toolName.'.';
@@ -153,7 +153,7 @@ class CrmOpportunityTool extends CrmMcpTool
 		}
 		require_once __DIR__.'/../opportunity.class.php';
 		require_once __DIR__.'/../qualification.class.php';
-		if ($toolName === 'crm_list_opportunities') {
+		if ($toolName === 'list_crm_opportunities') {
 			$deal = new Opportunity($this->db);
 			$limit = $this->argInt($args, 'limit');
 			if ($limit <= 0) {
@@ -165,41 +165,41 @@ class CrmOpportunityTool extends CrmMcpTool
 			}
 			return $rows;
 		}
-		if ($toolName === 'crm_get_opportunity') {
+		if ($toolName === 'get_crm_opportunity') {
 			$deal = $this->loadDeal($this->argInt($args, 'id'));
 			if ($deal === null) {
 				return $this->fail('Deal not found');
 			}
 			return array($this->detailRow($deal));
 		}
-		if ($toolName === 'crm_list_stage_history') {
+		if ($toolName === 'list_crm_stage_history') {
 			$deal = $this->loadDeal($this->argInt($args, 'id'));
 			if ($deal === null) {
 				return $this->fail('Deal not found');
 			}
 			return $this->historyRows($deal);
 		}
-		if ($toolName === 'crm_create_opportunity') {
+		if ($toolName === 'create_crm_opportunity') {
 			return $this->createDeal($args);
 		}
-		if ($toolName === 'crm_update_opportunity') {
+		if ($toolName === 'update_crm_opportunity') {
 			return $this->updateDeal($args);
 		}
-		if ($toolName === 'crm_move_opportunity') {
+		if ($toolName === 'change_crm_opportunity_stage') {
 			return $this->moveDeal($this->argInt($args, 'id'), $this->argInt($args, 'stage_id'), $this->argInt($args, 'loss_reason_id'), $this->argString($args, 'note'));
 		}
-		if ($toolName === 'crm_mark_won' || $toolName === 'crm_mark_lost') {
+		if ($toolName === 'change_crm_opportunity_to_won' || $toolName === 'change_crm_opportunity_to_lost') {
 			$deal = $this->loadDeal($this->argInt($args, 'id'));
 			if ($deal === null) {
 				return $this->fail('Deal not found');
 			}
-			$stageId = $this->flagStage((int) $deal->fk_pipeline, $toolName === 'crm_mark_won' ? 'won' : 'lost');
+			$stageId = $this->flagStage((int) $deal->fk_pipeline, $toolName === 'change_crm_opportunity_to_won' ? 'won' : 'lost');
 			if ($stageId <= 0) {
 				return $this->fail('Pipeline has no matching stage');
 			}
 			return $this->moveDeal((int) $deal->id, $stageId, $this->argInt($args, 'loss_reason_id'), $this->argString($args, 'note'));
 		}
-		if ($toolName === 'crm_delete_opportunity') {
+		if ($toolName === 'delete_crm_opportunity') {
 			$deal = $this->loadDeal($this->argInt($args, 'id'));
 			if ($deal === null) {
 				return $this->fail('Deal not found');
@@ -209,19 +209,19 @@ class CrmOpportunityTool extends CrmMcpTool
 			}
 			return array(array('id' => $this->argInt($args, 'id'), 'deleted' => 1));
 		}
-		if ($toolName === 'crm_link_proposal' || $toolName === 'crm_unlink_proposal') {
+		if ($toolName === 'add_crm_proposal_link' || $toolName === 'remove_crm_proposal_link') {
 			$deal = $this->loadDeal($this->argInt($args, 'id'));
 			if ($deal === null) {
 				return $this->fail('Deal not found');
 			}
 			$propalId = $this->argInt($args, 'propal_id');
-			$result = ($toolName === 'crm_link_proposal') ? $deal->linkProposal($propalId) : $deal->unlinkProposal($propalId);
+			$result = ($toolName === 'add_crm_proposal_link') ? $deal->linkProposal($propalId) : $deal->unlinkProposal($propalId);
 			if ($result <= 0) {
 				return $this->fail($deal->error !== '' ? $deal->error : 'Proposal link failed');
 			}
 			return array(array('id' => (int) $deal->id, 'propal_id' => $propalId));
 		}
-		if ($toolName === 'crm_set_qualification') {
+		if ($toolName === 'update_crm_qualification_answers') {
 			$deal = $this->loadDeal($this->argInt($args, 'id'));
 			if ($deal === null) {
 				return $this->fail('Deal not found');

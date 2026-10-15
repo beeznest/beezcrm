@@ -55,7 +55,7 @@ In this order:
 1. **Dolibarr settings the module relies on**: the Scheduled jobs module and its security key, the e-mail setup (Home → Setup → Emails), each salesperson's e-mail address. See the guide.
 2. **CRM → Setup**: check the Parameters, the stages of the pipeline, the qualification items, loss reasons and sources, and adapt them to your sales process.
 3. **A system cron entry** that calls Dolibarr's scheduled jobs, otherwise no job runs (sequences, reminders, e-mail collector). See "Scheduled jobs" in the guide.
-4. Only when you want them: the archive mailbox and the E-mail collector (e-mail history), the AI assistance, the MCP server. Each has its own section in the guide.
+4. Only when you want them: the archive mailbox and the E-mail collector (e-mail history), the AI assistance, the MCP tools (step 7 below). Each has its own section in the guide.
 
 Leave the dry-run settings on, and the e-mail steps as drafts, until you have checked the journal and the e-mail setup.
 
@@ -65,6 +65,24 @@ Leave the dry-run settings on, and the e-mail steps as drafts, until you have ch
 - CRM → Setup → **About** shows the module version `1.0.0` and a database schema "1 / 1, up to date".
 - Home → Setup → Scheduled jobs lists two CRM jobs: "Owner reminders" and "Customer sequences".
 - Create a test deal (CRM → Opportunities → New opportunity), plan a next step, move it between stages, then delete it.
+
+## 7. Optional: let an AI assistant use the CRM (MCP)
+
+The module adds 50 tools to the MCP server of Dolibarr's AI module (Dolibarr 24 or later): 20 read tools and 30 that create, change or delete data (deals, next steps, sequences and, with the "Configure CRM" right, the setup). Skip this step if you do not use MCP. Everything works without it.
+
+On **Dolibarr 24.0.0** (steps that differ on 25 are noted):
+
+1. **Enable the AI module** (Home → Setup → Modules). The CRM does not have to be enabled first or second: the module registers itself for the `aimcp` hook when it is enabled (step 3), and Dolibarr asks it for its tools each time the MCP server runs.
+2. **Show the MCP setup pages.** On 24.0.0 the AI tabs "MCP server" and "Tool access control" only appear when the constant `MAIN_FEATURES_LEVEL` is **2** or more (Home → Setup → Other setup; on 25 it is 1). It also turns on other experimental Dolibarr features, so you can set it back once you are done. Without it you can open the pages by their address: `/ai/admin/server_mcp.php` and `/ai/admin/configure_tools.php`.
+3. **Switch the MCP server on** (`/ai/admin/server_mcp.php`), generate the **shared MCP key** and choose the user the tools run as. On 24.0.0 the shared key is the only way to authenticate; personal API keys exist from 25. The key is a secret: keep it out of the project and out of chats.
+4. **Give that user the CRM rights** it needs (step 4 above). Create a dedicated user for the assistant with exactly those rights: it decides what the assistant can do. A user with no CRM right sees none of the tools, and one without "Read every owner" only reaches its own deals. Dolibarr 24.0.0 does not check the rights a tool declares, and does not ask for a confirmation before a write, so the CRM tools check the rights themselves; the confirmation step exists from 25 only.
+5. **Allow the tools** (`/ai/admin/configure_tools.php`, column "MCP Server"):
+   - While nothing has ever been saved on that page, **every tool is allowed** (the setting `AI_MCP_SERVER_ALLOWED_TOOLS` is empty) and the CRM tools work at once.
+   - As soon as the page has been used (a preset, or one tick), the setting becomes an explicit list and **every tool that is not in it is hidden**, the CRM tools included, and so is any tool a later update of the module adds. Tick the CRM tools you want, in the column "MCP Server".
+   - The page labels the 20 read tools of the CRM "View only" and the 30 that create, change or delete data "Modify": the names start with a verb (`list_`, `get_`, or `create_`, `update_`, `delete_`, `add_`, `remove_`, `change_`, `send_`), which is what the page looks at. Its **"View only" preset** therefore allows only the read tools, but it **replaces the whole list**, the core tools too. To allow the tools that change data, tick them one by one, in steps, for a user whose rights you chose on purpose. The write tools are listed by right in [doc/ADMIN_GUIDE.md](doc/ADMIN_GUIDE.md), "MCP".
+6. **Check.** `/ai/admin/configure_tools.php` lists the CRM tools (their names contain `crm`, for example `list_crm_opportunities`) even before you tick anything. The page shows every tool, whatever the allow-list and the user's rights. If none of them is there, the hook does not return them: see the table below. A client that calls `tools/list` on `/ai/server/mcp_server.php` with the key then gets the ticked tools the user has the rights for. A client that caches the list has to reconnect after a change.
+
+More in [doc/ADMIN_GUIDE.md](doc/ADMIN_GUIDE.md), "MCP", with the rights each tool needs.
 
 ## Disabling and removing
 
@@ -79,5 +97,7 @@ Disabling the module (Home → Setup → Modules) removes the menus, rights, hom
 | "Include of main fails" on a page | The module is not served from the Dolibarr tree | Use `htdocs/custom/crm` (step 2) |
 | Enabling stops with "CRM schema step N failed" | The database user cannot alter tables, or the table is in an unexpected state | Fix the cause shown in the message, then enable again: it resumes at that step |
 | No **CRM** menu for a user | No CRM right | Step 4 |
+| No CRM tool in `ai/admin/configure_tools.php` | The files are an old copy (before the tools were returned the way Dolibarr 24.0.0 requires) or PHP still serves cached ones, the module was enabled without the `aimcp` hook, or an error in the hook (written to the Dolibarr log) | Use the current files and reload PHP, check that the constant `MAIN_MODULE_CRM_HOOKS` contains `aimcp` (disable and enable CRM if not), read the log |
+| The CRM tools are on that page but not in the client | Not ticked in the "MCP Server" column, or the MCP user lacks the right | Step 5 and step 4 of the MCP section |
 
 More cases are in [doc/ADMIN_GUIDE.md](doc/ADMIN_GUIDE.md), "Troubleshooting".

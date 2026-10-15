@@ -37,19 +37,19 @@ class CrmDictionaryTool extends CrmMcpTool
 		$id = array('id' => array('type' => 'integer'));
 		$pipeline = array('pipeline_id' => array('type' => 'integer', 'description' => 'Pipeline id'));
 		return array(
-			$this->definition('crm_list_pipelines', 'List CRM pipelines. Call it before creating a deal: pipeline_id comes from here.', array('active_only' => array('type' => 'boolean'))),
-			$this->definition('crm_list_stages', 'List stages of one pipeline, in board order, with probability, forecast category and won/lost flags. Stage ids are the values accepted when moving a deal.', $pipeline, array('pipeline_id')),
-			$this->definition('crm_list_sources', 'List deal sources. Source ids are the values accepted as source_id when creating or updating a deal.', array()),
-			$this->definition('crm_list_loss_reasons', 'List loss reasons. A reason id is required when marking a deal lost.', array()),
-			$this->definition('crm_list_qualifications', 'List the active qualification checklist (id, code, label, points). Ids are the keys used by crm_set_qualification.', array()),
-			$this->definition('crm_upsert_pipeline', 'Create a pipeline, or rename and activate or deactivate one. The ref is fixed at creation. A new pipeline is empty unless copy_stages_from names a pipeline to copy the stages from; it needs an open, a won and a lost stage before deals can be created in it. The last active pipeline cannot be deactivated.', array(
+			$this->definition('list_crm_pipelines', 'List CRM pipelines. Call it before creating a deal: pipeline_id comes from here.', array('active_only' => array('type' => 'boolean'))),
+			$this->definition('list_crm_stages', 'List stages of one pipeline, in board order, with probability, forecast category and won/lost flags. Stage ids are the values accepted when moving a deal.', $pipeline, array('pipeline_id')),
+			$this->definition('list_crm_sources', 'List deal sources. Source ids are the values accepted as source_id when creating or updating a deal.', array()),
+			$this->definition('list_crm_loss_reasons', 'List loss reasons. A reason id is required when marking a deal lost.', array()),
+			$this->definition('list_crm_qualifications', 'List the active qualification checklist (id, code, label, points). Ids are the keys used by update_crm_qualification_answers.', array()),
+			$this->definition('create_or_update_crm_pipeline', 'Create a pipeline, or rename and activate or deactivate one. The ref is fixed at creation. A new pipeline is empty unless copy_stages_from names a pipeline to copy the stages from; it needs an open, a won and a lost stage before deals can be created in it. The last active pipeline cannot be deactivated.', array(
 				'id' => array('type' => 'integer', 'description' => 'Pipeline id. Omit to create.'),
 				'ref' => array('type' => 'string', 'description' => 'Reference, required when creating: letters, digits, underscore, dash.'),
 				'label' => array('type' => 'string'),
 				'active' => array('type' => 'integer', 'description' => '1 active (default), 0 inactive. Only used when updating.'),
 				'copy_stages_from' => array('type' => 'integer', 'description' => 'When creating: id of the pipeline whose stages are copied.'),
 			), array('label')),
-			$this->definition('crm_upsert_stage', 'Create or update a pipeline stage. Probability lives on the stage.', array(
+			$this->definition('create_or_update_crm_stage', 'Create or update a pipeline stage. Probability lives on the stage.', array(
 				'id' => array('type' => 'integer', 'description' => 'Stage id. Omit to create.'),
 				'pipeline_id' => array('type' => 'integer'),
 				'label' => array('type' => 'string'),
@@ -62,10 +62,10 @@ class CrmDictionaryTool extends CrmMcpTool
 				'is_lost' => array('type' => 'integer'),
 				'active' => array('type' => 'integer'),
 			), array('pipeline_id', 'label')),
-			$this->definition('crm_delete_stage', 'Delete a stage that contains no deals.', $id, array('id')),
-			$this->definition('crm_upsert_source', 'Create or update a source.', $this->dictProps(), array('code', 'label')),
-			$this->definition('crm_upsert_loss_reason', 'Create or update a loss reason.', $this->dictProps(), array('code', 'label')),
-			$this->definition('crm_upsert_qualification', 'Create or update a qualification item. Points are summed, capped at 100.', array(
+			$this->definition('delete_crm_stage', 'Delete a stage that contains no deals.', $id, array('id')),
+			$this->definition('create_or_update_crm_source', 'Create or update a source.', $this->dictProps(), array('code', 'label')),
+			$this->definition('create_or_update_crm_loss_reason', 'Create or update a loss reason.', $this->dictProps(), array('code', 'label')),
+			$this->definition('create_or_update_crm_qualification', 'Create or update a qualification item. Points are summed, capped at 100.', array(
 				'id' => array('type' => 'integer'),
 				'code' => array('type' => 'string'),
 				'label' => array('type' => 'string'),
@@ -81,7 +81,7 @@ class CrmDictionaryTool extends CrmMcpTool
 	 */
 	public function getRequiredRights(string $toolName)
 	{
-		$writes = array('crm_upsert_pipeline', 'crm_upsert_stage', 'crm_delete_stage', 'crm_upsert_source', 'crm_upsert_loss_reason', 'crm_upsert_qualification');
+		$writes = array('create_or_update_crm_pipeline', 'create_or_update_crm_stage', 'delete_crm_stage', 'create_or_update_crm_source', 'create_or_update_crm_loss_reason', 'create_or_update_crm_qualification');
 		if (in_array($toolName, $writes, true)) {
 			return array(array('crm', 'setup'));
 		}
@@ -93,14 +93,14 @@ class CrmDictionaryTool extends CrmMcpTool
 	 */
 	public function writeConfirmationPreview(string $toolName, array $args)
 	{
-		if (strpos($toolName, 'crm_list_') === 0) {
+		if (strpos($toolName, 'list_crm_') === 0) {
 			return self::NO_WRITE;
 		}
-		if ($toolName === 'crm_upsert_pipeline') {
+		if ($toolName === 'create_or_update_crm_pipeline') {
 			$id = $this->argInt($args, 'id');
 			return ($id > 0 ? 'Update CRM pipeline '.$id : 'Create CRM pipeline "'.$this->argString($args, 'ref').'"').' with label "'.$this->argString($args, 'label').'".';
 		}
-		if ($toolName === 'crm_delete_stage') {
+		if ($toolName === 'delete_crm_stage') {
 			return 'Delete CRM stage '.$this->argInt($args, 'id').'. Refused when the stage still contains deals.';
 		}
 		$label = $this->argString($args, 'label');
@@ -119,7 +119,7 @@ class CrmDictionaryTool extends CrmMcpTool
 		}
 		require_once __DIR__.'/../pipeline.class.php';
 		require_once __DIR__.'/../stage.class.php';
-		if ($toolName === 'crm_list_pipelines') {
+		if ($toolName === 'list_crm_pipelines') {
 			$pipeline = new Pipeline($this->db);
 			$onlyActive = !isset($args['active_only']) || !empty($args['active_only']);
 			$rows = array();
@@ -128,7 +128,7 @@ class CrmDictionaryTool extends CrmMcpTool
 			}
 			return $rows;
 		}
-		if ($toolName === 'crm_list_stages') {
+		if ($toolName === 'list_crm_stages') {
 			$stage = new Stage($this->db);
 			$rows = array();
 			foreach ($stage->fetchAll($this->argInt($args, 'pipeline_id')) as $one) {
@@ -136,13 +136,13 @@ class CrmDictionaryTool extends CrmMcpTool
 			}
 			return $rows;
 		}
-		if ($toolName === 'crm_list_sources') {
+		if ($toolName === 'list_crm_sources') {
 			return $this->dictRows('source');
 		}
-		if ($toolName === 'crm_list_loss_reasons') {
+		if ($toolName === 'list_crm_loss_reasons') {
 			return $this->dictRows('loss_reason');
 		}
-		if ($toolName === 'crm_list_qualifications') {
+		if ($toolName === 'list_crm_qualifications') {
 			require_once __DIR__.'/../qualification.class.php';
 			$rows = array();
 			foreach ((new Qualification($this->db))->fetchItems(false) as $one) {
@@ -150,7 +150,7 @@ class CrmDictionaryTool extends CrmMcpTool
 			}
 			return $rows;
 		}
-		if ($toolName === 'crm_upsert_pipeline') {
+		if ($toolName === 'create_or_update_crm_pipeline') {
 			$pipeline = new Pipeline($this->db);
 			$id = $pipeline->save($this->user, $this->argInt($args, 'id'), $this->argString($args, 'ref'), $this->argString($args, 'label'), isset($args['active']) ? $this->argInt($args, 'active') : 1, $this->argInt($args, 'copy_stages_from'));
 			if ($id <= 0) {
@@ -158,10 +158,10 @@ class CrmDictionaryTool extends CrmMcpTool
 			}
 			return array(array('id' => $id, 'ref' => $pipeline->ref, 'label' => $pipeline->label, 'active' => (int) $pipeline->active));
 		}
-		if ($toolName === 'crm_upsert_stage') {
+		if ($toolName === 'create_or_update_crm_stage') {
 			return $this->saveStage($args);
 		}
-		if ($toolName === 'crm_delete_stage') {
+		if ($toolName === 'delete_crm_stage') {
 			$stage = new Stage($this->db);
 			if ($stage->fetch($this->argInt($args, 'id')) <= 0) {
 				return $this->fail('Stage not found');
@@ -171,15 +171,15 @@ class CrmDictionaryTool extends CrmMcpTool
 			}
 			return array(array('id' => (int) $stage->id, 'deleted' => 1));
 		}
-		if ($toolName === 'crm_upsert_source' || $toolName === 'crm_upsert_loss_reason') {
-			$which = ($toolName === 'crm_upsert_source') ? 'source' : 'loss_reason';
+		if ($toolName === 'create_or_update_crm_source' || $toolName === 'create_or_update_crm_loss_reason') {
+			$which = ($toolName === 'create_or_update_crm_source') ? 'source' : 'loss_reason';
 			$id = crmSaveDictionary($this->db, $which, $this->argInt($args, 'id'), $this->argString($args, 'code'), $this->argString($args, 'label'), $this->argInt($args, 'position'), isset($args['active']) ? $this->argInt($args, 'active') : ($this->argInt($args, 'id') > 0 ? -1 : 1));
 			if ($id <= 0) {
 				return $this->fail($id === -2 ? crmErrorText('CrmErrorCodeExists') : 'Could not save the dictionary entry');
 			}
 			return array(array('id' => $id));
 		}
-		if ($toolName === 'crm_upsert_qualification') {
+		if ($toolName === 'create_or_update_crm_qualification') {
 			$id = crmSaveQualificationItem($this->db, $this->argInt($args, 'id'), $this->argString($args, 'code'), $this->argString($args, 'label'), $this->argInt($args, 'points'), $this->argInt($args, 'position'), isset($args['active']) ? $this->argInt($args, 'active') : ($this->argInt($args, 'id') > 0 ? -1 : 1));
 			if ($id <= 0) {
 				return $this->fail($id === -2 ? crmErrorText('CrmErrorCodeExists') : 'Could not save the qualification item');
