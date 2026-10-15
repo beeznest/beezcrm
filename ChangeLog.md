@@ -36,6 +36,6 @@ First version.
 ### Compatibility
 
 - Dolibarr 24.0.0 and 25.0.0 alpha (tested); 21 to 23 are accepted by the descriptor and have not been tested. PHP 8.1 or later.
-- The MCP server and the AI features need the AI module (Dolibarr 24 or later).
+- The MCP server and the AI features need the AI module (Dolibarr 24 or later). The `crm_*` tools are registered the way the 24.0.0 loader requires (checked against a 24.0.0 core and the 25 alpha one).
 - Schema: the tables `llx_crm_*` are created at the first enable. The module keeps its own schema version (`CRM_SCHEMA_VERSION`, shown in CRM → Setup → About) and runs the missing numbered steps when it is disabled and enabled again, with a notice to administrators when an update is waiting for that. See `INSTALL.md` and `UPDATE.md`.
 - Documentation: `INSTALL.md` (installation) and `UPDATE.md` (update procedure and how to release a version).

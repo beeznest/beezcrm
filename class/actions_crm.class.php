@@ -67,13 +67,15 @@ class ActionsCrm extends CommonHookActions
 		require_once __DIR__.'/mcp/crmsequencetool.class.php';
 		require_once __DIR__.'/mcp/crmreporttool.class.php';
 
-		$this->results = array(
+		// One array of tools, itself inside the results array: the Dolibarr 24.0.0 loader skips a bare tool object in the
+		// results (core develop accepts both), so a flat list would register nothing on 24.0.0.
+		$this->results = array(array(
 			new CrmDictionaryTool($db, $user, $conf),
 			new CrmOpportunityTool($db, $user, $conf),
 			new CrmActivityTool($db, $user, $conf),
 			new CrmSequenceTool($db, $user, $conf),
 			new CrmReportTool($db, $user, $conf),
-		);
+		));
 		return 0;
 	}
 
