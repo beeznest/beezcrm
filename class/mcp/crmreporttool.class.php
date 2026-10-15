@@ -107,7 +107,7 @@ class CrmReportTool extends CrmMcpTool
 		}
 		if ($toolName === 'send_crm_due_sequence_steps') {
 			$dry = getDolGlobalInt('CRM_DRY_RUN') ? 'Dry-run is on.' : 'Dry-run is off, so e-mail can be sent.';
-			return 'Run CRM customer sequences now. '.$dry;
+			return 'Run CRM automated outreach now. '.$dry;
 		}
 		if ($toolName === 'send_crm_owner_reminders') {
 			$dry = getDolGlobalInt('CRM_REMINDER_DRY_RUN') ? 'Dry-run is on.' : 'Dry-run is off, so e-mail can be sent.';

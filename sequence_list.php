@@ -19,7 +19,7 @@ declare(strict_types=1);
 /**
  * \file    sequence_list.php
  * \ingroup crm
- * \brief   Customer sequences. They stay off until an admin enables them.
+ * \brief   Automated outreach. It stays off until an admin enables them.
  */
 
 require_once __DIR__.'/lib/crm_bootstrap.inc.php';

@@ -23,12 +23,12 @@ New files are active at once, but the database changes only when the module is *
 
 7. **MCP only:** if you use the MCP tools and the tool access control already holds a list (`ai/admin/configure_tools.php`), a tool that the new version adds is hidden until you tick it there. The changelog names the new tools. Reload PHP if it caches files (opcache) so that the new tool classes are read. See [INSTALL.md](INSTALL.md), step 7.
 
-You can skip versions: going from 1.0.0 to a much later one runs every missing step in order. Going from 1.0.0 to 1.1.0 runs schema steps 2 and 3: the content of the sequence journal, then the reply stage (see "1.1.0" in [ChangeLog.md](ChangeLog.md)); the new stage is added to every pipeline that has an open stage and no reply stage, so look at your pipelines afterwards if you want it elsewhere or under another name.
+You can skip versions: going from 1.0.0 to a much later one runs every missing step in order. Going from 1.0.0 to 1.1.0 runs schema steps 2 and 3: the content of the outreach journal, then the reply stage (see "1.1.0" in [ChangeLog.md](ChangeLog.md)); the new stage is added to every pipeline that has an open stage and no reply stage, so look at your pipelines afterwards if you want it elsewhere or under another name.
 
 ## What an update does and does not touch
 
 - It **creates** what is missing: new columns, new settings with their defaults, new rights.
-- It **keeps** your deals, stages, pipelines, sequences, agenda events, settings (a setting you changed keeps your value) and the rights you gave to users. It seeds the sample pipeline, sources, loss reasons and qualification items **only** when the entity has no pipeline, so it never adds them again.
+- It **keeps** your deals, stages, pipelines, outreach, agenda events, settings (a setting you changed keeps your value) and the rights you gave to users. It seeds the sample pipeline, sources, loss reasons and qualification items **only** when the entity has no pipeline, so it never adds them again.
 - It **never drops** a table or a column on its own.
 - It sends nothing: no e-mail goes out because of an update.
 

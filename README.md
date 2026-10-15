@@ -9,7 +9,7 @@ Sales pipeline module for [Dolibarr](https://www.dolibarr.org). Accounts, contac
 - A short **qualification** checklist, **loss reasons** and **sources** for honest reports.
 - **Next steps** as Dolibarr agenda events, shown on the deal, on the home page and in a home box.
 - **Reports**: forecast, cohort conversion, win rate, cycle time, loss reasons, by owner and by source.
-- **Automated sequences** of reminders, calls and e-mails, as drafts for the salesperson to review and send, or sent automatically.
+- **Automated outreach** of reminders, calls and e-mails, as drafts for the salesperson to review and send, or sent automatically.
 - An e-mail editor with a **formatted (HTML) mode**, sent with an automatic plain-text version, or plain text.
 - An optional **AI assistant** in the e-mail editor that proposes the next e-mail from the exchange so far, with an editable prompt, using the AI module of Dolibarr.
 - **E-mail history** kept on the deal, read from a dedicated mailbox by Dolibarr's e-mail collector.
@@ -46,7 +46,7 @@ Disabling the module keeps its tables and the agenda events; it never touches th
 
 ```text
 core/      module descriptor and home box
-class/     deals, pipelines, stages, sequences, reports, e-mail drafts and archive, hooks, cron, MCP tools
+class/     deals, pipelines, stages, outreach, reports, e-mail drafts and archive, hooks, cron, MCP tools
 lib/       helpers (pure rules separated from the ones that need Dolibarr)
 admin/     the Setup screen
 sql/       tables

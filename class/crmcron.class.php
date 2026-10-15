@@ -19,7 +19,7 @@ declare(strict_types=1);
 /**
  * \file    class/crmcron.class.php
  * \ingroup crm
- * \brief   Hourly jobs. One reminder per owner per day. Sequences stay off unless enabled.
+ * \brief   Hourly jobs. One reminder per owner per day. Automated outreach stays off unless enabled.
  */
 
 require_once __DIR__.'/../lib/crm.lib.php';
@@ -136,7 +136,7 @@ class CrmCron
 		}
 		$langs->load('crm@crm');
 		if (!getDolGlobalInt('CRM_SEQUENCES_ON')) {
-			$this->output = 'Customer sequences are off';
+			$this->output = 'Automated outreach is off';
 			return 0;
 		}
 		$max = getDolGlobalInt('CRM_MAX_EMAILS_PER_RUN', 50);

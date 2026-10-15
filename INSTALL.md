@@ -37,7 +37,7 @@ As a Dolibarr administrator: Home → Setup → Modules, family **CRM**, switch 
 The first enable:
 
 - creates the tables `llx_crm_*` (`sql/llx_crm.sql`);
-- creates the settings `CRM_*` with safe defaults (sequences off, e-mail steps as drafts, dry-run on, AI assistance off, no archive mailbox);
+- creates the settings `CRM_*` with safe defaults (outreach off, e-mail steps as drafts, dry-run on, AI assistance off, no archive mailbox);
 - seeds, once, a commercial pipeline with its stages, lead sources, qualification items and loss reasons;
 - registers the menus, the rights, a home box, two scheduled jobs and the hooks (e-mail collector operation, general search entry, MCP tools);
 - records the database schema version (`CRM_SCHEMA_VERSION`), which [UPDATE.md](UPDATE.md) uses.
@@ -46,7 +46,7 @@ It sends no e-mail and changes no third party, contact, proposal or user.
 
 ## 4. Grant the rights
 
-Users → Permissions, family CRM. A salesperson needs "Read own deals", "Create and update deals" and "Create and complete next steps"; a manager adds "Read every owner", "Read CRM reports" and "Manage customer sequences"; the person who configures the module needs "Configure CRM". The full table is in [doc/ADMIN_GUIDE.md](doc/ADMIN_GUIDE.md), "Rights".
+Users → Permissions, family CRM. A salesperson needs "Read own deals", "Create and update deals" and "Create and complete next steps"; a manager adds "Read every owner", "Read CRM reports" and "Manage automated outreach"; the person who configures the module needs "Configure CRM". The full table is in [doc/ADMIN_GUIDE.md](doc/ADMIN_GUIDE.md), "Rights".
 
 ## 5. First configuration
 
@@ -54,7 +54,7 @@ In this order:
 
 1. **Dolibarr settings the module relies on**: the Scheduled jobs module and its security key, the e-mail setup (Home → Setup → Emails), each salesperson's e-mail address. See the guide.
 2. **CRM → Setup**: check the Parameters, the stages of the pipeline, the qualification items, loss reasons and sources, and adapt them to your sales process.
-3. **A system cron entry** that calls Dolibarr's scheduled jobs, otherwise no job runs (sequences, reminders, e-mail collector). See "Scheduled jobs" in the guide.
+3. **A system cron entry** that calls Dolibarr's scheduled jobs, otherwise no job runs (outreach, reminders, e-mail collector). See "Scheduled jobs" in the guide.
 4. Only when you want them: the archive mailbox and the E-mail collector (e-mail history), the AI assistance, the MCP tools (step 7 below). Each has its own section in the guide.
 
 Leave the dry-run settings on, and the e-mail steps as drafts, until you have checked the journal and the e-mail setup.
@@ -63,12 +63,12 @@ Leave the dry-run settings on, and the e-mail steps as drafts, until you have ch
 
 - The **CRM** menu is there and CRM → Home opens without error.
 - CRM → Setup → **About** shows the module version `1.1.0` and a database schema "3 / 3, up to date".
-- Home → Setup → Scheduled jobs lists two CRM jobs: "Owner reminders" and "Customer sequences".
+- Home → Setup → Scheduled jobs lists two CRM jobs: "Owner reminders" and "CRM automated outreach".
 - Create a test deal (CRM → Opportunities → New opportunity), plan a next step, move it between stages, then delete it.
 
 ## 7. Optional: let an AI assistant use the CRM (MCP)
 
-The module adds 50 tools to the MCP server of Dolibarr's AI module (Dolibarr 24 or later): 20 read tools and 30 that create, change or delete data (deals, next steps, sequences and, with the "Configure CRM" right, the setup). Skip this step if you do not use MCP. Everything works without it.
+The module adds 50 tools to the MCP server of Dolibarr's AI module (Dolibarr 24 or later): 20 read tools and 30 that create, change or delete data (deals, next steps, outreach and, with the "Configure CRM" right, the setup). Skip this step if you do not use MCP. Everything works without it.
 
 On **Dolibarr 24.0.0** (steps that differ on 25 are noted):
 

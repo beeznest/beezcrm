@@ -19,7 +19,7 @@ declare(strict_types=1);
 /**
  * \file    class/mcp/crmsequencetool.class.php
  * \ingroup crm
- * \brief   MCP tools for customer sequences. Mail goes to the deal contact only.
+ * \brief   MCP tools for automated outreach. Mail goes to the deal contact only.
  */
 
 require_once __DIR__.'/crmmcptool.class.php';
@@ -35,7 +35,7 @@ class CrmSequenceTool extends CrmMcpTool
 	public function getDefinitions(): array
 	{
 		return array(
-			$this->definition('list_crm_sequences', 'List customer sequences.', array()),
+			$this->definition('list_crm_sequences', 'List automated outreach.', array()),
 			$this->definition('get_crm_sequence', 'Get one sequence with its steps, enrolments and journal.', array(
 				'id' => array('type' => 'integer'),
 			), array('id')),

@@ -229,7 +229,7 @@ class modCrm extends DolibarrModules
 			'target' => '',
 			'user' => 0,
 		);
-		// Automated sequences come right after Opportunities, which they work on, then Activities and Reports.
+		// Automated outreach come right after Opportunities, which they work on, then Activities and Reports.
 		$this->menu[$r++] = array(
 			'fk_menu' => 'fk_mainmenu=crm',
 			'type' => 'left',
