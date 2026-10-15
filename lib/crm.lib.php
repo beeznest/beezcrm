@@ -333,6 +333,23 @@ function crmLogStatusLabel(string $status): string
 }
 
 /**
+ * Status of an enrolment in the language of the user, with the reason when it stopped: "Stopped (the prospect replied)".
+ * Anything unknown is shown as stored.
+ */
+function crmEnrolStatusLabel(string $status, string $reason): string
+{
+	global $langs;
+	crmLoadLangs();
+	$statuses = array('running' => 'CrmEnrolRunning', 'done' => 'CrmEnrolDone', 'stopped' => 'CrmEnrolStopped');
+	$reasons = array('replied' => 'CrmEnrolReasonReplied', 'won' => 'CrmEnrolReasonWon', 'lost' => 'CrmEnrolReasonLost', 'manual' => 'CrmEnrolReasonManual');
+	$label = isset($statuses[$status]) ? $langs->trans($statuses[$status]) : $status;
+	if ($status === 'stopped' && isset($reasons[$reason])) {
+		$label .= ' ('.$langs->trans($reasons[$reason]).')';
+	}
+	return $label;
+}
+
+/**
  * What caused a journal line: the step of the sequence and the day of the sequence, counted from the enrolment. The step
  * number is the one recorded with the line; for an older line it is the current position of the step, or "?" when the step is gone.
  *

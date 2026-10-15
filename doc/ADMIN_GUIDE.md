@@ -2,13 +2,13 @@
 
 For the person who installs the CRM module, configures it, and keeps it running. Salespeople use [the user guide](USER_GUIDE.md). The design reasons behind the rules are in [STRUCTURE_ANALYSIS.md](STRUCTURE_ANALYSIS.md).
 
-Contents: [Requirements](#requirements) · [Dolibarr settings the module relies on](#dolibarr-settings-the-module-relies-on) · [Install](#install) · [Rights](#rights) · [Module setup, page by page](#module-setup-page-by-page) · [Scheduled jobs](#scheduled-jobs) · [Sending e-mail](#sending-e-mail) · [Sequences](#sequences) · [E-mail history](#e-mail-history) · [HTML e-mail](#html-e-mail) · [AI reply suggestions](#ai-reply-suggestions) · [MCP](#mcp) · [Maintenance](#maintenance) · [Settings reference](#settings-reference) · [Troubleshooting](#troubleshooting)
+Contents: [Requirements](#requirements) · [Dolibarr settings the module relies on](#dolibarr-settings-the-module-relies-on) · [Install](#install) · [Rights](#rights) · [Module setup, page by page](#module-setup-page-by-page) · [Scheduled jobs](#scheduled-jobs) · [Sending e-mail](#sending-e-mail) · [Automated outreach](#automated-outreach) · [E-mail history](#e-mail-history) · [HTML e-mail](#html-e-mail) · [AI reply suggestions](#ai-reply-suggestions) · [MCP](#mcp) · [Maintenance](#maintenance) · [Settings reference](#settings-reference) · [Troubleshooting](#troubleshooting)
 
 ## Requirements
 
 - Dolibarr 21 or later, PHP 8.1 or later. The module has been run and tested against the **Dolibarr 24.0.0** core and the **25.0.0 alpha** core (the e-mail drafts and archive, the HTML editor, pipelines, forecast, the AI reply block, the MCP tools). Versions 21 to 23 are accepted by the module descriptor but have **not been tested**. See "Version differences" in [MCP](#mcp) for what 24.0.0 does not offer.
 - The Dolibarr modules **Third parties** and **Agenda** must be enabled: the CRM module depends on them, and Dolibarr will not enable it otherwise.
-- Optional, each for one feature: **Proposals** (to link proposals to a deal), **AI** (MCP tools), **E-mail collector** (e-mail history), working **e-mail sending** (sequences, reminders).
+- Optional, each for one feature: **Proposals** (to link proposals to a deal), **AI** (MCP tools), **E-mail collector** (e-mail history), working **e-mail sending** (outreach, reminders).
 
 ## Dolibarr settings the module relies on
 
@@ -20,13 +20,13 @@ The module works only if these global Dolibarr settings are in place. Go through
 | --- | --- |
 | **Third parties** | Required. Accounts, contacts, the account list in the deal form, the "New prospect" button |
 | **Agenda** | Required. Next steps, calls, meetings and e-mail history are agenda events. Without it the module refuses to enable |
-| **Scheduled jobs** (module `cron`) | The sequence job, the owner reminders and the e-mail collector. Without it Dolibarr never runs a scheduled job, whatever the system cron does |
+| **Scheduled jobs** (module `cron`) | The outreach job, the owner reminders and the e-mail collector. Without it Dolibarr never runs a scheduled job, whatever the system cron does |
 | **Proposals** | Linking a proposal to a deal. Without it the Proposals section of the deal is simply absent |
 | **E-mail collector** | Reading the archive mailbox (e-mail history). Not needed if you do not archive e-mails |
 | **WYSIWYG editor** (module `fckeditor`) | The formatted (HTML) mode of the e-mail editor. Without it the HTML tab is a plain box where the HTML source must be typed |
 | **AI** | The MCP tools, and the "Suggest a reply with AI" block of the e-mail editor. Not needed for the screens |
 
-**E-mail sending** (Home → Setup → Emails). Needed for reminders and for any real send from a sequence or from the "Send from here" button.
+**E-mail sending** (Home → Setup → Emails). Needed for reminders and for any real send from an outreach or from the "Send from here" button.
 
 - Send method, SMTP server, port, login and password, encryption: set them for your provider, then use the test button of that page to send yourself a message. If this test fails, every send from the module will fail.
 - **Sender e-mail** (`MAIN_MAIL_EMAIL_FROM`): used as the module sender when `CRM_MAIL_FROM` is empty. If that is empty too, the company e-mail (Home → Setup → Company) is used. One of the three must be set, or nothing can be sent.
@@ -101,11 +101,11 @@ Users → Permissions, family CRM. A user can see and do only what the rights al
 | Create and update deals | Create and edit deals, move stages, qualify, link proposals |
 | Delete deals | Delete deals (their agenda events are kept) |
 | Create and complete next steps | Add, complete, write and send e-mail steps on a deal |
-| Manage customer sequences | Create sequences and steps, enrol deals, stop, mark replied |
+| Manage automated outreach | Create outreach and steps, enrol deals, stop, mark replied |
 | Read CRM reports | The Reports page |
 | Configure CRM | The Setup screen, and the MCP tools that change settings |
 
-Typical profiles: a **salesperson** gets Read own, Create and update, Create and complete next steps. A **sales manager** adds Read every owner, Read CRM reports, and Manage sequences. Only you (or a delegated administrator) need Configure CRM and Delete.
+Typical profiles: a **salesperson** gets Read own, Create and update, Create and complete next steps. A **sales manager** adds Read every owner, Read CRM reports, and Manage outreach. Only you (or a delegated administrator) need Configure CRM and Delete.
 
 Two more rights matter outside CRM: creating a prospect from the deal form needs the Dolibarr right to create third parties, and the general search box and the account list only show third parties the user may read.
 
@@ -113,21 +113,21 @@ Two more rights matter outside CRM: creating a prospect from the deal form needs
 
 **Explanations are hidden by default.** On every page, a text of more than 12 words that explains something (a list, a field, a rule) is hidden until the **"?" button** at the top right of the page title is clicked; click again to hide it. Warnings, errors, confirmations and the notice of the e-mail editor that says which AI service the text goes to, and whether names are masked, are always visible. The About tab is page content and stays visible. This is also the place where the setup explanations of this guide appear on screen (the notes under the Parameters table, the help under each setting, the notes on pipelines).
 
-Everything the module lets you configure is under **CRM → Setup** (needs "Configure CRM"), plus the **Automated sequences** screens. The gear icon of the module in Home → Setup → Modules opens the same Setup screen.
+Everything the module lets you configure is under **CRM → Setup** (needs "Configure CRM"), plus the **Automated outreach** screens. The gear icon of the module in Home → Setup → Modules opens the same Setup screen.
 
 ### CRM → Setup → Parameters
 
-The settings that are only on or off are **on/off switches** (the same switches as elsewhere in Dolibarr): click one and it is saved at once, without the Save button, and it is stored as `1` or `0`. Switching **dry-run** off (sequences or reminders) or the **AI assistant** on asks for a confirmation first, because real e-mails will be sent or text will leave for an external service. The other settings are fields; press **Save** once for all of them. Clicking a switch does not save what you typed in the fields, so save those first. A field left empty counts as off or default (for the mail sender: use the Dolibarr sender). Changing a switch needs the "Configure CRM" right, not a Dolibarr administrator.
+The settings that are only on or off are **on/off switches** (the same switches as elsewhere in Dolibarr): click one and it is saved at once, without the Save button, and it is stored as `1` or `0`. Switching **dry-run** off (outreach or reminders) or the **AI assistant** on asks for a confirmation first, because real e-mails will be sent or text will leave for an external service. The other settings are fields; press **Save** once for all of them. Clicking a switch does not save what you typed in the fields, so save those first. A field left empty counts as off or default (for the mail sender: use the Dolibarr sender). Changing a switch needs the "Configure CRM" right, not a Dolibarr administrator.
 
 | Field | Constant | What it does |
 | --- | --- | --- |
 | Default rotting days for a new stage | `CRM_ROTTING_DAYS` (15) | The value offered in the "rotting days" field when you add a stage (Stages tab). A deal is **rotting** when it is open and its latest completed activity (or its creation, when none) is older than the stage's rotting days. It is a warning on the board and on Home, never an automatic move. A stage with 0 never rots |
 | Forecast window (months) | `CRM_FORECAST_MONTHS` (3) | How many months ahead the forecast on Home and in Reports covers |
-| Maximum e-mails per cron run | `CRM_MAX_EMAILS_PER_RUN` (50) | Stops one run of the sequence job after this many sent or simulated e-mails; the rest wait for the next run. Drafts do not count |
+| Maximum e-mails per cron run | `CRM_MAX_EMAILS_PER_RUN` (50) | Stops one run of the outreach job after this many sent or simulated e-mails; the rest wait for the next run. Drafts do not count |
 | Sender address | `CRM_MAIL_FROM` (empty) | Sender of the customer e-mails and of the reminders. Empty: the Dolibarr sender (`MAIN_MAIL_EMAIL_FROM`), then the company e-mail. The e-mail editor offers it as the default of a list of senders and warns when none is set |
-| Customer sequences enabled | `CRM_SEQUENCES_ON` (0) | Master switch of the sequence job. While 0 no step is run, draft or send |
-| Sequence e-mail steps | `CRM_SEQUENCE_EMAIL_MODE` (`draft`) | A drop-down: **Draft for the salesperson** (default) or **Send automatically**. See [Sequences](#sequences) |
-| Sequence dry-run | `CRM_DRY_RUN` (1) | In send mode, journal only: nothing is sent and nothing is copied to the archive. Not used in draft mode |
+| Automated outreach enabled | `CRM_SEQUENCES_ON` (0) | Master switch of the outreach job. While 0 no step is run, draft or send |
+| Outreach e-mail steps | `CRM_SEQUENCE_EMAIL_MODE` (`draft`) | A drop-down: **Draft for the salesperson** (default) or **Send automatically**. See [Automated outreach](#automated-outreach) |
+| Outreach dry-run | `CRM_DRY_RUN` (1) | In send mode, journal only: nothing is sent and nothing is copied to the archive. Not used in draft mode |
 | Owner reminders enabled | `CRM_REMINDERS_ON` (1) | The daily digest e-mail to each deal owner: overdue next steps, deals with no next step, deals past their expected close. At most one per owner per day |
 | Reminder dry-run | `CRM_REMINDER_DRY_RUN` (1) | Journal only for the reminders. Switch to 0 when the journal looks right |
 | Require a future next step before an open stage change | `CRM_REQUIRE_NEXT_STEP` (1) | While 1, a deal cannot be moved from one open stage to another unless it has an unfinished agenda event dated today or later. Moving to Won or Lost never needs it. Set 0 to allow free moves |
@@ -136,7 +136,7 @@ The settings that are only on or off are **on/off switches** (the same switches 
 | Archive mailbox address | `CRM_ARCHIVE_MAILBOX` (empty) | The dedicated address copied on every customer e-mail sent for a deal. Empty: no copy |
 | Copy mode for the archive mailbox | `CRM_ARCHIVE_COPY` (`bcc`) | A drop-down: **Hidden copy (Bcc)** or **Visible copy (Cc)** |
 
-Under the table a note reminds you that sequences stay off until enabled and that dry-run is on for sequences and reminders, and a longer help text explains the e-mail history setup.
+Under the table a note reminds you that outreach stay off until enabled and that dry-run is on for outreach and reminders, and a longer help text explains the e-mail history setup.
 
 ### CRM → Setup → Stages
 
@@ -156,7 +156,7 @@ Pipelines and their stages. From top to bottom:
    - *Won stage* / *Lost stage* checkboxes. A deal moved into a won stage becomes **won**: it gets its closing date and leaves the board and the forecast. A deal moved into a lost stage becomes **lost** and **requires a loss reason**. Tick neither for an open stage.
 5. **New pipeline.** Reference (letters, digits, underscore, dash; stored in capitals; unique; never changes), label, and **Copy the stages of**: pick a pipeline to start from its stages, probabilities, colours and flags, or "Nothing (empty pipeline)". Create, and the page opens the new pipeline.
 
-**Prospects who reply.** When the answer of a prospect is recorded on an open deal, the deal moves by itself to the **reply stage** of its pipeline, so that it stands out on the board as a lead that answered and waits for qualification. Two things record an answer: the e-mail collector, when it reads an incoming message that belongs to the deal (see [E-mail history](#e-mail-history)), and "Mark replied" on an enrolment of an automated sequence (the MCP tool `update_crm_opportunity_replied` does the same). The same event also stops the running sequences of the deal that have the rule "stop when the contact replies". The deal moves only when it is still **before** the reply stage in the pipeline: a deal that is already at that stage or beyond it (Qualified, Negotiation...) or closed stays where it is, and a message the salesperson sent does not move anything. The move is written in the stage history, and the rule "a future next step is needed to change stage" does not apply to it, since nobody dragged the card: the deal then shows in "no next step" on Home, which is the prompt to qualify it. The setting "Move a deal to the reply stage when the prospect replies" (`CRM_REPLY_MOVES_DEAL`, on by default, a switch of the Parameters tab) turns the whole thing off. A pipeline without an active reply stage does not move anything. A pipeline created by hand has no reply stage until you tick the box on one of its stages.
+**Prospects who reply.** When the answer of a prospect is recorded on an open deal, the deal moves by itself to the **reply stage** of its pipeline, so that it stands out on the board as a lead that answered and waits for qualification. Two things record an answer: the e-mail collector, when it reads an incoming message that belongs to the deal (see [E-mail history](#e-mail-history)), and "Mark replied" on an enrolment of an automated outreach (the MCP tool `update_crm_opportunity_replied` does the same). The same event also stops the running outreach of the deal that have the rule "stop when the contact replies". The deal moves only when it is still **before** the reply stage in the pipeline: a deal that is already at that stage or beyond it (Qualified, Negotiation...) or closed stays where it is, and a message the salesperson sent does not move anything. The move is written in the stage history, and the rule "a future next step is needed to change stage" does not apply to it, since nobody dragged the card: the deal then shows in "no next step" on Home, which is the prompt to qualify it. The setting "Move a deal to the reply stage when the prospect replies" (`CRM_REPLY_MOVES_DEAL`, on by default, a switch of the Parameters tab) turns the whole thing off. A pipeline without an active reply stage does not move anything. A pipeline created by hand has no reply stage until you tick the box on one of its stages.
 
 Rules when you design stages: a pipeline needs at least one **open**, one **won** and one **lost** stage; a new deal starts in the first open stage by position, and without one nobody can create a deal in that pipeline. Typical shape: New → Qualified → Proposal sent → Negotiation → Won / Lost, with probabilities rising from 10% to 75%.
 
@@ -182,9 +182,9 @@ For these three lists a **turned-off** entry is no longer offered, but the deals
 
 A short note on what the module keeps in Dolibarr and what disabling it leaves behind.
 
-### CRM → Automated sequences
+### CRM → Automated outreach
 
-Not in the Setup screen, but it is configuration, and it needs "Manage customer sequences". The list (reference, label, active, number of steps) has a form to create a sequence: **label** and **Active** checkbox. The reference is generated at first (`SEQ0001`, `SEQ0002`…) and can be changed later. Open a sequence to change it (reference, label, active, stop rules), manage its steps and enrolments and read its journal: see [Sequences](#sequences). An inactive sequence runs nothing.
+Not in the Setup screen, but it is configuration, and it needs "Manage automated outreach". The list (reference, label, active, number of steps) has a form to create an outreach: **label** and **Active** checkbox. The reference is generated at first (`SEQ0001`, `SEQ0002`…) and can be changed later. Open an outreach to change it (reference, label, active, stop rules), manage its steps and enrolments and read its journal: see [Automated outreach](#automated-outreach). An inactive outreach runs nothing.
 
 ### Other places that carry module settings
 
@@ -209,20 +209,20 @@ The CRM module registers two jobs, enabled, hourly:
 | Job | What it does |
 | --- | --- |
 | Owner reminders (`CrmOwnerReminders`) | At most one digest per owner per day listing overdue next steps, deals with no next step, and deals past their expected close. Controlled by `CRM_REMINDERS_ON` and `CRM_REMINDER_DRY_RUN` |
-| Customer sequences (`CrmCustomerSequences`) | Runs the due steps of the enrolled deals. Does nothing while `CRM_SEQUENCES_ON` is off |
+| CRM automated outreach (`CrmCustomerSequences`) | Runs the due steps of the enrolled deals. Does nothing while `CRM_SEQUENCES_ON` is off |
 
 In Scheduled jobs you can start any job by hand ("Execute now"), which is the quickest way to test one. The last run date and result are shown there. A job whose last run is empty has never been called: check the cron entry.
 
 ## Sending e-mail
 
-Two parts of the module can send mail: the **reminders** (to the deal owner) and the **sequences** (to the deal contact, only in `send` mode, see below). Both use Dolibarr's own mail settings.
+Two parts of the module can send mail: the **reminders** (to the deal owner) and the **outreach** (to the deal contact, only in `send` mode, see below). Both use Dolibarr's own mail settings.
 
 1. Home → Setup → Emails: choose the send method, the SMTP server and login, and send a test message from that page. Until this works, no real send can.
 2. Set `CRM_MAIL_FROM`, or leave it empty to use the sender configured in Dolibarr.
 
 Customer e-mails go to the **contact** of the deal, never to the company address. A deal with no contact address gets no automatic e-mail.
 
-Dry-run keeps the first runs harmless: with dry-run on, a run only writes the journal (reminders: `llx_crm_reminder_log`; sequences: the sequence's journal) and nothing is sent. Check the journal, then switch dry-run off.
+Dry-run keeps the first runs harmless: with dry-run on, a run only writes the journal (reminders: `llx_crm_reminder_log`; outreach: the outreach's journal) and nothing is sent. Check the journal, then switch dry-run off.
 
 ## Sender of the e-mails written in the editor
 
@@ -232,35 +232,35 @@ In `email_compose.php` the salesperson picks the address "Send from here" sends 
 2. the **e-mail of the user**, from their profile (offered only when it is a valid address);
 3. the **mailbox of the lead e-mail collector**: the login of each active collector of the E-mail collector module that has the operation "Create a project/lead" (or the reference of the example `Collect_Leads`), when that login is an e-mail address. A collector whose login is not an address (a user name) is not offered.
 
-An address offered twice is listed once. Nothing else can be chosen: the form sends a code, and the server looks it up in this list, so no other address can be forced through the form. The choice applies to that message (the recorded e-mail names it as sender) and is kept in the user's own settings (`CRM_MAIL_FROM_CHOICE`, in `llx_user_param`) as the preselection of the next e-mail. The sequences and the owner reminders always use the default sender.
+An address offered twice is listed once. Nothing else can be chosen: the form sends a code, and the server looks it up in this list, so no other address can be forced through the form. The choice applies to that message (the recorded e-mail names it as sender) and is kept in the user's own settings (`CRM_MAIL_FROM_CHOICE`, in `llx_user_param`) as the preselection of the next e-mail. The outreach and the owner reminders always use the default sender.
 
-**Copy to the sender.** The editor has a box "Send me a hidden copy (Bcc)", ticked by default (it is shown only when the user has a valid e-mail address in their profile). Ticked, "Send from here" adds that address as a Bcc, next to the archive mailbox (`CRM_ARCHIVE_MAILBOX`, as Cc or Bcc by `CRM_ARCHIVE_COPY`); an address that would get two copies gets one. The copy is not recorded anywhere else: the event on the deal names the real recipient only. Sequences and reminders never copy anyone.
+**Copy to the sender.** The editor has a box "Send me a hidden copy (Bcc)", ticked by default (it is shown only when the user has a valid e-mail address in their profile). Ticked, "Send from here" adds that address as a Bcc, next to the archive mailbox (`CRM_ARCHIVE_MAILBOX`, as Cc or Bcc by `CRM_ARCHIVE_COPY`); an address that would get two copies gets one. The copy is not recorded anywhere else: the event on the deal names the real recipient only. Outreach and reminders never copy anyone.
 
 Your mail server decides whether it accepts a sender: sending from a mailbox that the SMTP account may not use is refused, or accepted and marked as spam (SPF, DKIM). Test each address once. A reply goes to the sender's mailbox: sent from the lead mailbox, it is read by the collector (the reply is recorded on the deal when the archive mailbox is that mailbox, see [E-mail history](#e-mail-history)); sent from a personal address, it is only recorded if the salesperson's mailbox is also read by the collector.
 
-## Sequences
+## Automated outreach
 
-Automated sequences are made for prospecting at scale: a prospect that was picked beforehand is enrolled, one deal at a time, and receives the planned series of e-mails, calls and tasks; there is no bulk enrolment. As soon as the prospect replies, the sequence stops (rule "stop when the contact replies") and the deal moves to the reply stage of its pipeline for the salesperson to qualify. CRM → Automated sequences (needs "Manage customer sequences"). The explanation at the top of the list says the same, behind the "?" button.
+Automated outreach is made for prospecting at scale: a prospect that was picked beforehand is enrolled, one deal at a time, and receives the planned series of e-mails, calls and tasks; there is no bulk enrolment. As soon as the prospect replies, the outreach stops (rule "stop when the contact replies") and the deal moves to the reply stage of its pipeline for the salesperson to qualify. CRM → Automated outreach (needs "Manage automated outreach"). The explanation at the top of the list says the same, behind the "?" button.
 
-1. Create the sequence (label, active). Open it. At the top of the card, a form lets you **change it later** with the **Update** button: the reference (short code, unique, letters, digits, underscore and dash, 32 characters at most; the generated `SEQ0001`-style reference can be replaced by a meaningful one), the label, the **Active** flag, and the three **stop rules** (stop an enrolment when the contact replies, when the deal is won, when the deal is lost). Changing these does not touch the steps or the enrolments: a running enrolment goes on under the new rules, and the enrolments of a sequence made inactive simply wait, then resume when it is active again (steps already due then run at the next job run). The MCP tool `update_crm_sequence` does the same.
+1. Create the outreach (label, active). Open it. At the top of the card, a form lets you **change it later** with the **Update** button: the reference (short code, unique, letters, digits, underscore and dash, 32 characters at most; the generated `SEQ0001`-style reference can be replaced by a meaningful one), the label, the **Active** flag, and the three **stop rules** (stop an enrolment when the contact replies, when the deal is won, when the deal is lost). Changing these does not touch the steps or the enrolments: a running enrolment goes on under the new rules, and the enrolments of an outreach made inactive simply wait, then resume when it is active again (steps already due then run at the next job run). The MCP tool `update_crm_sequence` does the same.
 2. Add **steps** in the order they should run. Each step has a kind (**e-mail**, **call**, **task**), a **delay in days after enrolment** (not after the previous step), a subject and a body. Subject and body accept the placeholders `__DEAL__`, `__REF__`, `__AMOUNT__`, `__CONTACT__`, `__CUSTOMER__`; an unknown placeholder stays as written. The add-step form has the kind, the delay, the e-mail mode and the subject on the first line, and the text of the message below them. For an e-mail step the text is **plain or formatted (HTML)**, chosen with the same **Format** switch and tabs as the e-mail editor: a WYSIWYG editor for HTML, with the plain-text version shown read-only, made from the HTML when the message is sent. The text of a step is stored as written (HTML or plain) and a step in HTML is marked "(HTML)" in the steps table. In HTML, the values that replace the placeholders (a contact or company name, for example) are inserted as text, so a `<` or `&` in a name cannot add markup. A draft made from an HTML step opens in HTML in the e-mail editor, and an automatic send goes out as HTML with a plain-text part. The kind selector hides the text and the mode for a call or a task, which have no message. The MCP tool `add_crm_sequence_step` takes the body as given: HTML or text.
 
 **AI help for the text of a step.** Next to "Add step", an **AI** button ("Suggest a text with AI") writes the text of an e-mail step. It is **enabled only when** the AI module is enabled, the AI service is configured (a key for the services that need one, an address for the "custom" service), the CRM setting "AI assistant in the e-mail editor" is on, the step is of the e-mail kind and the subject is filled in; otherwise it stays disabled, with a tooltip saying why. It asks for the text in the chosen **format** (HTML fragment or plain text) and puts it in the text box. If the box already holds a text, the button reads "Improve the text with AI": the AI is asked to improve that text, keeping its meaning, placeholders and language, and its answer **replaces** the text in the box. The prompt tells the AI which placeholders exist (`__DEAL__`, `__REF__`, `__AMOUNT__`, `__CONTACT__`, `__CUSTOMER__`) and asks it to keep them as written. **Only the subject and the text of the template are sent**: a template holds placeholders, not data about a deal, so no customer data leaves and the privacy redaction has nothing to mask. Nothing is saved until you press "Add step", and the answer is cleaned (no script, style or event attributes in HTML). A step added this way is an ordinary step. Subject and body are used for e-mail steps; a call or a task creates an agenda event for the deal owner with the subject as title and sends nothing.
-3. **Enrol** a deal by choosing it in the list under "Enrolments": it is a searchable list, type part of the reference, the title or the account name to filter it. The list offers the open deals you may see (up to 1 000) that are not already running on this sequence. The sequence needs at least one step, and a deal cannot be running twice on the same sequence.
+3. **Enrol** a deal either from the card of the deal (section "Automated outreach": pick the outreach, "Enrol from now"; one outreach at a time, open deals only, active outreach with at least one step; needs the right "Manage automated outreach") or by choosing it in the list under "Enrolments" of the outreach: it is a searchable list, type part of the reference, the title or the account name to filter it. The list offers the open deals you may see (up to 1 000) that are not already running on this outreach. The outreach needs at least one step, and a deal cannot be running twice on the same outreach.
 4. Turn the master switch on: `CRM_SEQUENCES_ON` = 1.
 
 An enrolment stops by itself when the deal is won or lost, when someone presses **Stop**, when **Mark replied** is pressed, or, if the e-mail history is set up, when the customer's answer is recorded. After the last step it becomes done. The enrolment screen shows the status, the next step and when it is due; the journal lists every e-mail attempt with its result: `sent`, `simulated`, `draft` or `error`.
 
-**The journal keeps the e-mail.** Each line records the e-mail as the step made it: the subject and the text with the placeholders replaced, the format (plain text or HTML), the address it goes to and the address it is sent from, the position of the step and the day of the sequence (counted from the enrolment) on which it ran. This is stored whatever the outcome, including in dry-run and for drafts, so a simulation can be reviewed before dry-run is turned off. The eye icon at the end of a line opens the e-mail (`sequence_log_view.php`): a simulated one is marked as not sent, a draft as a text that the sequence wrote and that the planned e-mail may have outgrown, an error with its reason. The same lines are listed on the deal card, under History → "E-mails from sequences", with the sequence, the step and the day that caused each one. Anyone who may read the deal may read its e-mails. A line written before the content was kept is completed when it is opened and saved from then on: for a sent e-mail, from the copy recorded on the deal; otherwise rebuilt from the step and the deal **as they are today** and marked as rebuilt, since it can differ from what was sent or planned; a line whose step has been deleted has nothing to rebuild. The content columns come with schema version 2: after updating the files, disable and enable the module (until then the journal works as before and the page says that the e-mails are not kept yet).
+**The journal keeps the e-mail.** Each line records the e-mail as the step made it: the subject and the text with the placeholders replaced, the format (plain text or HTML), the address it goes to and the address it is sent from, the position of the step and the day of the outreach (counted from the enrolment) on which it ran. This is stored whatever the outcome, including in dry-run and for drafts, so a simulation can be reviewed before dry-run is turned off. The eye icon at the end of a line opens the e-mail (`sequence_log_view.php`): a simulated one is marked as not sent, a draft as a text that the outreach wrote and that the planned e-mail may have outgrown, an error with its reason. The same lines are listed on the deal card, under History → "E-mails from automated outreach", with the outreach, the step and the day that caused each one. Anyone who may read the deal may read its e-mails. A line written before the content was kept is completed when it is opened and saved from then on: for a sent e-mail, from the copy recorded on the deal; otherwise rebuilt from the step and the deal **as they are today** and marked as rebuilt, since it can differ from what was sent or planned; a line whose step has been deleted has nothing to rebuild. The content columns come with schema version 2: after updating the files, disable and enable the module (until then the journal works as before and the page says that the e-mails are not kept yet).
 
-**E-mail steps: draft or send.** The setting "Sequence e-mail steps" decides what a due e-mail step does.
+**E-mail steps: draft or send.** The setting "Outreach e-mail steps" decides what a due e-mail step does.
 
-- **`draft` (the default).** Nothing is sent by the job. The step becomes a **planned e-mail** on the deal, owned by the deal owner, with the subject (the deal reference is appended in square brackets) and the suggested text. It appears in the deal's next steps, in CRM → Activities and on Home. The salesperson opens it, edits it, and sends it from Dolibarr, or from a mail client, then registers it. See the user guide, "E-mails suggested by a sequence". Dry-run does not apply to drafts, since nothing is sent; drafts do not count toward the per-run cap.
+- **`draft` (the default).** Nothing is sent by the job. The step becomes a **planned e-mail** on the deal, owned by the deal owner, with the subject (the deal reference is appended in square brackets) and the suggested text. It appears in the deal's next steps, in CRM → Activities and on Home. The salesperson opens it, edits it, and sends it from Dolibarr, or from a mail client, then registers it. See the user guide, "E-mails suggested by an outreach". Dry-run does not apply to drafts, since nothing is sent; drafts do not count toward the per-run cap.
 - **`send`.** The job sends the e-mail itself to the deal contact, copies the archive mailbox if one is set, and records the e-mail on the deal. Dry-run applies. Any value other than `send` means draft, so a typo never sends mail.
 
-**The mode of each e-mail step.** The global setting is only the default. When you add an e-mail step, the **E-mail mode** list of the form lets you choose **Default** (follow the global setting), **Draft for the salesperson**, or **Send automatically** for that step alone. The steps table shows each step's mode, and "Default (draft)" or "Default (send)" for the ones that follow the global setting. This lets one sequence mix a reminder that is sent by itself and a long message that a person must review. A call or task step has no mode. The MCP tool `add_crm_sequence_step` takes the same choice (`send_mode`: empty, `draft` or `send`), and `get_crm_sequence` returns it. A step whose mode is "send" is subject to dry-run and to the cap of e-mails per run; drafts are not.
+**The mode of each e-mail step.** The global setting is only the default. When you add an e-mail step, the **E-mail mode** list of the form lets you choose **Default** (follow the global setting), **Draft for the salesperson**, or **Send automatically** for that step alone. The steps table shows each step's mode, and "Default (draft)" or "Default (send)" for the ones that follow the global setting. This lets one outreach mix a reminder that is sent by itself and a long message that a person must review. A call or task step has no mode. The MCP tool `add_crm_sequence_step` takes the same choice (`send_mode`: empty, `draft` or `send`), and `get_crm_sequence` returns it. A step whose mode is "send" is subject to dry-run and to the cap of e-mails per run; drafts are not.
 
-**Changing a step.** Each row of the steps table has two icons: a **pencil** (Modify) and a **trash can** (Delete); hover one to see its name. The pencil opens the same form as for adding, filled with the step (kind, delay, e-mail mode, subject, and the text with its format, plain or HTML, and the AI button), and the **Update step** button saves it; **Cancel** leaves it unchanged. The step **keeps its position**, so the order of the sequence does not change. What happens to enrolments that are already running (nothing is recomputed, so nothing fires early or late by surprise):
+**Changing a step.** Each row of the steps table has two icons: a **pencil** (Modify) and a **trash can** (Delete); hover one to see its name. The pencil opens the same form as for adding, filled with the step (kind, delay, e-mail mode, subject, and the text with its format, plain or HTML, and the AI button), and the **Update step** button saves it; **Cancel** leaves it unchanged. The step **keeps its position**, so the order of the outreach does not change. What happens to enrolments that are already running (nothing is recomputed, so nothing fires early or late by surprise):
 
 - An enrolment that is **waiting for the step you change keeps the due date it already has**. A new **delay** therefore applies only to steps scheduled from now on: the enrolments that have not reached that step yet, and the following steps of those that have.
 - The **kind, subject, text and mode** are read when the step runs, so they apply the next time it runs for every enrolment, including those already waiting for it.
@@ -288,7 +288,7 @@ The full exchange with a customer can be kept on the deal, as agenda events: the
 2. one of those ids is the Message-ID of a message already recorded on a deal, which covers a salesperson replying from their own mail client to an exchange; or
 3. its subject carries the reference of a deal in square brackets, such as `[OPP2026-0001]`, which the module puts in the subject of every draft it suggests.
 
-Any other message in the mailbox is **ignored**, without error: the mailbox is not a general inbox. A message already recorded is not recorded twice (the copy of a message sent from Dolibarr is recognised). The direction is "sent" when the sender is the module sender, an address in Dolibarr's `MAIL_FROM_EMAILS_TO_CONSIDER_SENDING`, or the e-mail of a Dolibarr user; otherwise "received". A received message stops the running sequences of the deal that stop on reply. An e-mail registered by hand as "sent manually" is replaced by the real message when it arrives.
+Any other message in the mailbox is **ignored**, without error: the mailbox is not a general inbox. A message already recorded is not recorded twice (the copy of a message sent from Dolibarr is recognised). The direction is "sent" when the sender is the module sender, an address in Dolibarr's `MAIL_FROM_EMAILS_TO_CONSIDER_SENDING`, or the e-mail of a Dolibarr user; otherwise "received". A received message stops the running outreach of the deal that stop on reply. An e-mail registered by hand as "sent manually" is replaced by the real message when it arrives.
 
 **Limits to know and to tell the users**
 
@@ -381,7 +381,7 @@ Keys are secrets: never store them in the project, and regenerate one that was s
 - **24.0.0** has the MCP server, but it authenticates with the **shared key only** (`AI_MCP_API_KEY`, running as the user chosen in `AI_MCP_USER_ID`), does not check the rights a tool declares, and does not ask for a confirmation before a write. To keep the rights of the CRM, the tools check their own rights before running, so a caller who lacks, for example, "Delete deals" or "Configure CRM" is refused. The confirmation step before a write is not there: use a dedicated MCP user with only the rights the assistant needs. The AI setup tabs need `MAIN_FEATURES_LEVEL` at 2 or more.
 - **25.0.0 alpha** adds personal API keys for MCP, the per-tool rights check and the confirmation step before a write, and shows the AI tabs from level 1. Both sets of rights checks apply: the core's and the tool's own.
 
-The tools cover pipelines, stages, sources, loss reasons and qualification items (list and change), deals (list, read, create, update, move, win, lose, delete), proposals links, qualification answers, agenda steps (list, create, complete, change the date or title of a planned step, delete a planned step), sequences, reports and settings (`get_crm_settings`, `update_crm_settings`, `send_crm_due_sequence_steps`, `send_crm_owner_reminders`). Tools that write return a confirmation text that names the record. The tools that change setup need "Configure CRM"; the others follow the matching right. Owners are numeric Dolibarr user ids: there is no user search tool. Searching and editing third parties, contacts, proposals, orders and invoices stays with the core tools.
+The tools cover pipelines, stages, sources, loss reasons and qualification items (list and change), deals (list, read, create, update, move, win, lose, delete), proposals links, qualification answers, agenda steps (list, create, complete, change the date or title of a planned step, delete a planned step), outreach, reports and settings (`get_crm_settings`, `update_crm_settings`, `send_crm_due_sequence_steps`, `send_crm_owner_reminders`). Tools that write return a confirmation text that names the record. The tools that change setup need "Configure CRM"; the others follow the matching right. Owners are numeric Dolibarr user ids: there is no user search tool. Searching and editing third parties, contacts, proposals, orders and invoices stays with the core tools.
 
 The 50 tools by the CRM right they need (a user without it does not see the tool on Dolibarr 25 and is refused by the tool itself on 24.0.0):
 
@@ -392,7 +392,7 @@ The 50 tools by the CRM right they need (a user without it does not see the tool
 | Create and update deals (`write`) | `create_crm_opportunity`, `update_crm_opportunity`, `change_crm_opportunity_stage`, `change_crm_opportunity_to_won`, `change_crm_opportunity_to_lost`, `add_crm_proposal_link`, `remove_crm_proposal_link`, `update_crm_qualification_answers` |
 | Delete deals (`delete`) | `delete_crm_opportunity` |
 | Create and complete next steps (`activity`) | `create_crm_activity`, `change_crm_activity_to_done`, `update_crm_activity`, `delete_crm_activity` |
-| Manage customer sequences (`sequence`) | `create_crm_sequence`, `update_crm_sequence`, `add_crm_sequence_step`, `update_crm_sequence_step`, `delete_crm_sequence_step`, `add_crm_sequence_enrolment`, `change_crm_sequence_enrolment_to_stopped`, `update_crm_opportunity_replied`, `send_crm_due_sequence_steps` |
+| Manage automated outreach (`sequence`) | `create_crm_sequence`, `update_crm_sequence`, `add_crm_sequence_step`, `update_crm_sequence_step`, `delete_crm_sequence_step`, `add_crm_sequence_enrolment`, `change_crm_sequence_enrolment_to_stopped`, `update_crm_opportunity_replied`, `send_crm_due_sequence_steps` |
 | Configure CRM (`setup`) | `get_crm_settings`, `update_crm_settings`, `send_crm_owner_reminders`, `create_or_update_crm_pipeline`, `create_or_update_crm_stage`, `delete_crm_stage`, `create_or_update_crm_source`, `create_or_update_crm_loss_reason`, `create_or_update_crm_qualification` |
 
 `send_crm_due_sequence_steps` and `send_crm_owner_reminders` run the scheduled jobs: they send real e-mail unless the dry-run settings (`CRM_DRY_RUN`, `CRM_REMINDER_DRY_RUN`) are on. `delete_crm_opportunity` deletes the deal for good. Allow the tools that change data in steps, not all at once, and only for a user whose rights you chose on purpose.
@@ -412,7 +412,7 @@ The 50 tools by the CRM right they need (a user without it does not see the tool
 **Watching it work**
 
 - Home → Setup → Scheduled jobs: last run and result of the CRM jobs and of the e-mail collector.
-- CRM → Automated sequences → a sequence → Journal: every e-mail attempt and its result, with a link to the e-mail itself.
+- CRM → Automated outreach → an outreach → Journal: every e-mail attempt and its result, with a link to the e-mail itself.
 - The Dolibarr log (`documents/dolibarr.log`) records the module's e-mail archive decisions (`CRM e-mail archive: recorded|duplicate|ignored|error`).
 - The e-mail collector card shows what each collection did.
 
@@ -428,7 +428,7 @@ The 50 tools by the CRM right they need (a user without it does not see the tool
 | `CRM_FORECAST_MONTHS` | 3 | Months covered by the forecast |
 | `CRM_MAX_EMAILS_PER_RUN` | 50 | Cap of sent or simulated e-mails per job run |
 | `CRM_MAIL_FROM` | empty | Sender; empty falls back to the Dolibarr sender |
-| `CRM_SEQUENCES_ON` | 0 | Sequence job on or off |
+| `CRM_SEQUENCES_ON` | 0 | Outreach job on or off |
 | `CRM_SEQUENCE_EMAIL_MODE` | `draft` | `draft` or `send` |
 | `CRM_DRY_RUN` | 1 | Send mode: journal only |
 | `CRM_REMINDERS_ON` | 1 | Owner reminders on or off |
@@ -450,10 +450,10 @@ The 50 tools by the CRM right they need (a user without it does not see the tool
 | The module cannot be enabled | Third parties or Agenda is off, PHP below 8.1, Dolibarr below 21 | Enable the dependencies, check the versions |
 | No **CRM** menu for a user | No CRM right | Grant "Read own deals" or "Read every owner" |
 | A user does not see a colleague's deals | No "Read every owner" | Grant it, or the deal owner changes |
-| Sequences, reminders or the collector never run | No system cron entry, or the job is disabled | Add the cron entry, check Scheduled jobs |
-| A sequence runs but sends nothing | Draft mode (the default), or dry-run on, or the master switch off | Read the settings above; look at the journal |
+| Outreach, reminders or the collector never run | No system cron entry, or the job is disabled | Add the cron entry, check Scheduled jobs |
+| An outreach runs but sends nothing | Draft mode (the default), or dry-run on, or the master switch off | Read the settings above; look at the journal |
 | Nothing is actually sent | Dolibarr's e-mail setup is empty or wrong | Home → Setup → Emails, send a test message |
-| Reminder or sequence e-mail "no address" | The owner or the deal contact has no e-mail | Fill it in; the company address is never a fallback |
+| Reminder or outreach e-mail "no address" | The owner or the deal contact has no e-mail | Fill it in; the company address is never a fallback |
 | The collector offers no "CRM: record the e-mail" operation | The module was not re-enabled after the update | Disable and enable CRM once |
 | E-mails reach the mailbox but nothing appears on the deal | The message cannot be tied to a deal (new thread, no reference in the subject) | Have it sent from a draft, or from a reply in the thread, with the reference kept |
 | The same e-mail appears twice | Rare: a message registered by hand and a real one with a very different subject | Delete the entry registered by hand |

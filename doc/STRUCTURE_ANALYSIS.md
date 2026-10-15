@@ -58,9 +58,9 @@ Disabling CRM does not delete those events. They are real history. The link back
 | Funnel = deals sitting in each column today, divided by the first column | That is a stock snapshot, not a conversion rate. Reports use stage history. |
 | One pipeline total and one weighted total | Forecast is split by month of expected close and by category: pipeline, upside, commit. |
 | Free-text loss reason | A required reason from a dictionary. Empty reasons make the loss report useless. |
-| Customer drip sequence as a primary feature, dry-run on | Kept, but off until an admin turns it on. The default mail is an internal reminder to the owner. |
+| Customer drip outreach as a primary feature, dry-run on | Kept, but off until an admin turns it on. The default mail is an internal reminder to the owner. |
 | Custom application shell and its own sidebar | Dolibarr menus, standard cards and lists. One kanban page. |
-| Company e-mail as the sequence recipient | The deal's primary contact. No contact address means no send. |
+| Company e-mail as the outreach recipient | The deal's primary contact. No contact address means no send. |
 
 ## Pages
 
@@ -87,7 +87,7 @@ A stage has label, position, colour, probability, rotting delay, forecast catego
 
 **The reply stage.** `llx_crm_stage.is_reply` marks, in each pipeline, the open stage a deal moves to when its prospect replies (`Stage::keepOneReplyStage()` keeps one per pipeline; a won or lost stage cannot be it). `Opportunity::moveToReplyStage()` is called where an answer is recorded: `CrmMailArchive::record()` for an incoming message, `Sequence::markReplied()` for the manual mark (page and MCP). It moves an open deal only when `crmStageComesBefore()` says its stage is before the reply stage (position, then id), writes the stage history, and does not apply `CRM_REQUIRE_NEXT_STEP`: it is the module reacting to an event, and the deal then appears as "no next step". The setting `CRM_REPLY_MOVES_DEAL` (default 1) turns it off. Schema step 3 adds the column and `crmEnsureReplyStage()` gives every pipeline that lacks one the stage "Replied to outreach" after its first open stage; the code works before the step has run (`crmStageReplySupported()`).
 
-**Retiring instead of deleting.** Stages, qualification items, sources and loss reasons all have an `active` flag, edited in place in the Setup screen. A turned-off entry leaves the choice lists (`Stage::fetchAll($pipelineId, true)`, `Qualification::fetchItems()`, `crmFetchDictionary(..., true)`) but every read of an existing deal uses the unfiltered list, so a deal never loses the label of what it points at: a retired stage keeps its column on the board while a deal is in it, a retired source stays on the card. `Opportunity::moveToStage()` refuses a retired target (`CrmErrorStageInactive`). Deletion is refused when the record is referenced: a stage with deals or any stage history (the cohort report reads `llx_crm_stage_history`), a source or loss reason of a deal, a qualification item with answers. The user is then told to turn it off. Codes are unique per list (`crmCodeExists()`); `crmSaveDictionary()` and `crmSaveQualificationItem()` take `active = -1` to leave the flag of an existing row alone, which is what the screen and the MCP upsert tools use on update. Deleting a sequence step is confirmed and says how many running enrolments wait for it, because those end when their next step no longer exists.
+**Retiring instead of deleting.** Stages, qualification items, sources and loss reasons all have an `active` flag, edited in place in the Setup screen. A turned-off entry leaves the choice lists (`Stage::fetchAll($pipelineId, true)`, `Qualification::fetchItems()`, `crmFetchDictionary(..., true)`) but every read of an existing deal uses the unfiltered list, so a deal never loses the label of what it points at: a retired stage keeps its column on the board while a deal is in it, a retired source stays on the card. `Opportunity::moveToStage()` refuses a retired target (`CrmErrorStageInactive`). Deletion is refused when the record is referenced: a stage with deals or any stage history (the cohort report reads `llx_crm_stage_history`), a source or loss reason of a deal, a qualification item with answers. The user is then told to turn it off. Codes are unique per list (`crmCodeExists()`); `crmSaveDictionary()` and `crmSaveQualificationItem()` take `active = -1` to leave the flag of an existing row alone, which is what the screen and the MCP upsert tools use on update. Deleting an outreach step is confirmed and says how many running enrolments wait for it, because those end when their next step no longer exists.
 
 Open deal hygiene, in order:
 
@@ -107,11 +107,15 @@ Win rate is won / (won + lost) by close date in the period. Cycle time is the me
 
 A hidden copy to the sender (`bccme`, ticked on the first display, kept as posted afterwards, offered only when the user's e-mail is valid) goes to `crmSendMail()` as `$copyToMe`. `crmCopyRecipients()` decides, in one place, who is in Cc and Bcc: the archive mailbox for a message about a deal (Cc or Bcc by `CRM_ARCHIVE_COPY`, as the administrator wrote it) and the sender's own address always as Bcc, once when it is the same address.
 
-## Journal of the sequences
+## Enrolling from the deal card
 
-`Sequence::runEmailStep()` writes one `llx_crm_sequence_log` line for every e-mail step it runs, whatever the outcome, with the message as built by `buildEmail()` (the same method that makes what is sent): subject and text with the placeholders replaced (the values are escaped in an HTML text), format, recipient, sender (`crmSender()`, or the sender `crmSendMail()` used), the position of the step as a snapshot (the step can be edited or deleted later) and `content_source = 'recorded'`. The day of the sequence is not stored: it is `crmSequenceDay()` of the enrolment date and the date of the line, the same count `crmDueTimestamp()` uses for the delay of a step. `Sequence::fetchLog()` (one sequence) and `fetchLogForOpportunity()` (one deal) share `logSelect()`, which joins the enrolment, the sequence, the deal and the step, so every line says on what ground it exists.
+`opportunity_card.php` lists the enrolments of the deal (`Sequence::fetchEnrolmentsForOpportunity()`: the outreach, the status, the step it waits for) and, for a user with the right `sequence` on an open deal that follows nothing, a list of `Sequence::fetchEnrollable()` (active, at least one step) and the action `enroloutreach`, which calls `Sequence::enrolFromDeal()`. That method refuses an inactive outreach, a closed deal and a deal that already has a running enrolment (one outreach at a time on this screen), then calls `enrol()`, which stamps `date_enrol` with the moment of the call and schedules the first step from it. The rule "one at a time" is enforced here only: the outreach card and the MCP tool keep their own rules.
 
-`sequence_log_view.php` shows one line. It refuses a line whose deal owner the user may not read (`crmCanReadOwner()`), and renders an HTML text through `dol_htmlwithnojs()`, a plain text escaped. The journal of a sequence and the History of a deal link to it. A line without content (written before schema 2) is completed by `Sequence::ensureLogContent()` when opened, and saved: a sent line takes the message recorded on the deal (an `AC_EMAIL` event of the same deal, same subject, within ten minutes, source `event`), otherwise the text is rebuilt from the step and the deal as they are now (source `rebuilt`, flagged on the page). A line whose step is gone stays empty. The code works before the schema step has run (`crmLogContentSupported()`): the old columns are written, and the page says the content is not kept yet.
+## Journal of the outreach
+
+`Sequence::runEmailStep()` writes one `llx_crm_sequence_log` line for every e-mail step it runs, whatever the outcome, with the message as built by `buildEmail()` (the same method that makes what is sent): subject and text with the placeholders replaced (the values are escaped in an HTML text), format, recipient, sender (`crmSender()`, or the sender `crmSendMail()` used), the position of the step as a snapshot (the step can be edited or deleted later) and `content_source = 'recorded'`. The day of the outreach is not stored: it is `crmSequenceDay()` of the enrolment date and the date of the line, the same count `crmDueTimestamp()` uses for the delay of a step. `Sequence::fetchLog()` (one outreach) and `fetchLogForOpportunity()` (one deal) share `logSelect()`, which joins the enrolment, the outreach, the deal and the step, so every line says on what ground it exists.
+
+`sequence_log_view.php` shows one line. It refuses a line whose deal owner the user may not read (`crmCanReadOwner()`), and renders an HTML text through `dol_htmlwithnojs()`, a plain text escaped. The journal of an outreach and the History of a deal link to it. A line without content (written before schema 2) is completed by `Sequence::ensureLogContent()` when opened, and saved: a sent line takes the message recorded on the deal (an `AC_EMAIL` event of the same deal, same subject, within ten minutes, source `event`), otherwise the text is rebuilt from the step and the deal as they are now (source `rebuilt`, flagged on the page). A line whose step is gone stays empty. The code works before the schema step has run (`crmLogContentSupported()`): the old columns are written, and the page says the content is not kept yet.
 
 ## Next steps and lists
 
@@ -132,7 +136,7 @@ The deal list and the activity list sort on a whitelist of columns (`Opportunity
 
 Answers live in `llx_crm_opportunity_qualification` (yes/no, date, user). The card lists what is still missing. The numeric score is the sum of the points of the yes answers, capped at 100. There is no generic operator engine and no grade badge.
 
-## Customer sequences and owner reminders
+## Automated outreach and owner reminders
 
 Two jobs, registered in `$this->cronjobs`, run by Dolibarr cron. Each returns immediately when the module is disabled. Suggested frequency: hourly. Cap: `CRM_MAX_EMAILS_PER_RUN` (50).
 
@@ -140,9 +144,9 @@ Two jobs, registered in `$this->cronjobs`, run by Dolibarr cron. Each returns im
 
 One message per owner per day. It lists overdue next steps, deals with no next step, and open deals whose expected close is in the past. `CRM_REMINDER_DRY_RUN` defaults to on, so the first runs only fill `llx_crm_reminder_log` (owner, date, status, error). A row for that owner and that day blocks a second message.
 
-**Customer sequences** (`CrmCron::runSequences`). Off by default (`CRM_SEQUENCES_ON` = 0).
+**Automated outreach** (`CrmCron::runSequences`). Off by default (`CRM_SEQUENCES_ON` = 0).
 
-A sequence is an explicit cadence on a deal, not a blast to every prospect. Steps are `email`, `call`, or `task`, delayed D+n from enrolment.
+An outreach is an explicit cadence on a deal, not a blast to every prospect. Steps are `email`, `call`, or `task`, delayed D+n from enrolment.
 
 - **E-mail steps have two modes**, set globally (`CRM_SEQUENCE_EMAIL_MODE`) and overridable per step (`llx_crm_sequence_step.send_mode`: empty follows the global setting, `draft` or `send` forces it; `crmStepDraftMode()`). `draft` (default, and the behaviour for any value other than `send`): the step creates a planned e-mail event on the deal, owned by the deal owner, with the subject as label (deal reference appended in square brackets) and the suggested text as note, and the journal row is `draft`. Nothing is sent, dry-run does not apply, and drafts do not count toward `CRM_MAX_EMAILS_PER_RUN`. See "E-mail drafts". `send`: the cron sends as described below.
 - In send mode, e-mail goes to `fk_socpeople` on the deal. No address: log `error` and do not spin. The company address is not a fallback.
@@ -150,7 +154,7 @@ A sequence is an explicit cadence on a deal, not a blast to every prospect. Step
 - `call` and `task` create an agenda event for the owner. They do not send mail.
 - A real send uses `CMailFile` and then logs an agenda event.
 - Stop when the deal is won or lost, when the enrolment is stopped, when someone marks "prospect replied" (card or MCP), or when the e-mail collector records an answer from the customer on the deal (see "E-mail history").
-- `CRM_DRY_RUN` defaults to on even after sequences are enabled. Simulated rows advance the enrolment so the cadence can be checked. The sequence screen shows that banner.
+- `CRM_DRY_RUN` defaults to on even after outreach are enabled. Simulated rows advance the enrolment so the cadence can be checked. The outreach screen shows that banner.
 - Sender is `CRM_MAIL_FROM`, or the company sender when that constant is empty.
 
 ## E-mail drafts
@@ -171,9 +175,9 @@ When the collector later reads the copy, `CrmMailArchive::record()` recognises t
 
 `email_compose.php` sends plain text or HTML. The format is chosen with a radio (`format`) and, for a saved draft, detected from the note (`crmLooksLikeHtml`). The HTML tab is Dolibarr's `DolEditor` (CKEditor, toolbar `dolibarr_mailings`); its content is read with the `restricthtml` filter. The message exists in one form only: the plain version of an HTML message is derived, never written separately, because `CMailFile` builds the alternative part itself (swiftmailer: `addPart(strip_tags)`; mail and smtps methods: the alternative is added when `MAIN_MAIL_USE_MULTI_PART` is set, which Dolibarr turns on by default and `crmSendMail()` also sets in memory for an HTML message and restores) and has no parameter for a hand-written one. `crmHtmlForMail()` adds a line feed after block ends and `<br>`, invisible in HTML, so that the stripped alternative keeps its paragraphs; `crmHtmlToText()` produces the same text for the "plain-text version" tab, through the ajax action `previewtext` of the page (it defines `NOTOKENRENEWAL` first, so the open form keeps its CSRF token). `crmSendMail(..., $html = true)` calls `CMailFile` with `msgishtml = 1`. The note of the sent or registered event holds the HTML. Readers of event notes that need text (the AI assistant) convert with `crmHtmlToText()`.
 
-## AI text for a sequence step
+## AI text for an outreach step
 
-The add-step form of `sequence_card.php` has an AI button, enabled by `crm-format-editor` only for an e-mail step with a subject, and rendered disabled by the server unless `CrmAiReply::isAvailable()` (AI module on, `CRM_AI_EMAIL_ASSIST` on), `CrmAiReply::isConfigured()` (a key, or an address for the custom service) and the "Manage customer sequences" right hold. The ajax action `aitemplate` calls `CrmAiReply::suggestStepTemplate()`: the prompt `CrmAiStepPrompt`, the subject, the five placeholders and what they mean, then either the current text to improve or a request for a new template, then the output rules for the chosen format (HTML fragment or plain text). Only the subject and the template go out, never deal data. The answer is cleaned (`dol_htmlwithnojs` for HTML) and replaces the text box; nothing is saved by the action.
+The add-step form of `sequence_card.php` has an AI button, enabled by `crm-format-editor` only for an e-mail step with a subject, and rendered disabled by the server unless `CrmAiReply::isAvailable()` (AI module on, `CRM_AI_EMAIL_ASSIST` on), `CrmAiReply::isConfigured()` (a key, or an address for the custom service) and the "Manage automated outreach" right hold. The ajax action `aitemplate` calls `CrmAiReply::suggestStepTemplate()`: the prompt `CrmAiStepPrompt`, the subject, the five placeholders and what they mean, then either the current text to improve or a request for a new template, then the output rules for the chosen format (HTML fragment or plain text). Only the subject and the template go out, never deal data. The answer is cleaned (`dol_htmlwithnojs` for HTML) and replaces the text box; nothing is saved by the action.
 
 ## AI reply suggestions
 
@@ -191,13 +195,13 @@ Reading. The module has no IMAP code. The Dolibarr **e-mail collector** (core mo
 1b. its subject carries a deal reference in square brackets, `[OPP2026-0001]`, which the module puts in the subject of every draft, so a message written in a mail client from a draft, and the customer's reply to it, are recognised even when the threading headers are lost; or
 2. one of those ids is the Message-ID of a message already recorded on a deal. This catches a salesperson who answers from their own mail client, quoting the exchange, with the archive mailbox in copy.
 
-Anything else is ignored without error, so the mailbox is not a general inbox and the other operations of the collector are not disturbed. A message already recorded (same Message-ID) is skipped, which is how the Bcc copy of a module e-mail does not create a second event. The direction is "sent" when the sender is the module sender, an address in `MAIL_FROM_EMAILS_TO_CONSIDER_SENDING`, or a Dolibarr user's e-mail, otherwise "received". A received message stops the running enrolments of the deal whose sequence has `stop_on_reply`.
+Anything else is ignored without error, so the mailbox is not a general inbox and the other operations of the collector are not disturbed. A message already recorded (same Message-ID) is skipped, which is how the Bcc copy of a module e-mail does not create a second event. The direction is "sent" when the sender is the module sender, an address in `MAIL_FROM_EMAILS_TO_CONSIDER_SENDING`, or a Dolibarr user's e-mail, otherwise "received". A received message stops the running enrolments of the deal whose outreach has `stop_on_reply`.
 
 Limits. A message composed from scratch, with no thread to a recorded one, cannot be tied to a deal. A Bcc copy is not in the customer's "reply all", so their answer reaches the mailbox only if a person copies or forwards it; use Cc if the customer's replies should be seen directly. The note holds the plain-text body: attachments are not stored. Events follow the agenda's visibility rules, not the CRM's.
 
 ## Data the module owns
 
-One file, `sql/llx_crm.sql`. Indexes are inside each `CREATE TABLE`. There is no `IF NOT EXISTS` and no separate `.key.sql`. No `ALTER` on a core table and no extrafield. Every table has `entity` except `llx_crm_sequence_step`, which belongs to its sequence.
+One file, `sql/llx_crm.sql`. Indexes are inside each `CREATE TABLE`. There is no `IF NOT EXISTS` and no separate `.key.sql`. No `ALTER` on a core table and no extrafield. Every table has `entity` except `llx_crm_sequence_step`, which belongs to its outreach.
 
 | Table | Holds |
 | --- | --- |
@@ -216,7 +220,7 @@ One file, `sql/llx_crm.sql`. Indexes are inside each `CREATE TABLE`. There is no
 | `llx_crm_sequence_log` | One line per e-mail step run: recipient, sender, subject, the text with the placeholders replaced and its format, step position, date, `sent` / `simulated` / `draft` / `error`, and where the text comes from (`recorded` when made, `event` or `rebuilt` for a line completed later) |
 | `llx_crm_reminder_log` | Owner reminder journal |
 
-Opportunity columns: `ref` (`OPP` + year + sequence), `label`, `fk_soc`, `fk_socpeople`, `fk_pipeline`, `fk_stage`, `amount`, `date_close_expected`, `fk_source`, `fk_user_resp`, `description`, `status` (`open` / `won` / `lost`), `date_close`, `fk_loss_reason`, `loss_note`, `datec`, `tms`, `fk_user_creat`. Probability is not a column.
+Opportunity columns: `ref` (`OPP` + year + outreach), `label`, `fk_soc`, `fk_socpeople`, `fk_pipeline`, `fk_stage`, `amount`, `date_close_expected`, `fk_source`, `fk_user_resp`, `description`, `status` (`open` / `won` / `lost`), `date_close`, `fk_loss_reason`, `loss_note`, `datec`, `tms`, `fk_user_creat`. Probability is not a column.
 
 Seed, only when that entity has no pipeline yet: one pipeline, seven stages (New 10% pipeline, Replied to outreach 15% pipeline (the reply stage), Qualified 25% pipeline, Proposal sent 50% upside, Negotiation 75% commit, Won 100% won, Lost 0% lost), six sources (website, referral, inbound call, event, partner, prospecting), the four qualification items, and loss reasons (price, no budget, competitor, timing, no decision, no answer). Re-enabling does not insert them again.
 
@@ -271,7 +275,7 @@ There is no core tool to search users. Owner and assignee arguments are numeric 
 | `delete` | Delete deals |
 | `readall` | Every owner's deals, in the UI and in MCP |
 | `activity` | Create and complete agenda events for a deal |
-| `sequence` | Manage sequences and enrolments |
+| `sequence` | Manage outreach and enrolments |
 | `report` | Reports and the report tools |
 | `setup` | Constants, stages, qualification, dictionaries |
 
@@ -300,7 +304,7 @@ No purge button in v1. A later action can drop only `llx_crm_*` and `CRM_*` cons
 │   ├── stage.class.php
 │   ├── crmactivity.class.php
 │   ├── qualification.class.php
-│   ├── sequence.class.php
+│   ├── outreach.class.php
 │   ├── crmcron.class.php
 │   ├── crmreport.class.php
 │   └── mcp/
@@ -359,7 +363,7 @@ Kanban drag and drop posts to `pipeline.php` with a CSRF token. No third-party s
 
 ## Decisions kept
 
-1. Customer sequences ship disabled, with dry-run on, and their e-mail steps are drafts for the salesperson, not automatic sends. Owner reminders ship enabled, also dry-run until that is turned off.
+1. Automated outreach ship disabled, with dry-run on, and their e-mail steps are drafts for the salesperson, not automatic sends. Owner reminders ship enabled, also dry-run until that is turned off.
 2. Calls and meetings are agenda events and are kept after the module is disabled.
 3. An open deal cannot change stage until it has a future next step (`CRM_REQUIRE_NEXT_STEP`, default on).
 4. Owners in MCP are numeric user ids. There is no `list_crm_users`.

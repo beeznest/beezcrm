@@ -268,6 +268,77 @@ class Sequence
 	}
 
 	/**
+	 * Every enrolment of one deal, newest first, with the outreach and the step it waits for.
+	 *
+	 * @return array<int,object>
+	 */
+	public function fetchEnrolmentsForOpportunity(int $opportunityId): array
+	{
+		$prefix = $this->db->prefix();
+		$sql = 'SELECT e.*, s.ref as seq_ref, s.label as seq_label, st.action as step_action, st.subject as step_subject';
+		$sql .= ' FROM '.$prefix.'crm_sequence_enrol as e';
+		$sql .= ' INNER JOIN '.$prefix.'crm_sequence as s ON s.rowid = e.fk_sequence';
+		$sql .= ' LEFT JOIN '.$prefix.'crm_sequence_step as st ON st.fk_sequence = e.fk_sequence AND st.position = e.current_step';
+		$sql .= ' WHERE e.fk_opportunity = '.((int) $opportunityId).' ORDER BY e.date_enrol DESC, e.rowid DESC';
+		return $this->rows($sql);
+	}
+
+	/**
+	 * True when the deal follows an outreach now.
+	 */
+	public function hasRunningEnrolment(int $opportunityId): bool
+	{
+		$sql = 'SELECT rowid FROM '.$this->db->prefix()."crm_sequence_enrol WHERE fk_opportunity = ".((int) $opportunityId)." AND status = 'running'";
+		$resql = $this->db->query($sql);
+		return ($resql && $this->db->num_rows($resql) > 0);
+	}
+
+	/**
+	 * The outreach a deal can be enrolled in: active ones that have at least one step.
+	 *
+	 * @return array<int,object>
+	 */
+	public function fetchEnrollable(): array
+	{
+		$list = array();
+		foreach ($this->fetchAll() as $row) {
+			if ((int) $row->active === 1 && (int) $row->nb_step > 0) {
+				$list[] = $row;
+			}
+		}
+		return $list;
+	}
+
+	/**
+	 * Enrol a deal from a deal card: the deal must be open and not already follow an outreach, and the outreach must be active.
+	 * The enrolment starts now, as enrol() does: the first step falls due after its delay counted from this moment.
+	 *
+	 * @return int Enrolment id, or -1 with a language key in ->error
+	 */
+	public function enrolFromDeal(int $opportunityId): int
+	{
+		if ($this->id <= 0) {
+			$this->error = 'CrmErrorSequenceNotFound';
+			return -1;
+		}
+		if (!$this->active) {
+			$this->error = 'CrmErrorSequenceInactive';
+			return -1;
+		}
+		$resql = $this->db->query('SELECT status FROM '.$this->db->prefix().'crm_opportunity WHERE rowid = '.((int) $opportunityId));
+		$deal = $resql ? $this->db->fetch_object($resql) : null;
+		if (!$deal || (string) $deal->status !== 'open') {
+			$this->error = 'CrmErrorDealClosed';
+			return -1;
+		}
+		if ($this->hasRunningEnrolment($opportunityId)) {
+			$this->error = 'CrmErrorDealRunning';
+			return -1;
+		}
+		return $this->enrol($opportunityId);
+	}
+
+	/**
 	 * Enrol a deal. The first step is scheduled from now plus its delay.
 	 *
 	 * @return int Enrolment id, or -1

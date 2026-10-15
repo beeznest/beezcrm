@@ -175,6 +175,20 @@ if ($action === 'confirm_delactivity' && GETPOST('confirm', 'alpha') === 'yes' &
 	exit;
 }
 
+if ($action === 'enroloutreach' && $object->id > 0) {
+	crmRequireRight('sequence');
+	$outreach = new Sequence($db);
+	if (GETPOSTINT('sequenceid') <= 0 || $outreach->fetch(GETPOSTINT('sequenceid')) <= 0) {
+		setEventMessages($langs->trans('CrmErrorSequenceNotFound'), null, 'errors');
+	} elseif ($outreach->enrolFromDeal((int) $object->id) <= 0) {
+		setEventMessages(crmErrorText($outreach->error), null, 'errors');
+	} else {
+		setEventMessages($langs->trans('CrmOutreachEnrolledOk'), null);
+	}
+	header('Location: '.$back);
+	exit;
+}
+
 if ($action === 'linkpropal' && $object->id > 0) {
 	crmRequireRight('write');
 	if ($object->linkProposal(GETPOSTINT('propalid')) <= 0) {
@@ -500,6 +514,57 @@ foreach ($events as $event) {
 	print '</td></tr>';
 }
 print '</table>';
+
+// The automated outreach this lead follows, and the means to enrol it in one. An enrolment starts at the moment it is saved.
+$outreachModel = new Sequence($db);
+$enrolments = $outreachModel->fetchEnrolmentsForOpportunity((int) $object->id);
+$followsOutreach = $outreachModel->hasRunningEnrolment((int) $object->id);
+print '<h2>'.$langs->trans('CrmSequences').'</h2>';
+print crmHelp($langs->trans('CrmOutreachHelp'));
+if (count($enrolments) === 0) {
+	print '<p class="opacitymedium">'.$langs->trans('CrmOutreachNone').'</p>';
+} else {
+	print '<table class="noborder centpercent">';
+	print '<tr class="liste_titre"><td>'.$langs->trans('CrmSequence').'</td><td>'.$langs->trans('CrmStatus').'</td><td>'.$langs->trans('CrmOutreachSince').'</td><td>'.$langs->trans('CrmNextStep').'</td><td>'.$langs->trans('CrmOutreachDue').'</td></tr>';
+	foreach ($enrolments as $enrol) {
+		$running = ((string) $enrol->status === 'running');
+		print '<tr class="oddeven">';
+		print '<td><a href="'.dol_buildpath('/crm/sequence_card.php', 1).'?id='.(int) $enrol->fk_sequence.'">'.dol_escape_htmltag((string) $enrol->seq_ref).'</a> '.dol_escape_htmltag(crmDictLabel((string) $enrol->seq_label)).'</td>';
+		print '<td>'.dol_escape_htmltag(crmEnrolStatusLabel((string) $enrol->status, (string) $enrol->stop_reason)).'</td>';
+		print '<td>'.dol_print_date($db->jdate($enrol->date_enrol), 'dayhour').'</td>';
+		print '<td>'.($running ? dol_escape_htmltag($langs->trans('CrmOutreachStepN', (string) (int) $enrol->current_step).(trim((string) $enrol->step_subject) !== '' ? ': '.trim((string) $enrol->step_subject) : '')) : '').'</td>';
+		print '<td>'.($running && !empty($enrol->date_next) ? dol_print_date($db->jdate($enrol->date_next), 'dayhour') : '').'</td>';
+		print '</tr>';
+	}
+	print '</table>';
+}
+if ($user->hasRight('crm', 'sequence') && !$followsOutreach && (string) $object->status === 'open') {
+	$enrollable = $outreachModel->fetchEnrollable();
+	if (count($enrollable) === 0) {
+		print '<p class="opacitymedium">'.$langs->trans('CrmOutreachNoneAvailable').'</p>';
+	} else {
+		$outreachContactEmail = '';
+		if ((int) $object->fk_socpeople > 0) {
+			$outreachContact = new Contact($db);
+			if ($outreachContact->fetch((int) $object->fk_socpeople) > 0) {
+				$outreachContactEmail = trim((string) $outreachContact->email);
+			}
+		}
+		if ($outreachContactEmail === '') {
+			print '<div class="warning">'.$langs->trans('CrmOutreachNoContactEmail').'</div>';
+		}
+		print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'">';
+		print '<input type="hidden" name="token" value="'.newToken().'">';
+		print '<input type="hidden" name="action" value="enroloutreach">';
+		print '<input type="hidden" name="id" value="'.((int) $object->id).'">';
+		print '<select name="sequenceid" required><option value="">'.dol_escape_htmltag($langs->trans('CrmOutreachChoose')).'</option>';
+		foreach ($enrollable as $row) {
+			print '<option value="'.((int) $row->rowid).'">'.dol_escape_htmltag((string) $row->ref.' — '.crmDictLabel((string) $row->label)).'</option>';
+		}
+		print '</select> <input type="submit" class="button" value="'.dol_escape_htmltag($langs->trans('CrmOutreachEnrolButton')).'">';
+		print '</form>';
+	}
+}
 
 $qual = new Qualification($db);
 $items = $qual->fetchForOpportunity((int) $object->id);
