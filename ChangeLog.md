@@ -2,7 +2,7 @@
 
 The version of the module is the `$this->version` property of `core/modules/modCrm.class.php`. This file is shown by Dolibarr on the help page of the module (Home → Setup → Modules, help icon of the CRM line). Newest version first. A change a user or an administrator can notice goes here, in the same change.
 
-## 1.1.0
+## 1.1.0 (2026-10-18)
 
 ### Security
 
