@@ -4,6 +4,23 @@ The version of the module is the `$this->version` property of `core/modules/modC
 
 ## 1.1.0
 
+### Security
+
+A review against the OWASP Top 10 led to these changes. Nothing in the data model changes.
+
+- **CSRF.** Every action of every page now needs the token of the session, not only the actions Dolibarr's own check sees. A link such as `email_compose.php?act_send=1` no longer sends anything: the buttons of the e-mail editor are read from a POST only.
+- **Who sees what.** The enrolments and the journal of an automated outreach are limited to the deals the user may read (own deals, or all with "Read all"), and to the current entity. Stopping an enrolment or marking a reply checks the deal too; marking a reply moves the deal only for a user who may write.
+- **Enrolment rules in one place.** `Sequence::enrol()` now refuses an inactive outreach, a deal that does not exist, a closed deal and a deal that already follows an outreach, whichever entry is used (deal card, outreach card, MCP).
+- **Inbound e-mail is no longer trusted blindly.** A message found by a deal reference or a Message-ID is kept only if its sender (received) or one of its recipients (sent by us) is an address the deal knows: its contact, the other contacts and the address of its third party, or a colleague at their company domain (public mail domains such as gmail.com do not count). A message that our mail server reports as failing SPF/DKIM/DMARC is ignored; the new setting **"Archive only authenticated e-mails"** (`CRM_ARCHIVE_REQUIRE_AUTH`, off by default) also ignores a message without a passed check. An automatic message (bounce, out-of-office, list) is kept but no longer stops the outreach or moves the deal. Dates are kept within a believable range and long headers are cut.
+- **Stored XSS.** Titles and confirmation texts that print a deal, outreach, stage or list label are escaped; the MCP tools strip markup and line breaks from labels, references, subjects and codes, strip markup from descriptions and notes, and clean the HTML of an e-mail step; the web forms apply the same rules when saving. The editor's "has text" test no longer builds live HTML.
+- **Mail header injection.** The subject, recipient and sender of every e-mail are made single-line before they are sent, and the sender and archive addresses are validated when saved.
+- **Links of a deal are validated**: the third party and the contact must exist in the entity and the contact must belong to the third party; a proposal can be linked only if it exists, the user may read proposals and it belongs to the third party of the deal. A closed deal can no longer be reopened without a next step when that rule is on.
+- **Settings are validated** on the setup page (switches 0/1, bounded numbers, known modes, one valid address, bounded AI prompt), all values before any write. The MCP tool `update_crm_settings` is **removed**: an AI assistant can read the settings (`get_crm_settings`) but cannot change them, since a setting such as dry-run or the sender decides whether real e-mail leaves. Stage values are validated too (colour `#rrggbb`, probability 0–100, forecast category); the MCP stage tool no longer lets a stage change pipeline.
+- **AI.** A per-user limit of suggestions per hour (`CRM_AI_MAX_PER_HOUR`, default 30), a cap on the prompt, and a sentence telling the model that the e-mails and notes it reads are data, not instructions.
+- **Errors.** A database or provider error is written to the Dolibarr log and an ordinary user sees a generic message; an administrator sees the text, escaped.
+- **Concurrency.** The job that sends the outreach claims each enrolment before working on it, so two runs at the same time no longer send the same e-mail twice.
+- **Other.** Lists are capped at 500 rows; entity filters were added to the journal and the next-step queries; the class and library files refuse a direct request; a `.htaccess` hides `.git`, `doc`, `test`, `sql` and the other source files on Apache (see INSTALL.md for nginx and production); the inline script of the deal card carries the CSP nonce.
+
 ### Automated outreach
 
 - The feature "Sequences" is now called **Automated outreach** (menu CRM → Automated outreach; in French "Approche automatisée"), and one plan is an **outreach** ("approche"). The name changes everywhere a person reads it: menu, page titles, the right "Manage automated outreach", the settings, the scheduled job, messages and the documentation, in all languages. Internal names (tables, settings such as `CRM_SEQUENCES_ON`, MCP tool names such as `create_crm_sequence`) are unchanged.

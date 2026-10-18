@@ -288,6 +288,8 @@ The full exchange with a customer can be kept on the deal, as agenda events: the
 2. one of those ids is the Message-ID of a message already recorded on a deal, which covers a salesperson replying from their own mail client to an exchange; or
 3. its subject carries the reference of a deal in square brackets, such as `[OPP2026-0001]`, which the module puts in the subject of every draft it suggests.
 
+A reference or an id can be guessed and a From header can be forged, so finding the deal is not enough: the message is also **ignored unless it comes from, or (for a message sent by us) goes to, an address the deal knows**: the contact of the deal, the other contacts of its third party, the e-mail of the third party, or a colleague at the same company domain (a public mail domain such as gmail.com never counts as a company domain). A deal without a third party therefore keeps no message. A message that your mail server marks as failing SPF, DKIM or DMARC (its `Authentication-Results` header) is ignored; with the setting **Archive only authenticated e-mails** (`CRM_ARCHIVE_REQUIRE_AUTH`), a message without a passed check is ignored too: turn it on only if your server adds that header (test with a real message). An automatic message (bounce, out-of-office reply, mailing list: headers `Auto-Submitted`, `Precedence`, `List-Id`, an empty `Return-Path`…) is kept but does not stop the outreach or move the deal.
+
 Any other message in the mailbox is **ignored**, without error: the mailbox is not a general inbox. A message already recorded is not recorded twice (the copy of a message sent from Dolibarr is recognised). The direction is "sent" when the sender is the module sender, an address in Dolibarr's `MAIL_FROM_EMAILS_TO_CONSIDER_SENDING`, or the e-mail of a Dolibarr user; otherwise "received". A received message stops the running outreach of the deal that stop on reply. An e-mail registered by hand as "sent manually" is replaced by the real message when it arrives.
 
 **Limits to know and to tell the users**
@@ -296,7 +298,7 @@ Any other message in the mailbox is **ignored**, without error: the mailbox is n
 - A message written from scratch, with no thread and no reference in its subject, cannot be tied to a deal.
 - The text is stored in the event note as plain text; attachments are not stored.
 - The events follow the Dolibarr agenda's visibility rules, not the CRM's rules, and they are personal data: decide how long you keep them.
-- Anyone who writes a deal reference in a subject can attach a message to that deal, if it reaches the archive mailbox. Keep the address out of public lists.
+- The sender check lowers the risk of a forged message but cannot remove it: a person who knows a deal reference and can spoof an address the deal knows (a colleague at the customer's domain) can still attach a message if your server does not verify senders. Keep the archive address out of public lists, and turn on the authentication setting when your server supports it.
 
 ## HTML e-mail
 
@@ -365,7 +367,7 @@ Attachments and everything else in the agenda or the mailbox are never sent. The
 
 ## MCP
 
-The module adds 50 tools to Dolibarr's MCP server, named verb first with `crm` after the verb (`list_crm_opportunities`, `create_crm_activity`), so an AI assistant can read and act on deals within the user's rights. Screens work whether or not the AI module is on.
+The module adds 49 tools to Dolibarr's MCP server, named verb first with `crm` after the verb (`list_crm_opportunities`, `create_crm_activity`), so an AI assistant can read and act on deals within the user's rights. Screens work whether or not the AI module is on.
 
 1. Enable the **AI** module (Home → Setup → Modules).
 2. The AI setup tabs "MCP server" and "Tool access control" show only when the constant `MAIN_FEATURES_LEVEL` is 2 or more on Dolibarr 24.0.0, 1 or more on 25 (Home → Setup → Other setup). Without it, `ai/admin/server_mcp.php` and `ai/admin/configure_tools.php` can still be opened directly. `MAIN_FEATURES_LEVEL` also turns on every other experimental Dolibarr feature.
@@ -381,9 +383,9 @@ Keys are secrets: never store them in the project, and regenerate one that was s
 - **24.0.0** has the MCP server, but it authenticates with the **shared key only** (`AI_MCP_API_KEY`, running as the user chosen in `AI_MCP_USER_ID`), does not check the rights a tool declares, and does not ask for a confirmation before a write. To keep the rights of the CRM, the tools check their own rights before running, so a caller who lacks, for example, "Delete deals" or "Configure CRM" is refused. The confirmation step before a write is not there: use a dedicated MCP user with only the rights the assistant needs. The AI setup tabs need `MAIN_FEATURES_LEVEL` at 2 or more.
 - **25.0.0 alpha** adds personal API keys for MCP, the per-tool rights check and the confirmation step before a write, and shows the AI tabs from level 1. Both sets of rights checks apply: the core's and the tool's own.
 
-The tools cover pipelines, stages, sources, loss reasons and qualification items (list and change), deals (list, read, create, update, move, win, lose, delete), proposals links, qualification answers, agenda steps (list, create, complete, change the date or title of a planned step, delete a planned step), outreach, reports and settings (`get_crm_settings`, `update_crm_settings`, `send_crm_due_sequence_steps`, `send_crm_owner_reminders`). Tools that write return a confirmation text that names the record. The tools that change setup need "Configure CRM"; the others follow the matching right. Owners are numeric Dolibarr user ids: there is no user search tool. Searching and editing third parties, contacts, proposals, orders and invoices stays with the core tools.
+The tools cover pipelines, stages, sources, loss reasons and qualification items (list and change), deals (list, read, create, update, move, win, lose, delete), proposals links, qualification answers, agenda steps (list, create, complete, change the date or title of a planned step, delete a planned step), outreach, reports, reading the settings and running the jobs (`get_crm_settings`, `send_crm_due_sequence_steps`, `send_crm_owner_reminders`). Tools that write return a confirmation text that names the record. The tools that change setup need "Configure CRM"; the others follow the matching right. Owners are numeric Dolibarr user ids: there is no user search tool. Searching and editing third parties, contacts, proposals, orders and invoices stays with the core tools.
 
-The 50 tools by the CRM right they need (a user without it does not see the tool on Dolibarr 25 and is refused by the tool itself on 24.0.0):
+The 49 tools by the CRM right they need (a user without it does not see the tool on Dolibarr 25 and is refused by the tool itself on 24.0.0):
 
 | Right | Tools |
 | --- | --- |
@@ -393,7 +395,7 @@ The 50 tools by the CRM right they need (a user without it does not see the tool
 | Delete deals (`delete`) | `delete_crm_opportunity` |
 | Create and complete next steps (`activity`) | `create_crm_activity`, `change_crm_activity_to_done`, `update_crm_activity`, `delete_crm_activity` |
 | Manage automated outreach (`sequence`) | `create_crm_sequence`, `update_crm_sequence`, `add_crm_sequence_step`, `update_crm_sequence_step`, `delete_crm_sequence_step`, `add_crm_sequence_enrolment`, `change_crm_sequence_enrolment_to_stopped`, `update_crm_opportunity_replied`, `send_crm_due_sequence_steps` |
-| Configure CRM (`setup`) | `get_crm_settings`, `update_crm_settings`, `send_crm_owner_reminders`, `create_or_update_crm_pipeline`, `create_or_update_crm_stage`, `delete_crm_stage`, `create_or_update_crm_source`, `create_or_update_crm_loss_reason`, `create_or_update_crm_qualification` |
+| Configure CRM (`setup`) | `get_crm_settings`, `send_crm_owner_reminders`, `create_or_update_crm_pipeline`, `create_or_update_crm_stage`, `delete_crm_stage`, `create_or_update_crm_source`, `create_or_update_crm_loss_reason`, `create_or_update_crm_qualification` |
 
 `send_crm_due_sequence_steps` and `send_crm_owner_reminders` run the scheduled jobs: they send real e-mail unless the dry-run settings (`CRM_DRY_RUN`, `CRM_REMINDER_DRY_RUN`) are on. `delete_crm_opportunity` deletes the deal for good. Allow the tools that change data in steps, not all at once, and only for a user whose rights you chose on purpose.
 
@@ -437,11 +439,27 @@ The 50 tools by the CRM right they need (a user without it does not see the tool
 | `CRM_REPLY_MOVES_DEAL` | 1 | Move an open deal to the reply stage of its pipeline when the prospect replies |
 | `CRM_AI_EMAIL_ASSIST` | 0 | Show the AI reply suggestion block in the e-mail editor (needs the AI module) |
 | `CRM_AI_TIMEOUT` | 120 | Seconds the CRM waits for the AI service (e-mail editor and step text button), 10 to 600. Dolibarr's own limit is 30 seconds, raised for these calls only |
-| `CRM_AI_EMAIL_PROMPT` | empty | Default AI prompt; empty uses the built-in one |
+| `CRM_AI_MAX_PER_HOUR` | 30 | AI suggestions one user can ask per hour (1 to 1000) |
+| `CRM_AI_EMAIL_PROMPT` | empty | Default AI prompt; empty uses the built-in one (4000 characters at most) |
 | `CRM_ARCHIVE_MAILBOX` | empty | Archive mailbox address; empty means no copy |
 | `CRM_ARCHIVE_COPY` | `bcc` | `bcc` or `cc` |
+| `CRM_ARCHIVE_REQUIRE_AUTH` | 0 | Keep a collected message only if its server reports a passed SPF/DKIM/DMARC check |
 | `SEARCHFORM_POSITION_CRM` | 42 | Position of "CRM opportunities" in the general search box (optional, set in Other setup) |
 | `MAIN_MODULE_CRM_ICON` | `fa-handshake` | Top menu icon; the theme reads it. Set at enable |
+
+## Security
+
+What the module does, and what stays with you.
+
+- **Rights.** Every page and every MCP tool checks the CRM rights; deals, enrolments, journal and e-mails of an outreach follow the owner rule ("Read" = own deals, "Read all" = every deal). Give "Setup" and "Delete" only to administrators, and do **not** give them to the user an AI assistant connects as: an MCP caller can then delete deals, run the outreach job and send the owner reminders. Settings cannot be changed through MCP: the tool was removed, only `get_crm_settings` reads them. Use a dedicated user with the rights the assistant needs.
+- **Forms and links.** Every action carries the session token (CSRF). Dolibarr's own level `MAIN_SECURITY_CSRF_WITH_TOKEN` is not lowered by the module; keep it at 2 or 3.
+- **E-mail.** Subjects, recipients and senders are made single-line before sending. The sender and the archive address are validated when saved. In SMTP mode the Dolibarr mail settings decide the transport; use an authenticated connection.
+- **Inbound e-mail.** See [E-mail history](#e-mail-history): only mail tied to a known address of the deal is kept.
+- **AI.** Redaction (`AI_PRIVACY_REDACTION`) masks the names of the deal, the contact and the owner, and what Dolibarr's privacy guard recognises (addresses, phone numbers, references); it does not mask free text such as notes or the body of the e-mails. Customer text is data for the model, which is told not to follow instructions found in it; the answer is never saved or sent without a person. A per-user hourly limit (`CRM_AI_MAX_PER_HOUR`) bounds the cost.
+- **Errors.** Database and provider errors go to the Dolibarr log (`dolibarr.log`); only an administrator sees them on screen.
+- **Files.** Do not expose `.git`, `doc`, `test`, `sql`, `AGENTS.md` and the other source files on a production server; see INSTALL.md ("Keep the repository files private"). Set `$dolibarr_main_prod='1'` in production so PHP errors are not shown.
+- **Personal data.** The journal of an outreach keeps the text of each e-mail, and the e-mail history keeps the messages as agenda events; both are personal data. Decide how long to keep them and purge them (delete the deal, or the events) when the delay is over. The HTML of an e-mail may contain remote images: opening a journal entry loads them, which tells their server that the page was opened.
+- **Audit.** Changes of settings are written to the Dolibarr log with the user id and the setting name, never the value.
 
 ## Troubleshooting
 

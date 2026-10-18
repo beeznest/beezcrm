@@ -260,7 +260,7 @@ CRM tools:
 | `get_crm_dashboard`, `get_crm_forecast`, `get_crm_conversion`, `get_crm_loss_reasons` | no |
 | `get_crm_win_rate`, `get_crm_cycle_time`, `get_crm_by_owner`, `get_crm_by_source` | no |
 | `get_crm_settings` | no |
-| `update_crm_settings`, `send_crm_due_sequence_steps`, `send_crm_owner_reminders` | yes |
+| `send_crm_due_sequence_steps`, `send_crm_owner_reminders` | yes |
 
 There is no core tool to search users. Owner and assignee arguments are numeric user ids. There is no `list_crm_users`.
 
@@ -360,6 +360,21 @@ Kanban drag and drop posts to `pipeline.php` with a CSRF token. No third-party s
 - Importing existing proposals into deals.
 - A generic scoring-rule engine.
 - Multi-currency amounts. The amount is the company currency, same as a proposal with multicurrency left off. Revisit if this instance relies on multicurrency.
+
+## Security design
+
+Rules the code follows, so that a change keeps them:
+
+1. **One token rule.** A page calls `crmRequireToken($action, $displayActions)` right after reading its action: only pure display actions (empty, view, create, edit, the edit and confirm forms) may arrive without the token. The e-mail editor reads its `act_*` buttons from a POST only. `define('CSRFCHECK_WITH_TOKEN')` is not used, because it would break the token-less links to `action=create`.
+2. **Visibility is a query.** Lists and detail queries of outreach (`fetchEnrolments`, `fetchLog`, `enrolmentVisible`) take the user and add `crmOwnerSql()` and the entity; a bare rowid from a request is never enough.
+3. **Rules live in the class.** `Sequence::enrol()`, `Opportunity::moveToStage()`, `validateLinks()`, `linkProposal()` and `Stage::validate()` hold the business rules, so the web pages and the MCP tools cannot differ.
+4. **Output is escaped at the sink; input is cleaned at the door.** Labels are escaped where they are printed (titles, confirmations are the easy ones to forget: `trans()` keeps markup). Single-line fields go through `crmSingleLine()` (no control characters, bounded), descriptions and notes lose their markup, e-mail HTML goes through `dol_htmlwithnojs()`. Both sides, because the MCP tools write data the pages read.
+5. **Errors are keys.** `crmDbError()` logs the database message and returns a language key; `crmErrorText()` shows a raw message only to an administrator, escaped.
+6. **Inbound mail is evidence, not authority.** `CrmMailArchive::record()` needs a known address of the deal, and skips the side effects (stopping the outreach, moving the deal) for automatic mail. Pure helpers (`crmSenderTrusted`, `crmIsAutomaticMail`, `crmMailAuthPassed`, `crmClampMailDate`) live in `crmlogic.lib.php` and are unit tested.
+7. **Settings have one validator**, `crmNormalizeSetting()`, used by the setup page and the MCP tool.
+8. **The job claims before it works.** `Sequence::claim()` moves the due date one hour ahead with a conditional UPDATE; a run that loses the race skips the row.
+
+Residual risks, accepted and documented: a forged sender from a known domain on a mail server that does not verify senders; the journal and the archived e-mails keep personal data until someone purges them; the owner reminder job can send a duplicate when two runs overlap; remote images in an HTML e-mail are loaded when a journal entry is opened.
 
 ## Decisions kept
 

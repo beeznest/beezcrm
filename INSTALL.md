@@ -30,6 +30,19 @@ Check two things:
 - `htdocs/custom` is scanned when `$dolibarr_main_document_root_alt` in `htdocs/conf/conf.php` is empty, or when it points to that directory (`$dolibarr_main_url_root_alt='/custom'` and the matching path). Nothing else in `conf.php` is needed.
 - The web server user can read the files (and follow the link). The module writes nothing to disk: its data is in the database.
 
+### Keep the repository files private (production)
+
+The web server serves every file of `htdocs/custom/crm`. When that is a link to a whole git checkout, a browser can also read `.git/` (history, remote URL), `doc/`, `test/`, `sql/`, `AGENTS.md` and the other `.md` files. None of it is secret code, but it tells an attacker the exact version and structure, and `.git/` can leak anything ever committed. On a production server do one of these:
+
+- deploy only what runs (`admin/ class/ core/ css/ js/ langs/ lib/ sql/` and the `*.php` pages at the root) with a copy or `git archive`, not the checkout; or
+- keep the checkout and deny those paths. The `.htaccess` at the root of the module does it for Apache 2.4, **if** the virtual host allows it (`AllowOverride All` or at least `AllowOverride AuthConfig`); with `AllowOverride None` it is ignored, so test it: `curl -I https://your-host/custom/crm/.git/config` must answer 403 or 404. For nginx:
+
+```text
+location ~ ^/custom/crm/(\.git|doc|test|sql|class|lib|core)(/|$) { deny all; }
+location ~ ^/custom/crm/.*\.(md|sql|sh|lock|json|log|bak)$ { deny all; }
+location ~ ^/custom/crm/(LICENSE|\.) { deny all; }
+```
+
 ## 3. Enable the module
 
 As a Dolibarr administrator: Home → Setup → Modules, family **CRM**, switch the module on. A top menu **CRM** appears.
@@ -68,7 +81,7 @@ Leave the dry-run settings on, and the e-mail steps as drafts, until you have ch
 
 ## 7. Optional: let an AI assistant use the CRM (MCP)
 
-The module adds 50 tools to the MCP server of Dolibarr's AI module (Dolibarr 24 or later): 20 read tools and 30 that create, change or delete data (deals, next steps, outreach and, with the "Configure CRM" right, the setup). Skip this step if you do not use MCP. Everything works without it.
+The module adds 49 tools to the MCP server of Dolibarr's AI module (Dolibarr 24 or later): 20 read tools and 29 that create, change or delete data (deals, next steps, outreach and, with the "Configure CRM" right, the setup). Skip this step if you do not use MCP. Everything works without it.
 
 On **Dolibarr 24.0.0** (steps that differ on 25 are noted):
 
