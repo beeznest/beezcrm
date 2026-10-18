@@ -38,6 +38,7 @@ if (!in_array($scope, array('overdue', 'today', 'planned', 'done'), true)) {
 	$scope = 'overdue';
 }
 $action = GETPOST('action', 'aZ09');
+crmRequireToken($action, array());
 if ($action === 'complete') {
 	crmRequireRight('activity');
 	$activity = new CrmActivity($db);
@@ -55,7 +56,7 @@ if (!in_array($sortField, array('date', 'ref', 'label', 'account'), true)) {
 	$sortField = 'date';
 }
 $sortOrder = (GETPOST('sortorder', 'aZ09') === 'desc') ? 'desc' : 'asc';
-$limit = GETPOSTINT('limit') > 0 ? GETPOSTINT('limit') : (int) $conf->liste_limit;
+$limit = min(500, GETPOSTINT('limit') > 0 ? GETPOSTINT('limit') : (int) $conf->liste_limit);
 $total = (new CrmActivity($db))->countList($user, $scope);
 $page = max(0, GETPOSTINT('page'));
 if ($page * $limit >= $total) {

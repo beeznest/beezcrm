@@ -1,6 +1,10 @@
 <?php
 declare(strict_types=1);
 
+if (!defined('DOL_DOCUMENT_ROOT')) {
+	exit;
+}
+
 /**
  * \file    class/crmemaildraft.class.php
  * \ingroup crm

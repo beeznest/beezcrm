@@ -16,6 +16,10 @@
  */
 declare(strict_types=1);
 
+if (!defined('DOL_DOCUMENT_ROOT')) {
+	exit;
+}
+
 /**
  * \file    class/crmreport.class.php
  * \ingroup crm

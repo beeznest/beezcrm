@@ -34,6 +34,7 @@ require_once __DIR__.'/class/sequence.class.php';
 crmStartPage();
 
 $action = GETPOST('action', 'aZ09');
+crmRequireToken($action, array());
 if ($action === 'add') {
 	crmRequireRight('sequence');
 	$sequence = new Sequence($db);

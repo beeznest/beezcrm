@@ -16,6 +16,10 @@
  */
 declare(strict_types=1);
 
+if (!defined('DOL_DOCUMENT_ROOT')) {
+	exit;
+}
+
 /**
  * \file    class/mcp/crmmcptool.class.php
  * \ingroup crm
@@ -86,7 +90,36 @@ abstract class CrmMcpTool extends McpTool
 		if (!isset($args[$key]) || is_array($args[$key])) {
 			return '';
 		}
-		return trim((string) $args[$key]);
+		// One line, no markup: labels, subjects, references and codes are printed in titles and sent in mail headers.
+		return crmSingleLine(strip_tags((string) $args[$key]));
+	}
+
+	/**
+	 * A free text of several lines (a description, a note): no markup, line breaks kept.
+	 *
+	 * @param array<string,mixed> $args Arguments
+	 */
+	protected function argText(array $args, string $key): string
+	{
+		if (!isset($args[$key]) || is_array($args[$key])) {
+			return '';
+		}
+		$text = str_replace(array("\r\n", "\r"), "\n", strip_tags((string) $args[$key]));
+		return trim((string) preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $text));
+	}
+
+	/**
+	 * The body of an e-mail step: plain text, or HTML cleaned of scripts, event handlers and active content.
+	 *
+	 * @param array<string,mixed> $args Arguments
+	 */
+	protected function argBody(array $args, string $key): string
+	{
+		if (!isset($args[$key]) || is_array($args[$key])) {
+			return '';
+		}
+		$body = trim((string) $args[$key]);
+		return crmLooksLikeHtml($body) ? dol_htmlwithnojs($body) : $this->argText($args, $key);
 	}
 
 	/**

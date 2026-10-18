@@ -344,4 +344,96 @@ class CrmLogicTest extends TestCase
 		$this->assertFalse(crmStageComesBefore(10, 3, 10, 3));
 		$this->assertFalse(crmStageComesBefore(10, 4, 10, 3));
 	}
+
+	/**
+	 * A value kept on one line, cut to a length.
+	 *
+	 * @return void
+	 */
+	public function testSingleLine()
+	{
+		$this->assertSame('Hello Reply-To: x@evil.tld', crmSingleLine("Hello\r\nReply-To: x@evil.tld"));
+		$this->assertSame('a b', crmSingleLine("  a \t\t  b  "));
+		$this->assertSame('abc', crmSingleLine('abcdef', 3));
+		$this->assertSame('', crmSingleLine("\r\n"));
+		$this->assertSame('é€', crmSingleLine('é€x', 2));
+	}
+
+	/**
+	 * A sender is trusted when it is a known address or shares the domain of one, except on public mail services.
+	 *
+	 * @return void
+	 */
+	public function testSenderTrusted()
+	{
+		$known = array('Ada@Customer.com', 'bob@gmail.com');
+		$this->assertTrue(crmSenderTrusted('ada@customer.com', $known));
+		$this->assertTrue(crmSenderTrusted('colleague@customer.com', $known));
+		$this->assertTrue(crmSenderTrusted('bob@gmail.com', $known));
+		$this->assertFalse(crmSenderTrusted('stranger@gmail.com', $known));
+		$this->assertFalse(crmSenderTrusted('x@evil.com', $known));
+		$this->assertFalse(crmSenderTrusted('', $known));
+		$this->assertFalse(crmSenderTrusted('ada@customer.com', array()));
+		$this->assertFalse(crmSenderTrusted('x@customer.com.evil.com', $known));
+	}
+
+	/**
+	 * Automatic mail: bounces, out-of-office replies, lists and bulk.
+	 *
+	 * @return void
+	 */
+	public function testAutomaticMail()
+	{
+		$this->assertTrue(crmIsAutomaticMail("From: a@b.c\nAuto-Submitted: auto-replied\n"));
+		$this->assertFalse(crmIsAutomaticMail("From: a@b.c\nAuto-Submitted: no\n"));
+		$this->assertTrue(crmIsAutomaticMail("Precedence: bulk\n"));
+		$this->assertTrue(crmIsAutomaticMail("List-Id: <x.example.com>\n"));
+		$this->assertTrue(crmIsAutomaticMail("From: Mail Delivery <MAILER-DAEMON@example.com>\n"));
+		$this->assertTrue(crmIsAutomaticMail("Return-Path: <>\n"));
+		$this->assertFalse(crmIsAutomaticMail("From: Ada <ada@customer.com>\nSubject: Re: offer\n"));
+	}
+
+	/**
+	 * Authentication-Results passes, the date range and the rate limit.
+	 *
+	 * @return void
+	 */
+	public function testMailAuthDateAndRate()
+	{
+		$this->assertTrue(crmMailAuthPassed('mx.example.com; dkim=pass header.d=customer.com; spf=fail'));
+		$this->assertTrue(crmMailAuthPassed('mx; spf=pass smtp.mailfrom=a@b.c'));
+		$this->assertFalse(crmMailAuthPassed('mx; dkim=fail; spf=softfail'));
+		$this->assertFalse(crmMailAuthPassed(''));
+		$this->assertSame(1000, crmClampMailDate(1000, 2000));
+		$this->assertSame(2000, crmClampMailDate(5000, 2000));
+		$this->assertSame(2000, crmClampMailDate(0, 2000));
+		$this->assertSame(2000000000, crmClampMailDate(100, 2000000000));
+		$first = crmRateAllow(array(), 1000, 3600, 2);
+		$this->assertTrue($first['allowed']);
+		$second = crmRateAllow($first['timestamps'], 1010, 3600, 2);
+		$this->assertTrue($second['allowed']);
+		$third = crmRateAllow($second['timestamps'], 1020, 3600, 2);
+		$this->assertFalse($third['allowed']);
+		$later = crmRateAllow($third['timestamps'], 1000 + 3601, 3600, 2);
+		$this->assertTrue($later['allowed']);
+	}
+
+	public function testNormalizeSetting(): void
+	{
+		$this->assertSame('1', crmNormalizeSetting('CRM_DRY_RUN', ' 1 '));
+		$this->assertNull(crmNormalizeSetting('CRM_DRY_RUN', 'yes'));
+		$this->assertSame('50', crmNormalizeSetting('CRM_MAX_EMAILS_PER_RUN', '050'));
+		$this->assertNull(crmNormalizeSetting('CRM_MAX_EMAILS_PER_RUN', '501'));
+		$this->assertNull(crmNormalizeSetting('CRM_AI_TIMEOUT', '5'));
+		$this->assertSame('', crmNormalizeSetting('CRM_ROTTING_DAYS', ''));
+		$this->assertSame('send', crmNormalizeSetting('CRM_SEQUENCE_EMAIL_MODE', 'send'));
+		$this->assertNull(crmNormalizeSetting('CRM_SEQUENCE_EMAIL_MODE', 'fire'));
+		$this->assertSame('crm@example.com', crmNormalizeSetting('CRM_MAIL_FROM', 'crm@example.com'));
+		$this->assertSame('', crmNormalizeSetting('CRM_ARCHIVE_MAILBOX', ''));
+		$this->assertNull(crmNormalizeSetting('CRM_MAIL_FROM', "crm@example.com\nBcc: a@b.example"));
+		$this->assertNull(crmNormalizeSetting('CRM_MAIL_FROM', 'a@b.example,c@d.example'));
+		$this->assertSame('Be brief.', crmNormalizeSetting('CRM_AI_EMAIL_PROMPT', '<b>Be brief.</b>'));
+		$this->assertNull(crmNormalizeSetting('CRM_AI_EMAIL_PROMPT', str_repeat('x', 4001)));
+		$this->assertNull(crmNormalizeSetting('MAIN_ANYTHING', '1'));
+	}
 }

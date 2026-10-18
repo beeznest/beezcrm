@@ -1,6 +1,11 @@
 <?php
 declare(strict_types=1);
 
+if (!defined('DOL_DOCUMENT_ROOT')) {
+	exit;
+}
+require_once __DIR__.'/../lib/crm.lib.php';
+
 /**
  * \file    class/pipeline.class.php
  * \ingroup crm
@@ -43,7 +48,7 @@ class Pipeline
 		$sql = 'SELECT * FROM '.$this->db->prefix().'crm_pipeline WHERE rowid = '.((int) $id);
 		$resql = $this->db->query($sql);
 		if (!$resql) {
-			$this->error = $this->db->lasterror();
+			$this->error = crmDbError($this->db);
 			return -1;
 		}
 		$obj = $this->db->fetch_object($resql);
@@ -101,7 +106,7 @@ class Pipeline
 		$sql = 'INSERT INTO '.$this->db->prefix().'crm_pipeline (entity, ref, label, active, datec, fk_user_creat) VALUES (';
 		$sql .= ((int) $conf->entity).", '".$this->db->escape($this->ref)."', '".$this->db->escape($this->label)."', ".((int) $this->active).", '".$now."', ".((int) $user->id).')';
 		if (!$this->db->query($sql)) {
-			$this->error = $this->db->lasterror();
+			$this->error = crmDbError($this->db);
 			return -1;
 		}
 		$this->id = (int) $this->db->last_insert_id($this->db->prefix().'crm_pipeline');
@@ -191,7 +196,7 @@ class Pipeline
 	 */
 	public function save(User $user, int $id, string $ref, string $label, int $active, int $copyFrom = 0): int
 	{
-		$label = trim($label);
+		$label = crmSingleLine(strip_tags($label), 255);
 		if ($label === '') {
 			$this->error = 'CrmErrorPipelineLabelRequired';
 			return -1;
@@ -211,7 +216,7 @@ class Pipeline
 			$sql = 'UPDATE '.$this->db->prefix()."crm_pipeline SET label = '".$this->db->escape($this->label)."', active = ".((int) $this->active);
 			$sql .= ' WHERE rowid = '.((int) $this->id);
 			if (!$this->db->query($sql)) {
-				$this->error = $this->db->lasterror();
+				$this->error = crmDbError($this->db);
 				return -1;
 			}
 			return (int) $this->id;

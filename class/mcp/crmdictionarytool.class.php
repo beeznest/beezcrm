@@ -16,6 +16,10 @@
  */
 declare(strict_types=1);
 
+if (!defined('DOL_DOCUMENT_ROOT')) {
+	exit;
+}
+
 /**
  * \file    class/mcp/crmdictionarytool.class.php
  * \ingroup crm
@@ -254,7 +258,14 @@ class CrmDictionaryTool extends CrmMcpTool
 		if ($id > 0 && $stage->fetch($id) <= 0) {
 			return $this->fail('Stage not found');
 		}
-		$stage->fk_pipeline = $this->argInt($args, 'pipeline_id');
+		if ($id <= 0) {
+			// A stage never changes pipeline: the one of an existing stage is kept, the one of a new stage must exist.
+			$stage->fk_pipeline = $this->argInt($args, 'pipeline_id');
+			$resql = $this->db->query('SELECT rowid FROM '.$this->db->prefix().'crm_pipeline WHERE rowid = '.((int) $stage->fk_pipeline).' AND entity = '.((int) $this->conf->entity));
+			if (!$resql || $this->db->num_rows($resql) === 0) {
+				return $this->fail('Pipeline not found');
+			}
+		}
 		$stage->label = $this->argString($args, 'label');
 		if (isset($args['position'])) {
 			$stage->position = $this->argInt($args, 'position');

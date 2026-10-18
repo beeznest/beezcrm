@@ -49,6 +49,7 @@ if (!in_array($tab, array('parameters', 'stages', 'qualification', 'reasons', 's
 	$tab = 'parameters';
 }
 $action = GETPOST('action', 'aZ09');
+crmRequireToken($action, array('askdelitem', 'askdelstage', 'edititem', 'editstage'));
 $form = new Form($db);
 
 $constants = array(
@@ -66,13 +67,15 @@ $constants = array(
 	'CRM_AI_EMAIL_ASSIST' => 'CrmAiEmailAssist',
 	'CRM_AI_EMAIL_PROMPT' => 'CrmAiEmailPrompt',
 	'CRM_AI_TIMEOUT' => 'CrmAiTimeout',
+	'CRM_AI_MAX_PER_HOUR' => 'CrmAiMaxPerHour',
 	'CRM_ARCHIVE_MAILBOX' => 'CrmArchiveMailbox',
 	'CRM_ARCHIVE_COPY' => 'CrmArchiveCopy',
+	'CRM_ARCHIVE_REQUIRE_AUTH' => 'CrmArchiveRequireAuth',
 );
 
 // Settings that are only on or off are switches, saved at once. They are stored as 1 or 0, never deleted: a deleted
 // constant would be recreated with its default the next time the module is enabled.
-$switches = array('CRM_SEQUENCES_ON', 'CRM_DRY_RUN', 'CRM_REMINDERS_ON', 'CRM_REMINDER_DRY_RUN', 'CRM_REQUIRE_NEXT_STEP', 'CRM_REPLY_MOVES_DEAL', 'CRM_AI_EMAIL_ASSIST');
+$switches = array('CRM_SEQUENCES_ON', 'CRM_DRY_RUN', 'CRM_REMINDERS_ON', 'CRM_REMINDER_DRY_RUN', 'CRM_REQUIRE_NEXT_STEP', 'CRM_REPLY_MOVES_DEAL', 'CRM_AI_EMAIL_ASSIST', 'CRM_ARCHIVE_REQUIRE_AUTH');
 $switchName = '';
 $switchValue = 0;
 if ($action === 'toggle') {
@@ -103,13 +106,29 @@ if ($switchName !== '') {
 }
 
 if ($action === 'setconst') {
+	// Everything is checked before anything is written: one refused value saves nothing.
+	$toSave = array();
+	$refused = array();
 	foreach ($constants as $name => $label) {
 		if (in_array($name, $switches, true)) {
 			continue;
 		}
-		dolibarr_set_const($db, $name, GETPOST($name, $name === 'CRM_AI_EMAIL_PROMPT' ? 'nohtml' : 'alphanohtml'), 'chaine', 0, '', (int) $conf->entity);
+		$clean = crmNormalizeSetting($name, GETPOST($name, $name === 'CRM_AI_EMAIL_PROMPT' ? 'nohtml' : 'alphanohtml'));
+		if ($clean === null) {
+			$refused[] = $langs->trans($label);
+		} else {
+			$toSave[$name] = $clean;
+		}
 	}
-	setEventMessages($langs->trans('RecordSaved'), null);
+	if (count($refused) > 0) {
+		setEventMessages($langs->trans('CrmSettingRefused', dol_escape_htmltag(implode(', ', $refused))), null, 'errors');
+	} else {
+		foreach ($toSave as $name => $clean) {
+			dolibarr_set_const($db, $name, $clean, 'chaine', 0, '', (int) $conf->entity);
+			dol_syslog('CRM setting '.$name.' changed by user '.((int) $user->id), LOG_INFO);
+		}
+		setEventMessages($langs->trans('RecordSaved'), null);
+	}
 	header('Location: '.$_SERVER['PHP_SELF'].'?tab=parameters');
 	exit;
 }
@@ -285,6 +304,9 @@ if ($tab === 'parameters') {
 			if ($name === 'CRM_REPLY_MOVES_DEAL') {
 				print crmHelp($langs->trans('CrmReplyMovesDealHelp'), 'span', true);
 			}
+			if ($name === 'CRM_ARCHIVE_REQUIRE_AUTH') {
+				print crmHelp($langs->trans('CrmArchiveRequireAuthHelp'), 'span', true);
+			}
 			print '</td></tr>';
 			continue;
 		}
@@ -297,6 +319,11 @@ if ($tab === 'parameters') {
 		if ($name === 'CRM_AI_TIMEOUT') {
 			print '<td><input type="number" min="10" max="600" class="width75" name="'.$name.'" value="'.dol_escape_htmltag(getDolGlobalString($name, '120')).'">';
 			print crmHelp($langs->trans('CrmAiTimeoutHelp'), 'span', true).'</td></tr>';
+			continue;
+		}
+		if ($name === 'CRM_AI_MAX_PER_HOUR') {
+			print '<td><input type="number" min="1" max="1000" class="width75" name="'.$name.'" value="'.dol_escape_htmltag(getDolGlobalString($name, '30')).'">';
+			print crmHelp($langs->trans('CrmAiMaxPerHourHelp'), 'span', true).'</td></tr>';
 			continue;
 		}
 		print '<td><input class="minwidth300" name="'.$name.'" value="'.dol_escape_htmltag(getDolGlobalString($name)).'"></td></tr>';
@@ -350,7 +377,7 @@ if ($tab === 'stages') {
 	if ($action === 'askdelstage') {
 		$askStage = new Stage($db);
 		if ($askStage->fetch(GETPOSTINT('stageid')) > 0) {
-			print $form->formconfirm($stageUrl.'&stageid='.(int) $askStage->id, $langs->trans('CrmDeleteStage'), $langs->trans('CrmConfirmDeleteStage', crmStageLabel((string) $askStage->label)), 'confirm_delstage', '', 0, 1);
+			print $form->formconfirm($stageUrl.'&stageid='.(int) $askStage->id, $langs->trans('CrmDeleteStage'), $langs->trans('CrmConfirmDeleteStage', dol_escape_htmltag(crmStageLabel((string) $askStage->label))), 'confirm_delstage', '', 0, 1);
 		}
 	}
 	// The fields of a stage, to add one or to change one.
@@ -447,7 +474,7 @@ if ($tab === 'qualification' || $tab === 'reasons' || $tab === 'sources') {
 	if ($action === 'askdelitem') {
 		foreach ($rows as $row) {
 			if ((int) $row->rowid === GETPOSTINT('itemid')) {
-				print $form->formconfirm($listUrl.'&kind='.$kind.'&itemid='.(int) $row->rowid, $langs->trans('Delete'), $langs->trans('CrmConfirmDeleteItem', crmDictLabel((string) $row->label)), 'confirm_delitem', '', 0, 1);
+				print $form->formconfirm($listUrl.'&kind='.$kind.'&itemid='.(int) $row->rowid, $langs->trans('Delete'), $langs->trans('CrmConfirmDeleteItem', dol_escape_htmltag(crmDictLabel((string) $row->label))), 'confirm_delitem', '', 0, 1);
 			}
 		}
 	}

@@ -90,8 +90,12 @@ crmCliCheck('a won or lost stage cannot be the reply stage', $closed->update() <
 // Moves.
 $conf->global->CRM_REPLY_MOVES_DEAL = '1';
 $conf->global->CRM_REQUIRE_NEXT_STEP = '1';
-$make = function (int $stageId, string $label) use ($db, $user, $pipelineId): Opportunity {
+// A third party that has the prospect's address: the collector keeps only mail from, or to, an address the deal knows.
+$db->query('INSERT INTO '.$prefix."societe (nom, entity, email, datec) VALUES ('ZREPLYSOC', ".$entity.", 'prospect@example.com', '".$db->idate(dol_now())."')");
+$socId = (int) $db->last_insert_id($prefix.'societe');
+$make = function (int $stageId, string $label) use ($db, $user, $pipelineId, $socId): Opportunity {
 	$deal = new Opportunity($db);
+	$deal->fk_soc = $socId;
 	$deal->label = $label;
 	$deal->fk_pipeline = $pipelineId;
 	$deal->fk_stage = $stageId;

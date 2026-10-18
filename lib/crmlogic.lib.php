@@ -409,3 +409,172 @@ function crmStageComesBefore(int $position, int $id, int $otherPosition, int $ot
 	return $id < $otherId;
 }
 
+/**
+ * A value on one line: control characters (CR, LF, NUL, tabs...) become a space, runs of spaces collapse, the ends are
+ * trimmed and the text is cut to $max characters. Used for what goes into a mail header, a label shown in a title or an
+ * event: a line break there would add a header or a line.
+ */
+function crmSingleLine(string $value, int $max = 0): string
+{
+	$value = trim((string) preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $value));
+	$value = (string) preg_replace('/ {2,}/', ' ', $value);
+	if ($max > 0 && mb_strlen($value, 'UTF-8') > $max) {
+		$value = rtrim(mb_substr($value, 0, $max, 'UTF-8'));
+	}
+	return $value;
+}
+
+/**
+ * Domains of public mail services: sharing one with a customer says nothing about who a sender is.
+ *
+ * @return string[]
+ */
+function crmFreeMailDomains(): array
+{
+	return array('gmail.com', 'googlemail.com', 'outlook.com', 'hotmail.com', 'live.com', 'msn.com', 'yahoo.com', 'yahoo.fr', 'ymail.com', 'icloud.com', 'me.com', 'aol.com', 'gmx.com', 'gmx.net', 'gmx.de', 'proton.me', 'protonmail.com', 'mail.com', 'zoho.com', 'yandex.com', 'yandex.ru', 'mail.ru', 'orange.fr', 'free.fr', 'wanadoo.fr', 'sfr.fr', 'laposte.net', 'skynet.be', 'telenet.be', 'web.de', 't-online.de', 'qq.com', '163.com');
+}
+
+/**
+ * True when the sender of a message may be the person the deal is about: the address is one of the known addresses
+ * (the contact of the deal, the other contacts and the address of its third party), or it has the domain of one of them,
+ * unless that domain is a public mail service. Comparison ignores case.
+ *
+ * @param string   $address Bare sender address
+ * @param string[] $known   Known addresses
+ */
+function crmSenderTrusted(string $address, array $known): bool
+{
+	$address = strtolower(trim($address));
+	if ($address === '' || strpos($address, '@') === false) {
+		return false;
+	}
+	$domain = substr($address, (int) strrpos($address, '@') + 1);
+	foreach ($known as $one) {
+		$one = strtolower(trim((string) $one));
+		if ($one === '' || strpos($one, '@') === false) {
+			continue;
+		}
+		if ($one === $address) {
+			return true;
+		}
+		$oneDomain = substr($one, (int) strrpos($one, '@') + 1);
+		if ($oneDomain === $domain && !in_array($domain, crmFreeMailDomains(), true)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/**
+ * True for a message a machine wrote: a bounce, an out-of-office reply, a mailing list or a bulk message, by the headers
+ * RFC 3834 and the usual mail systems set. Such a message is not a person answering, so it must not stop an outreach.
+ */
+function crmIsAutomaticMail(string $rawHeaders): bool
+{
+	$autoSubmitted = strtolower(crmHeaderValue($rawHeaders, 'Auto-Submitted'));
+	if ($autoSubmitted !== '' && $autoSubmitted !== 'no') {
+		return true;
+	}
+	$precedence = strtolower(crmHeaderValue($rawHeaders, 'Precedence'));
+	if (in_array($precedence, array('bulk', 'junk', 'list', 'auto_reply'), true)) {
+		return true;
+	}
+	foreach (array('X-Autoreply', 'X-Autorespond', 'X-Auto-Response-Suppress', 'List-Id', 'List-Unsubscribe') as $name) {
+		if (crmHeaderValue($rawHeaders, $name) !== '') {
+			return true;
+		}
+	}
+	$from = strtolower(crmHeaderValue($rawHeaders, 'From'));
+	if (preg_match('/(^|[<\s"])(mailer-daemon|postmaster)@/', $from)) {
+		return true;
+	}
+	$returnPath = trim(crmHeaderValue($rawHeaders, 'Return-Path'));
+	return ($returnPath === '<>');
+}
+
+/**
+ * True when an Authentication-Results header, added by our own mail server, says the sender passed DKIM, SPF or DMARC.
+ */
+function crmMailAuthPassed(string $authenticationResults): bool
+{
+	return (bool) preg_match('/\b(dkim|spf|dmarc)=pass\b/i', $authenticationResults);
+}
+
+/**
+ * Date of a received message kept inside a believable range: never in the future, never older than ten years. A header
+ * that says otherwise is replaced by the moment the message was read. 0 or less means "no usable date".
+ */
+function crmClampMailDate(int $date, int $now): int
+{
+	if ($date <= 0 || $date > $now || $date < $now - (10 * 365 * 86400)) {
+		return $now;
+	}
+	return $date;
+}
+
+/**
+ * A sliding-window rate limit. Timestamps older than the window are forgotten; the call is allowed while fewer than
+ * $max remain, and then its own timestamp is added.
+ *
+ * @param int[] $timestamps Moments of the earlier calls
+ * @return array{allowed:bool,timestamps:int[]}
+ */
+function crmRateAllow(array $timestamps, int $now, int $windowSeconds, int $max): array
+{
+	$kept = array();
+	foreach ($timestamps as $ts) {
+		if ((int) $ts > $now - $windowSeconds && (int) $ts <= $now) {
+			$kept[] = (int) $ts;
+		}
+	}
+	if ($max > 0 && count($kept) >= $max) {
+		return array('allowed' => false, 'timestamps' => $kept);
+	}
+	$kept[] = $now;
+	return array('allowed' => true, 'timestamps' => $kept);
+}
+
+/**
+ * The value to store for a module setting, or null when it is not acceptable: switches are 0 or 1, numbers stay in a
+ * range, the two modes are the ones the module knows, an address is one valid address on one line, the AI prompt is plain
+ * text of bounded length. Used by the setup page and by the MCP tool, so both refuse the same things.
+ *
+ * @return string|null Normalised value (an empty string clears an address), null when refused or when the name is unknown
+ */
+function crmNormalizeSetting(string $name, string $value): ?string
+{
+	$value = trim($value);
+	$switches = array('CRM_SEQUENCES_ON', 'CRM_DRY_RUN', 'CRM_REMINDERS_ON', 'CRM_REMINDER_DRY_RUN', 'CRM_REQUIRE_NEXT_STEP',
+		'CRM_REPLY_MOVES_DEAL', 'CRM_AI_EMAIL_ASSIST', 'CRM_ARCHIVE_REQUIRE_AUTH');
+	$numbers = array('CRM_ROTTING_DAYS' => array(1, 3650), 'CRM_FORECAST_MONTHS' => array(1, 36), 'CRM_MAX_EMAILS_PER_RUN' => array(1, 500),
+		'CRM_AI_TIMEOUT' => array(10, 600), 'CRM_AI_MAX_PER_HOUR' => array(1, 1000));
+	if (in_array($name, $switches, true)) {
+		return ($value === '0' || $value === '1') ? $value : null;
+	}
+	if (isset($numbers[$name])) {
+		if ($value === '') {
+			return '';
+		}
+		if (!preg_match('/^[0-9]{1,5}$/', $value) || (int) $value < $numbers[$name][0] || (int) $value > $numbers[$name][1]) {
+			return null;
+		}
+		return (string) (int) $value;
+	}
+	switch ($name) {
+		case 'CRM_SEQUENCE_EMAIL_MODE':
+			return in_array($value, array('draft', 'send'), true) ? $value : null;
+		case 'CRM_ARCHIVE_COPY':
+			return in_array($value, array('bcc', 'cc'), true) ? $value : null;
+		case 'CRM_MAIL_FROM':
+		case 'CRM_ARCHIVE_MAILBOX':
+			if ($value === '') {
+				return '';
+			}
+			return (strlen($value) <= 254 && !preg_match('/[\x00-\x20\x7F<>,;]/', $value) && filter_var($value, FILTER_VALIDATE_EMAIL) !== false) ? $value : null;
+		case 'CRM_AI_EMAIL_PROMPT':
+			$text = trim(strip_tags($value));
+			return (mb_strlen($text, 'UTF-8') <= 4000) ? $text : null;
+	}
+	return null;
+}
+

@@ -16,6 +16,10 @@
  */
 declare(strict_types=1);
 
+if (!defined('DOL_DOCUMENT_ROOT')) {
+	exit;
+}
+
 /**
  * \file    class/mcp/crmreporttool.class.php
  * \ingroup crm
@@ -45,8 +49,10 @@ class CrmReportTool extends CrmMcpTool
 		'CRM_AI_EMAIL_ASSIST',
 		'CRM_AI_EMAIL_PROMPT',
 		'CRM_AI_TIMEOUT',
+		'CRM_AI_MAX_PER_HOUR',
 		'CRM_ARCHIVE_MAILBOX',
 		'CRM_ARCHIVE_COPY',
+		'CRM_ARCHIVE_REQUIRE_AUTH',
 	);
 
 	/**
@@ -71,9 +77,6 @@ class CrmReportTool extends CrmMcpTool
 			$this->definition('get_crm_by_owner', 'Open amount and closes in the period, by owner.', $range),
 			$this->definition('get_crm_by_source', 'Open amount and closes in the period, by source.', $range),
 			$this->definition('get_crm_settings', 'Read CRM constants.', array()),
-			$this->definition('update_crm_settings', 'Change known CRM constants only.', array(
-				'values' => array('type' => 'object', 'description' => 'Map of CRM_* constant name to value'),
-			), array('values')),
 			$this->definition('send_crm_due_sequence_steps', 'Run due sequence steps now, same method as the cron job.', array()),
 			$this->definition('send_crm_owner_reminders', 'Send or simulate the owner digest now, same method as the cron job.', array()),
 		);
@@ -84,7 +87,7 @@ class CrmReportTool extends CrmMcpTool
 	 */
 	public function getRequiredRights(string $toolName)
 	{
-		if ($toolName === 'get_crm_settings' || $toolName === 'update_crm_settings' || $toolName === 'send_crm_owner_reminders') {
+		if ($toolName === 'get_crm_settings' || $toolName === 'send_crm_owner_reminders') {
 			return array(array('crm', 'setup'));
 		}
 		if ($toolName === 'send_crm_due_sequence_steps') {
@@ -98,13 +101,6 @@ class CrmReportTool extends CrmMcpTool
 	 */
 	public function writeConfirmationPreview(string $toolName, array $args)
 	{
-		if ($toolName === 'update_crm_settings') {
-			$names = array();
-			if (isset($args['values']) && is_array($args['values'])) {
-				$names = array_keys($args['values']);
-			}
-			return 'Update CRM settings: '.implode(', ', $names).'.';
-		}
 		if ($toolName === 'send_crm_due_sequence_steps') {
 			$dry = getDolGlobalInt('CRM_DRY_RUN') ? 'Dry-run is on.' : 'Dry-run is off, so e-mail can be sent.';
 			return 'Run CRM automated outreach now. '.$dry;
@@ -171,9 +167,6 @@ class CrmReportTool extends CrmMcpTool
 		if ($toolName === 'get_crm_settings') {
 			return array($this->currentSettings());
 		}
-		if ($toolName === 'update_crm_settings') {
-			return $this->saveSettings($args);
-		}
 		if ($toolName === 'send_crm_due_sequence_steps' || $toolName === 'send_crm_owner_reminders') {
 			require_once __DIR__.'/../crmcron.class.php';
 			$cron = new CrmCron($this->db);
@@ -225,27 +218,5 @@ class CrmReportTool extends CrmMcpTool
 			$out[$key] = getDolGlobalString($key);
 		}
 		return $out;
-	}
-
-	/**
-	 * @param array<string,mixed> $args Arguments
-	 * @return array<int|string,mixed>
-	 */
-	private function saveSettings(array $args)
-	{
-		if (!isset($args['values']) || !is_array($args['values'])) {
-			return $this->fail('values must be an object of CRM constants');
-		}
-		require_once DOL_DOCUMENT_ROOT.'/core/lib/admin.lib.php';
-		$saved = array();
-		foreach ($args['values'] as $name => $value) {
-			$name = (string) $name;
-			if (!in_array($name, $this->settingKeys, true)) {
-				return $this->fail('Unknown setting '.$name);
-			}
-			dolibarr_set_const($this->db, $name, (string) $value, 'chaine', 0, '', (int) $this->conf->entity);
-			$saved[$name] = (string) $value;
-		}
-		return array($saved);
 	}
 }

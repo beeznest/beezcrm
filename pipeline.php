@@ -37,6 +37,7 @@ require_once __DIR__.'/class/crmreport.class.php';
 crmStartPage();
 
 $action = GETPOST('action', 'aZ09');
+crmRequireToken($action, array());
 $pipelineId = GETPOSTINT('pipelineid');
 $ownerId = GETPOSTINT('userid');
 

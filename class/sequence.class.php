@@ -1,6 +1,10 @@
 <?php
 declare(strict_types=1);
 
+if (!defined('DOL_DOCUMENT_ROOT')) {
+	exit;
+}
+
 /**
  * \file    class/sequence.class.php
  * \ingroup crm
@@ -52,7 +56,7 @@ class Sequence
 		$sql = 'SELECT * FROM '.$this->db->prefix().'crm_sequence WHERE rowid = '.((int) $id);
 		$resql = $this->db->query($sql);
 		if (!$resql) {
-			$this->error = $this->db->lasterror();
+			$this->error = crmDbError($this->db);
 			return -1;
 		}
 		$obj = $this->db->fetch_object($resql);
@@ -93,6 +97,12 @@ class Sequence
 	public function create(User $user): int
 	{
 		global $conf;
+		$this->ref = strtoupper((string) preg_replace('/[^A-Za-z0-9_\-]/', '', $this->ref));
+		if (strlen($this->ref) > 32) {
+			$this->error = 'CrmErrorSequenceRefInvalid';
+			return -1;
+		}
+		$this->label = crmSingleLine(strip_tags($this->label), 255);
 		if ($this->ref === '') {
 			$this->ref = crmNextSequenceRef($this->db);
 		}
@@ -101,7 +111,7 @@ class Sequence
 		$sql .= ', '.((int) $this->stop_on_reply).', '.((int) $this->stop_on_won).', '.((int) $this->stop_on_lost);
 		$sql .= ", '".$this->db->idate(dol_now())."', ".((int) $user->id).')';
 		if (!$this->db->query($sql)) {
-			$this->error = $this->db->lasterror();
+			$this->error = crmDbError($this->db);
 			return -1;
 		}
 		$this->id = (int) $this->db->last_insert_id($this->db->prefix().'crm_sequence');
@@ -121,7 +131,7 @@ class Sequence
 			$this->error = 'CrmErrorSequenceNotFound';
 			return -1;
 		}
-		$this->label = trim($this->label);
+		$this->label = crmSingleLine(strip_tags($this->label), 255);
 		if ($this->label === '') {
 			$this->error = 'CrmErrorSequenceLabelRequired';
 			return -1;
@@ -143,7 +153,7 @@ class Sequence
 		$sql .= ', stop_on_won = '.($this->stop_on_won ? 1 : 0).', stop_on_lost = '.($this->stop_on_lost ? 1 : 0);
 		$sql .= ' WHERE rowid = '.((int) $this->id).' AND entity = '.((int) $conf->entity);
 		if (!$this->db->query($sql)) {
-			$this->error = $this->db->lasterror();
+			$this->error = crmDbError($this->db);
 			return -1;
 		}
 		return 1;
@@ -183,6 +193,7 @@ class Sequence
 	 */
 	public function addStep(string $action, int $delayDays, string $subject, string $body, string $sendMode = ''): int
 	{
+		$subject = crmSingleLine(strip_tags($subject), 255);
 		if ($action !== 'email' || !in_array($sendMode, array('draft', 'send'), true)) {
 			$sendMode = '';
 		}
@@ -197,7 +208,7 @@ class Sequence
 		$sql .= ((int) $this->id).', '.$position.", '".$this->db->escape($action)."', ".((int) $delayDays);
 		$sql .= ", '".$this->db->escape($subject)."', '".$this->db->escape($body)."'".($withMode ? ", '".$this->db->escape($sendMode)."'" : '').')';
 		if (!$this->db->query($sql)) {
-			$this->error = $this->db->lasterror();
+			$this->error = crmDbError($this->db);
 			return -1;
 		}
 		return (int) $this->db->last_insert_id($this->db->prefix().'crm_sequence_step');
@@ -226,6 +237,7 @@ class Sequence
 	 */
 	public function updateStep(int $stepId, string $action, int $delayDays, string $subject, string $body, string $sendMode = ''): int
 	{
+		$subject = crmSingleLine(strip_tags($subject), 255);
 		if ($this->fetchStep($stepId) === null) {
 			$this->error = 'CrmErrorStepNotFound';
 			return -1;
@@ -248,7 +260,7 @@ class Sequence
 		}
 		$sql .= ' WHERE rowid = '.((int) $stepId).' AND fk_sequence = '.((int) $this->id);
 		if (!$this->db->query($sql)) {
-			$this->error = $this->db->lasterror();
+			$this->error = crmDbError($this->db);
 			return -1;
 		}
 		return 1;
@@ -261,7 +273,7 @@ class Sequence
 	{
 		$sql = 'DELETE FROM '.$this->db->prefix().'crm_sequence_step WHERE rowid = '.((int) $stepId).' AND fk_sequence = '.((int) $this->id);
 		if (!$this->db->query($sql)) {
-			$this->error = $this->db->lasterror();
+			$this->error = crmDbError($this->db);
 			return -1;
 		}
 		return 1;
@@ -274,12 +286,13 @@ class Sequence
 	 */
 	public function fetchEnrolmentsForOpportunity(int $opportunityId): array
 	{
+		global $conf;
 		$prefix = $this->db->prefix();
 		$sql = 'SELECT e.*, s.ref as seq_ref, s.label as seq_label, st.action as step_action, st.subject as step_subject';
 		$sql .= ' FROM '.$prefix.'crm_sequence_enrol as e';
 		$sql .= ' INNER JOIN '.$prefix.'crm_sequence as s ON s.rowid = e.fk_sequence';
 		$sql .= ' LEFT JOIN '.$prefix.'crm_sequence_step as st ON st.fk_sequence = e.fk_sequence AND st.position = e.current_step';
-		$sql .= ' WHERE e.fk_opportunity = '.((int) $opportunityId).' ORDER BY e.date_enrol DESC, e.rowid DESC';
+		$sql .= ' WHERE e.fk_opportunity = '.((int) $opportunityId).' AND e.entity = '.((int) $conf->entity).' ORDER BY e.date_enrol DESC, e.rowid DESC';
 		return $this->rows($sql);
 	}
 
@@ -310,13 +323,25 @@ class Sequence
 	}
 
 	/**
-	 * Enrol a deal from a deal card: the deal must be open and not already follow an outreach, and the outreach must be active.
-	 * The enrolment starts now, as enrol() does: the first step falls due after its delay counted from this moment.
+	 * Enrol a deal from a deal card. The rules live in enrol(); this name is kept for the callers that read better with it.
 	 *
 	 * @return int Enrolment id, or -1 with a language key in ->error
 	 */
 	public function enrolFromDeal(int $opportunityId): int
 	{
+		return $this->enrol($opportunityId);
+	}
+
+	/**
+	 * Enrol a deal. Every entry (deal card, outreach card, MCP tool) goes through here, so the rules are the same everywhere:
+	 * the outreach exists, belongs to this entity, is active and has a step; the deal exists in this entity, is open and does
+	 * not already follow an outreach. The first step is scheduled from now plus its delay.
+	 *
+	 * @return int Enrolment id, or -1 with a language key in ->error
+	 */
+	public function enrol(int $opportunityId): int
+	{
+		global $conf;
 		if ($this->id <= 0) {
 			$this->error = 'CrmErrorSequenceNotFound';
 			return -1;
@@ -325,37 +350,23 @@ class Sequence
 			$this->error = 'CrmErrorSequenceInactive';
 			return -1;
 		}
-		$resql = $this->db->query('SELECT status FROM '.$this->db->prefix().'crm_opportunity WHERE rowid = '.((int) $opportunityId));
-		$deal = $resql ? $this->db->fetch_object($resql) : null;
-		if (!$deal || (string) $deal->status !== 'open') {
-			$this->error = 'CrmErrorDealClosed';
-			return -1;
-		}
-		if ($this->hasRunningEnrolment($opportunityId)) {
-			$this->error = 'CrmErrorDealRunning';
-			return -1;
-		}
-		return $this->enrol($opportunityId);
-	}
-
-	/**
-	 * Enrol a deal. The first step is scheduled from now plus its delay.
-	 *
-	 * @return int Enrolment id, or -1
-	 */
-	public function enrol(int $opportunityId): int
-	{
-		global $conf;
 		$steps = $this->fetchSteps();
 		if (count($steps) === 0) {
 			$this->error = 'CrmErrorSequenceNoSteps';
 			return -1;
 		}
-		$sqlRunning = 'SELECT rowid FROM '.$this->db->prefix()."crm_sequence_enrol WHERE fk_sequence = ".((int) $this->id);
-		$sqlRunning .= ' AND fk_opportunity = '.((int) $opportunityId)." AND status = 'running'";
-		$resRunning = $this->db->query($sqlRunning);
-		if ($resRunning && $this->db->num_rows($resRunning) > 0) {
-			$this->error = 'CrmErrorDealEnrolled';
+		$resql = $this->db->query('SELECT status FROM '.$this->db->prefix().'crm_opportunity WHERE rowid = '.((int) $opportunityId).' AND entity = '.((int) $conf->entity));
+		$deal = $resql ? $this->db->fetch_object($resql) : null;
+		if (!$deal) {
+			$this->error = 'CrmErrorNotFound';
+			return -1;
+		}
+		if ((string) $deal->status !== 'open') {
+			$this->error = 'CrmErrorDealClosed';
+			return -1;
+		}
+		if ($this->hasRunningEnrolment($opportunityId)) {
+			$this->error = 'CrmErrorDealRunning';
 			return -1;
 		}
 		$first = $steps[0];
@@ -365,10 +376,28 @@ class Sequence
 		$sql .= ((int) $conf->entity).', '.((int) $this->id).', '.((int) $opportunityId).", '".$this->db->idate($now)."', ".((int) $first->position);
 		$sql .= ", '".$this->db->idate($next)."', 'running')";
 		if (!$this->db->query($sql)) {
-			$this->error = $this->db->lasterror();
+			$this->error = crmDbError($this->db);
 			return -1;
 		}
 		return (int) $this->db->last_insert_id($this->db->prefix().'crm_sequence_enrol');
+	}
+
+	/**
+	 * True when the user may act on this enrolment: it belongs to the outreach (when one is given), to this entity, and its
+	 * deal is one the user may read.
+	 */
+	public function enrolmentVisible(User $user, int $enrolId, int $sequenceId = 0): bool
+	{
+		global $conf;
+		$sql = 'SELECT e.rowid FROM '.$this->db->prefix().'crm_sequence_enrol as e';
+		$sql .= ' INNER JOIN '.$this->db->prefix().'crm_opportunity as o ON o.rowid = e.fk_opportunity';
+		$sql .= ' WHERE e.rowid = '.((int) $enrolId).' AND e.entity = '.((int) $conf->entity).' AND o.entity = '.((int) $conf->entity);
+		if ($sequenceId > 0) {
+			$sql .= ' AND e.fk_sequence = '.((int) $sequenceId);
+		}
+		$sql .= crmOwnerSql($user, 'o');
+		$resql = $this->db->query($sql);
+		return ($resql && $this->db->num_rows($resql) > 0);
 	}
 
 	/**
@@ -380,7 +409,7 @@ class Sequence
 		$sql = 'UPDATE '.$this->db->prefix()."crm_sequence_enrol SET status = 'stopped', stop_reason = '".$this->db->escape($reason)."', date_next = NULL";
 		$sql .= ' WHERE rowid = '.((int) $enrolId);
 		if (!$this->db->query($sql)) {
-			$this->error = $this->db->lasterror();
+			$this->error = crmDbError($this->db);
 			return -1;
 		}
 		return 1;
@@ -395,7 +424,7 @@ class Sequence
 	{
 		$resql = $this->db->query('SELECT fk_opportunity FROM '.$this->db->prefix().'crm_sequence_enrol WHERE rowid = '.((int) $enrolId));
 		$enrol = $resql ? $this->db->fetch_object($resql) : null;
-		if (!$enrol) {
+		if (!$enrol || !$this->enrolmentVisible($user, $enrolId)) {
 			$this->error = 'CrmErrorEnrolmentNotFound';
 			return -1;
 		}
@@ -404,7 +433,7 @@ class Sequence
 		}
 		require_once __DIR__.'/opportunity.class.php';
 		$deal = new Opportunity($this->db);
-		if ($deal->fetch((int) $enrol->fk_opportunity) > 0) {
+		if ($user->hasRight('crm', 'write') && $deal->fetch((int) $enrol->fk_opportunity) > 0) {
 			$deal->moveToReplyStage($user);
 		}
 		return 1;
@@ -420,10 +449,10 @@ class Sequence
 		$sql = 'UPDATE '.$this->db->prefix().'crm_sequence_enrol as e';
 		$sql .= ' INNER JOIN '.$this->db->prefix().'crm_sequence as s ON s.rowid = e.fk_sequence';
 		$sql .= " SET e.status = 'stopped', e.stop_reason = 'replied', e.date_next = NULL";
-		$sql .= ' WHERE e.fk_opportunity = '.((int) $opportunityId)." AND e.status = 'running' AND s.stop_on_reply = 1";
+		$sql .= ' WHERE e.fk_opportunity = '.((int) $opportunityId).' AND e.entity = '.((int) $GLOBALS['conf']->entity)." AND e.status = 'running' AND s.stop_on_reply = 1";
 		$resql = $this->db->query($sql);
 		if (!$resql) {
-			$this->error = $this->db->lasterror();
+			$this->error = crmDbError($this->db);
 			return -1;
 		}
 		return (int) $this->db->affected_rows($resql);
@@ -432,12 +461,13 @@ class Sequence
 	/**
 	 * @return array<int,object>
 	 */
-	public function fetchEnrolments(): array
+	public function fetchEnrolments(User $user): array
 	{
+		global $conf;
 		$sql = 'SELECT e.*, o.ref, o.label as deal_label, o.status as deal_status';
 		$sql .= ' FROM '.$this->db->prefix().'crm_sequence_enrol as e';
 		$sql .= ' INNER JOIN '.$this->db->prefix().'crm_opportunity as o ON o.rowid = e.fk_opportunity';
-		$sql .= ' WHERE e.fk_sequence = '.((int) $this->id);
+		$sql .= ' WHERE e.fk_sequence = '.((int) $this->id).' AND o.entity = '.((int) $conf->entity).crmOwnerSql($user, 'o');
 		$sql .= ' ORDER BY e.date_enrol DESC';
 		return $this->rows($sql);
 	}
@@ -464,9 +494,10 @@ class Sequence
 	 *
 	 * @return array<int,object>
 	 */
-	public function fetchLog(): array
+	public function fetchLog(User $user): array
 	{
-		$sql = $this->logSelect().' WHERE e.fk_sequence = '.((int) $this->id).' ORDER BY l.date_send DESC, l.rowid DESC';
+		global $conf;
+		$sql = $this->logSelect().' WHERE e.fk_sequence = '.((int) $this->id).' AND o.entity = '.((int) $conf->entity).crmOwnerSql($user, 'o').' ORDER BY l.date_send DESC, l.rowid DESC';
 		return $this->rows($sql);
 	}
 
@@ -477,7 +508,7 @@ class Sequence
 	 */
 	public function fetchLogForOpportunity(int $opportunityId): array
 	{
-		$sql = $this->logSelect().' WHERE e.fk_opportunity = '.((int) $opportunityId).' ORDER BY l.date_send DESC, l.rowid DESC';
+		$sql = $this->logSelect().' WHERE e.fk_opportunity = '.((int) $opportunityId).' AND o.entity = '.((int) $GLOBALS['conf']->entity).' ORDER BY l.date_send DESC, l.rowid DESC';
 		return $this->rows($sql);
 	}
 
@@ -488,7 +519,7 @@ class Sequence
 	 */
 	public function fetchLogLine(int $logId)
 	{
-		$rows = $this->rows($this->logSelect().' WHERE l.rowid = '.((int) $logId));
+		$rows = $this->rows($this->logSelect().' WHERE l.rowid = '.((int) $logId).' AND o.entity = '.((int) $GLOBALS['conf']->entity));
 		return $rows[0] ?? null;
 	}
 
@@ -609,7 +640,7 @@ class Sequence
 			}
 		}
 		return array(
-			'subject' => crmReplacePlaceholders((string) $step->subject, $vars),
+			'subject' => crmSingleLine(crmReplacePlaceholders((string) $step->subject, $vars), 255),
 			'body' => crmReplacePlaceholders((string) $step->body, $bodyVars),
 			'html' => $isHtml,
 		);
@@ -646,7 +677,7 @@ class Sequence
 		$sql .= ' ORDER BY e.date_next ASC';
 		$resql = $this->db->query($sql);
 		if (!$resql) {
-			$this->error = $this->db->lasterror();
+			$this->error = crmDbError($this->db);
 			$stats['errors']++;
 			return $stats;
 		}
@@ -671,6 +702,9 @@ class Sequence
 				if (!$draftStep && $stats['emails'] >= $max) {
 					continue;
 				}
+				if (!$this->claim((int) $obj->enrol_id, (string) $obj->date_next, $now)) {
+					continue;
+				}
 				$emailStatus = $this->runEmailStep($user, $obj, $step, $dry, $draftStep);
 				if ($emailStatus === 'draft') {
 					$stats['drafts']++;
@@ -683,12 +717,32 @@ class Sequence
 					continue;
 				}
 			} else {
+				if (!$this->claim((int) $obj->enrol_id, (string) $obj->date_next, $now)) {
+					continue;
+				}
 				$this->runTaskStep($user, $obj, $step);
 			}
 			$this->advance((int) $obj->enrol_id, (int) $obj->fk_sequence, (int) $obj->current_step, (int) $this->db->jdate($obj->date_enrol));
 			$stats['steps']++;
 		}
 		return $stats;
+	}
+
+	/**
+	 * Take an enrolment for this run: two runs at the same time (the cron and an MCP call, or two crons) would otherwise both
+	 * read it as due and send the same e-mail twice. The claim moves its due date one hour ahead, only if it still has the
+	 * date this run read; whoever changes a row first wins and the other skips it. advance() or postpone() set the real next
+	 * date afterwards, and if the run dies the enrolment is due again in an hour.
+	 *
+	 * @param string $readDate date_next as read, in the format of the database
+	 * @return bool True when this run owns the enrolment
+	 */
+	private function claim(int $enrolId, string $readDate, int $now): bool
+	{
+		$sql = 'UPDATE '.$this->db->prefix()."crm_sequence_enrol SET date_next = '".$this->db->idate($now + 3600)."'";
+		$sql .= ' WHERE rowid = '.((int) $enrolId)." AND status = 'running' AND date_next = '".$this->db->escape($readDate)."'";
+		$resql = $this->db->query($sql);
+		return ($resql && $this->db->affected_rows($resql) === 1);
 	}
 
 	/**

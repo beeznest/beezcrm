@@ -1,0 +1,12 @@
+# Keep the module's source tree private when the whole repository is served (for example through a symlink in
+# htdocs/custom). Only the PHP pages, css/, js/ and langs/ are meant to be reached by a browser.
+# Apache 2.4. For nginx, see the "Security" section of INSTALL.md.
+<IfModule mod_authz_core.c>
+	<FilesMatch "(^\.|\.(md|sql|sh|lock|json|dist|log|bak|orig|swp)$|^LICENSE$)">
+		Require all denied
+	</FilesMatch>
+	<DirectoryMatch "/(\.git|test|doc|sql|class|lib|core)(/|$)">
+		Require all denied
+	</DirectoryMatch>
+</IfModule>
+Options -Indexes

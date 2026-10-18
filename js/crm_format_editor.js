@@ -102,9 +102,9 @@
 			var busy = false;
 			var hasText = function () {
 				if (format === "html") {
-					var box = document.createElement("div");
-					box.innerHTML = getHtml();
-					return (box.textContent || "").trim() !== "";
+					// DOMParser builds an inert document: nothing in it loads or runs, unlike innerHTML on a live element.
+					var doc = new DOMParser().parseFromString(getHtml(), "text/html");
+					return ((doc.body && doc.body.textContent) || "").trim() !== "";
 				}
 				return plain.value.trim() !== "";
 			};

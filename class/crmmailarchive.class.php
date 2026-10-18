@@ -1,6 +1,10 @@
 <?php
 declare(strict_types=1);
 
+if (!defined('DOL_DOCUMENT_ROOT')) {
+	exit;
+}
+
 /**
  * \file    class/crmmailarchive.class.php
  * \ingroup crm
@@ -23,6 +27,13 @@ require_once __DIR__.'/sequence.class.php';
  *    subject of the e-mails it suggests, so a message written in a mail client from such a suggestion, and the
  *    customer's answer to it, are recognised even when the mail client drops the threading headers.
  * Anything else is ignored: the mailbox is not a general inbox.
+ *
+ * Finding the deal is not enough, since a reference or a Message-ID can be guessed and a From header can be forged. A
+ * message is kept only when it also comes from, or (for a message sent by us) goes to, an address the deal knows: its
+ * contact, the other contacts of its third party, the address of the third party, or a colleague at one of their domains
+ * (public mail domains do not count). A message the mail server reports as failing SPF/DKIM/DMARC is ignored, and with
+ * the setting CRM_ARCHIVE_REQUIRE_AUTH one that does not pass is ignored too. A message written by a machine (bounce,
+ * out-of-office, list) is kept but does not stop the outreach or move the deal.
  */
 class CrmMailArchive
 {
@@ -112,6 +123,37 @@ class CrmMailArchive
 	}
 
 	/**
+	 * The addresses the deal knows: its contact, the other contacts of its third party, and the third party itself.
+	 *
+	 * @param object $deal Deal row with fk_soc and fk_socpeople
+	 * @return string[]
+	 */
+	private function knownAddresses($deal): array
+	{
+		global $conf;
+		$prefix = $this->db->prefix();
+		$known = array();
+		$socId = (int) $deal->fk_soc;
+		if ($socId > 0) {
+			$resql = $this->db->query('SELECT email FROM '.$prefix.'societe WHERE rowid = '.$socId.' AND entity IN ('.getEntity('societe').')');
+			if ($resql && ($obj = $this->db->fetch_object($resql))) {
+				$known = array_merge($known, crmAddressesIn((string) $obj->email));
+			}
+			$resql = $this->db->query('SELECT email FROM '.$prefix.'socpeople WHERE fk_soc = '.$socId.' AND entity IN ('.getEntity('societe').") AND email IS NOT NULL AND email <> ''");
+			while ($resql && ($obj = $this->db->fetch_object($resql))) {
+				$known = array_merge($known, crmAddressesIn((string) $obj->email));
+			}
+		}
+		if ((int) $deal->fk_socpeople > 0) {
+			$resql = $this->db->query('SELECT email FROM '.$prefix.'socpeople WHERE rowid = '.((int) $deal->fk_socpeople).' AND entity IN ('.getEntity('societe').')');
+			if ($resql && ($obj = $this->db->fetch_object($resql))) {
+				$known = array_merge($known, crmAddressesIn((string) $obj->email));
+			}
+		}
+		return array_values(array_unique($known));
+	}
+
+	/**
 	 * True when the address is the module sender or belongs to a Dolibarr user, so the message was sent by us.
 	 */
 	public function isInternalAddress(string $address): bool
@@ -137,7 +179,8 @@ class CrmMailArchive
 	 * Record one message on its deal.
 	 *
 	 * @param User                 $user User saved as author of the event
-	 * @param array<string,mixed>  $mail msgid, in_reply_to, references, from, to, cc, subject, body, date (timestamp)
+	 * @param array<string,mixed>  $mail msgid, in_reply_to, references, from, to, cc, subject, body, date (timestamp), auto (bool: written
+	 *                                   by a machine), authresults (Authentication-Results header of our own server, or '')
 	 * @return array{status:string,deal:int,event:int} status is recorded, duplicate, ignored or error
 	 */
 	public function record(User $user, array $mail): array
@@ -160,18 +203,39 @@ class CrmMailArchive
 			return array('status' => 'ignored', 'deal' => 0, 'event' => 0);
 		}
 
+		// Who wrote it, who it goes to, and does the deal know any of them? Otherwise it is not ours to attach.
+		$authResults = trim((string) ($mail['authresults'] ?? ''));
+		if ($authResults !== '' && !crmMailAuthPassed($authResults)) {
+			return array('status' => 'ignored', 'deal' => 0, 'event' => 0);
+		}
+		if (getDolGlobalInt('CRM_ARCHIVE_REQUIRE_AUTH') && !crmMailAuthPassed($authResults)) {
+			return array('status' => 'ignored', 'deal' => 0, 'event' => 0);
+		}
+		$known = $this->knownAddresses($deal);
 		$fromAddresses = crmAddressesIn((string) ($mail['from'] ?? ''));
 		$fromAddress = count($fromAddresses) > 0 ? $fromAddresses[0] : '';
 		$direction = $this->isInternalAddress($fromAddress) ? 'out' : 'in';
-		$date = (int) ($mail['date'] ?? 0);
-		if ($date <= 0) {
-			$date = dol_now();
+		$trusted = false;
+		if ($direction === 'in') {
+			$trusted = crmSenderTrusted($fromAddress, $known);
+		} else {
+			foreach (array_merge(crmAddressesIn((string) ($mail['to'] ?? '')), crmAddressesIn((string) ($mail['cc'] ?? ''))) as $recipient) {
+				if (crmSenderTrusted($recipient, $known)) {
+					$trusted = true;
+					break;
+				}
+			}
 		}
+		if (!$trusted) {
+			return array('status' => 'ignored', 'deal' => 0, 'event' => 0);
+		}
+		$automatic = !empty($mail['auto']);
+		$date = crmClampMailDate((int) ($mail['date'] ?? 0), dol_now());
 		$body = (string) ($mail['body'] ?? '');
 		if (dol_strlen($body) > 100000) {
 			$body = dol_substr($body, 0, 100000);
 		}
-		$subject = trim((string) ($mail['subject'] ?? ''));
+		$subject = crmSingleLine((string) ($mail['subject'] ?? ''), 250);
 		if ($subject === '') {
 			$subject = '(no subject)';
 		}
@@ -201,10 +265,10 @@ class CrmMailArchive
 			$body,
 			$date,
 			array(
-				'msgid' => $msgid,
-				'from' => (string) ($mail['from'] ?? ''),
-				'to' => (string) ($mail['to'] ?? ''),
-				'cc' => (string) ($mail['cc'] ?? ''),
+				'msgid' => crmSingleLine($msgid, 250),
+				'from' => crmSingleLine((string) ($mail['from'] ?? ''), 250),
+				'to' => crmSingleLine((string) ($mail['to'] ?? ''), 250),
+				'cc' => crmSingleLine((string) ($mail['cc'] ?? ''), 250),
 			)
 		);
 		if ($eventId === 0) {
@@ -214,7 +278,7 @@ class CrmMailArchive
 			$this->error = $activity->error;
 			return array('status' => 'error', 'deal' => $dealId, 'event' => 0);
 		}
-		if ($direction === 'in') {
+		if ($direction === 'in' && !$automatic) {
 			(new Sequence($this->db))->stopOnReply($dealId);
 			// The prospect answered: the deal goes to the reply stage of its pipeline, to be qualified.
 			require_once __DIR__.'/opportunity.class.php';

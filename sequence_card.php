@@ -42,6 +42,7 @@ crmStartPage();
 
 $id = GETPOSTINT('id');
 $action = GETPOST('action', 'aZ09');
+crmRequireToken($action, array('askdelstep', 'editstep'));
 $sequence = new Sequence($db);
 if ($sequence->fetch($id) <= 0) {
 	accessforbidden();
@@ -71,7 +72,7 @@ if ($action === 'aitemplate') {
 			$result['error'] = $langs->transnoentitiesnoconv('CrmAiStepNeedSubject');
 		} else {
 			$aiReply = new CrmAiReply($db);
-			$aiText = $aiReply->suggestStepTemplate($aiSubject, ($aiFormat === 'html') ? GETPOST('existing', 'restricthtml') : GETPOST('existing', 'nohtml'), $aiFormat);
+			$aiText = !$aiReply->allow($user) ? null : $aiReply->suggestStepTemplate($aiSubject, ($aiFormat === 'html') ? GETPOST('existing', 'restricthtml') : GETPOST('existing', 'nohtml'), $aiFormat);
 			if ($aiText === null) {
 				$result['error'] = (strpos($aiReply->error, 'CrmError') === 0) ? $langs->transnoentitiesnoconv($aiReply->error) : $langs->transnoentitiesnoconv('CrmAiError', $aiReply->error);
 			} else {
@@ -165,22 +166,25 @@ if ($action === 'enrol') {
 
 if ($action === 'stop' || $action === 'replied') {
 	crmRequireRight('sequence');
-	if ($action === 'replied') {
+	$enrolId = GETPOSTINT('enrolid');
+	if (!$sequence->enrolmentVisible($user, $enrolId, (int) $sequence->id)) {
+		setEventMessages($langs->trans('CrmErrorEnrolmentNotFound'), null, 'errors');
+	} elseif ($action === 'replied') {
 		// The deal also moves to the reply stage of its pipeline.
-		$sequence->markReplied($user, GETPOSTINT('enrolid'));
+		$sequence->markReplied($user, $enrolId);
 	} else {
-		$sequence->stopEnrolment(GETPOSTINT('enrolid'), 'manual');
+		$sequence->stopEnrolment($enrolId, 'manual');
 	}
 	header('Location: '.$back);
 	exit;
 }
 
 $steps = $sequence->fetchSteps();
-$enrolments = $sequence->fetchEnrolments();
-$log = $sequence->fetchLog();
+$enrolments = $sequence->fetchEnrolments($user);
+$log = $sequence->fetchLog($user);
 
 llxHeader('', $sequence->ref, '', '', 0, 0, array('/crm/js/crm_format_editor.js'), array('/crm/css/crm.css'));
-print load_fiche_titre($sequence->ref.' — '.$sequence->label, '', 'fa-handshake');
+print load_fiche_titre(dol_escape_htmltag($sequence->ref.' — '.$sequence->label), '', 'fa-handshake');
 $form = new Form($db);
 if ($action === 'askdelstep' && $user->hasRight('crm', 'sequence') && $sequence->fetchStep(GETPOSTINT('stepid')) !== null) {
 	$waiting = $sequence->countWaitingOnStep(GETPOSTINT('stepid'));

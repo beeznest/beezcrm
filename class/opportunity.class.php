@@ -1,6 +1,10 @@
 <?php
 declare(strict_types=1);
 
+if (!defined('DOL_DOCUMENT_ROOT')) {
+	exit;
+}
+
 /**
  * \file    class/opportunity.class.php
  * \ingroup crm
@@ -102,7 +106,7 @@ class Opportunity extends CommonObject
 		$sql = 'SELECT * FROM '.$this->db->prefix().'crm_opportunity WHERE rowid = '.((int) $id);
 		$resql = $this->db->query($sql);
 		if (!$resql) {
-			$this->error = $this->db->lasterror();
+			$this->error = crmDbError($this->db);
 			return -1;
 		}
 		$obj = $this->db->fetch_object($resql);
@@ -144,8 +148,12 @@ class Opportunity extends CommonObject
 	public function create(User $user): int
 	{
 		global $conf;
+		$this->label = crmSingleLine(strip_tags((string) $this->label), 255);
 		if ($this->fk_pipeline <= 0 || $this->label === '' || $this->fk_user_resp <= 0) {
 			$this->error = 'CrmErrorDealIncomplete';
+			return -1;
+		}
+		if (!$this->validateLinks($user, 0, 0)) {
 			return -1;
 		}
 		$stageId = (int) $this->fk_stage;
@@ -180,7 +188,7 @@ class Opportunity extends CommonObject
 		$sql .= ', '.((int) $user->id);
 		$sql .= ')';
 		if (!$this->db->query($sql)) {
-			$this->error = $this->db->lasterror();
+			$this->error = crmDbError($this->db);
 			return -1;
 		}
 		$this->id = (int) $this->db->last_insert_id($this->db->prefix().'crm_opportunity');
@@ -203,6 +211,16 @@ class Opportunity extends CommonObject
 			$this->error = 'CrmErrorDealNotLoaded';
 			return -1;
 		}
+		$this->label = crmSingleLine(strip_tags((string) $this->label), 255);
+		// Only a link that changes is checked: a user who may not read third parties can still edit the other fields.
+		$resql = $this->db->query('SELECT fk_soc, fk_socpeople FROM '.$this->db->prefix().'crm_opportunity WHERE rowid = '.((int) $this->id));
+		$stored = $resql ? $this->db->fetch_object($resql) : null;
+		if (!$stored || !$this->validateLinks($user, (int) $stored->fk_soc, (int) $stored->fk_socpeople)) {
+			if (!$stored) {
+				$this->error = 'CrmErrorNotFound';
+			}
+			return -1;
+		}
 		$sql = 'UPDATE '.$this->db->prefix().'crm_opportunity SET';
 		$sql .= " label = '".$this->db->escape($this->label)."'";
 		$sql .= ', fk_soc = '.($this->fk_soc > 0 ? (int) $this->fk_soc : 'NULL');
@@ -214,10 +232,41 @@ class Opportunity extends CommonObject
 		$sql .= ", description = '".$this->db->escape((string) $this->description)."'";
 		$sql .= ' WHERE rowid = '.((int) $this->id);
 		if (!$this->db->query($sql)) {
-			$this->error = $this->db->lasterror();
+			$this->error = crmDbError($this->db);
 			return -1;
 		}
 		return 1;
+	}
+
+	/**
+	 * The third party and the contact of the deal must exist in this entity, the user must be allowed to read third parties,
+	 * and the contact must belong to the third party. A value equal to the stored one is not checked again.
+	 *
+	 * @param User $user           User saving the deal
+	 * @param int  $currentSoc     Third party already stored (0 for a new deal)
+	 * @param int  $currentContact Contact already stored (0 for a new deal)
+	 * @return bool False with a language key in ->error
+	 */
+	private function validateLinks(User $user, int $currentSoc, int $currentContact): bool
+	{
+		$prefix = $this->db->prefix();
+		$soc = (int) $this->fk_soc;
+		$contact = (int) $this->fk_socpeople;
+		if ($soc > 0 && $soc !== $currentSoc) {
+			$resql = $this->db->query('SELECT rowid FROM '.$prefix.'societe WHERE rowid = '.$soc.' AND entity IN ('.getEntity('societe').')');
+			if (!$user->hasRight('societe', 'lire') || !$resql || $this->db->num_rows($resql) === 0) {
+				$this->error = 'CrmErrorThirdPartyInvalid';
+				return false;
+			}
+		}
+		if ($contact > 0 && ($contact !== $currentContact || $soc !== $currentSoc)) {
+			$resql = $this->db->query('SELECT rowid FROM '.$prefix.'socpeople WHERE rowid = '.$contact.' AND fk_soc = '.$soc.' AND entity IN ('.getEntity('societe').')');
+			if ($soc <= 0 || !$resql || $this->db->num_rows($resql) === 0) {
+				$this->error = 'CrmErrorContactInvalid';
+				return false;
+			}
+		}
+		return true;
 	}
 
 	/**
@@ -251,7 +300,8 @@ class Opportunity extends CommonObject
 		$current->fetch((int) $this->fk_stage);
 		$leavingOpen = ($current->id > 0 && !$current->isClosed());
 		$enteringOpen = !$stage->isClosed();
-		if ($leavingOpen && $enteringOpen && getDolGlobalInt('CRM_REQUIRE_NEXT_STEP') && !CrmActivity::hasFuture($this->db, (int) $this->id)) {
+		// Reopening a closed deal is a move to an open stage like any other: it needs a next step too.
+		if ($enteringOpen && ($leavingOpen || ($current->id > 0 && $current->isClosed())) && getDolGlobalInt('CRM_REQUIRE_NEXT_STEP') && !CrmActivity::hasFuture($this->db, (int) $this->id)) {
 			$this->error = 'CrmErrorNextStepRequired';
 			return -1;
 		}
@@ -274,7 +324,7 @@ class Opportunity extends CommonObject
 		}
 		$sql .= ' WHERE rowid = '.((int) $this->id);
 		if (!$this->db->query($sql)) {
-			$this->error = $this->db->lasterror();
+			$this->error = crmDbError($this->db);
 			return -1;
 		}
 		$this->fk_stage = $stageId;
@@ -317,7 +367,7 @@ class Opportunity extends CommonObject
 		}
 		$update = 'UPDATE '.$this->db->prefix().'crm_opportunity SET fk_stage = '.((int) $target->id).' WHERE rowid = '.((int) $this->id);
 		if (!$this->db->query($update)) {
-			$this->error = $this->db->lasterror();
+			$this->error = crmDbError($this->db);
 			return -1;
 		}
 		$from = (int) $this->fk_stage;
@@ -347,7 +397,7 @@ class Opportunity extends CommonObject
 		$ok = $ok && $this->db->query('DELETE FROM '.$prefix.'crm_sequence_enrol WHERE fk_opportunity = '.$id);
 		$ok = $ok && $this->db->query('DELETE FROM '.$prefix.'crm_opportunity WHERE rowid = '.$id);
 		if (!$ok) {
-			$this->error = $this->db->lasterror();
+			$this->error = crmDbError($this->db);
 			return -1;
 		}
 		return 1;
@@ -359,16 +409,24 @@ class Opportunity extends CommonObject
 	 * @param int $propalId Proposal rowid
 	 * @return int 1 if OK, -1 on error
 	 */
-	public function linkProposal(int $propalId): int
+	public function linkProposal(User $user, int $propalId): int
 	{
 		global $conf;
 		if ($this->id <= 0 || $propalId <= 0) {
 			return -1;
 		}
+		// The proposal must exist in this entity, be readable by the user and belong to the third party of the deal:
+		// a link shows the proposal reference and total on the deal.
+		$resql = $this->db->query('SELECT fk_soc FROM '.$this->db->prefix().'propal WHERE rowid = '.((int) $propalId).' AND entity IN ('.getEntity('propal').')');
+		$propal = $resql ? $this->db->fetch_object($resql) : null;
+		if (!isModEnabled('propal') || !$user->hasRight('propal', 'lire') || !$propal || (int) $this->fk_soc <= 0 || (int) $propal->fk_soc !== (int) $this->fk_soc) {
+			$this->error = 'CrmErrorProposalInvalid';
+			return -1;
+		}
 		$sql = 'INSERT INTO '.$this->db->prefix().'crm_opportunity_propal (entity, fk_opportunity, fk_propal) VALUES (';
 		$sql .= ((int) $conf->entity).', '.((int) $this->id).', '.((int) $propalId).')';
 		if (!$this->db->query($sql)) {
-			$this->error = $this->db->lasterror();
+			$this->error = crmDbError($this->db);
 			return -1;
 		}
 		return 1;
@@ -384,7 +442,7 @@ class Opportunity extends CommonObject
 	{
 		$sql = 'DELETE FROM '.$this->db->prefix().'crm_opportunity_propal WHERE fk_opportunity = '.((int) $this->id).' AND fk_propal = '.((int) $propalId);
 		if (!$this->db->query($sql)) {
-			$this->error = $this->db->lasterror();
+			$this->error = crmDbError($this->db);
 			return -1;
 		}
 		return 1;
@@ -502,7 +560,7 @@ class Opportunity extends CommonObject
 		$sql = 'SELECT p.rowid, p.ref, p.total_ht, p.fk_statut';
 		$sql .= ' FROM '.$this->db->prefix().'crm_opportunity_propal as l';
 		$sql .= ' INNER JOIN '.$this->db->prefix().'propal as p ON p.rowid = l.fk_propal';
-		$sql .= ' WHERE l.fk_opportunity = '.((int) $this->id);
+		$sql .= ' WHERE l.fk_opportunity = '.((int) $this->id).' AND p.entity IN ('.getEntity('propal').')';
 		$sql .= ' ORDER BY p.ref ASC';
 		$list = array();
 		$resql = $this->db->query($sql);

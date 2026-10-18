@@ -1,6 +1,11 @@
 <?php
 declare(strict_types=1);
 
+if (!defined('DOL_DOCUMENT_ROOT')) {
+	exit;
+}
+require_once __DIR__.'/../lib/crm.lib.php';
+
 /**
  * \file    class/qualification.class.php
  * \ingroup crm
@@ -109,7 +114,7 @@ class Qualification
 			$sql .= ((int) $conf->entity).', '.((int) $opportunityId).', '.$id.', '.$answer.", '".$now."', ".((int) $user->id).')';
 			$sql .= ' ON DUPLICATE KEY UPDATE answer = '.$answer.", datec = '".$now."', fk_user = ".((int) $user->id);
 			if (!$this->db->query($sql)) {
-				$this->error = $this->db->lasterror();
+				$this->error = crmDbError($this->db);
 				return -1;
 			}
 		}
@@ -125,7 +130,7 @@ class Qualification
 		$sql = 'INSERT INTO '.$this->db->prefix().'crm_qualification (entity, code, label, points, position, active) VALUES (';
 		$sql .= ((int) $conf->entity).", '".$this->db->escape($code)."', '".$this->db->escape($label)."', ".((int) $points).', '.((int) $position).', 1)';
 		if (!$this->db->query($sql)) {
-			$this->error = $this->db->lasterror();
+			$this->error = crmDbError($this->db);
 			return -1;
 		}
 		return (int) $this->db->last_insert_id($this->db->prefix().'crm_qualification');

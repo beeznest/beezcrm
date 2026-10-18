@@ -16,6 +16,10 @@
  */
 declare(strict_types=1);
 
+if (!defined('DOL_DOCUMENT_ROOT')) {
+	exit;
+}
+
 /**
  * \file    class/mcp/crmopportunitytool.class.php
  * \ingroup crm
@@ -159,6 +163,7 @@ class CrmOpportunityTool extends CrmMcpTool
 			if ($limit <= 0) {
 				$limit = 100;
 			}
+			$limit = min($limit, 500);
 			$rows = array();
 			foreach ($deal->fetchList($this->user, $this->argString($args, 'status'), $this->argInt($args, 'pipeline_id'), $this->argInt($args, 'owner_id'), $this->argString($args, 'search'), $limit) as $obj) {
 				$rows[] = $this->listRow($obj);
@@ -186,7 +191,7 @@ class CrmOpportunityTool extends CrmMcpTool
 			return $this->updateDeal($args);
 		}
 		if ($toolName === 'change_crm_opportunity_stage') {
-			return $this->moveDeal($this->argInt($args, 'id'), $this->argInt($args, 'stage_id'), $this->argInt($args, 'loss_reason_id'), $this->argString($args, 'note'));
+			return $this->moveDeal($this->argInt($args, 'id'), $this->argInt($args, 'stage_id'), $this->argInt($args, 'loss_reason_id'), $this->argText($args, 'note'));
 		}
 		if ($toolName === 'change_crm_opportunity_to_won' || $toolName === 'change_crm_opportunity_to_lost') {
 			$deal = $this->loadDeal($this->argInt($args, 'id'));
@@ -197,7 +202,7 @@ class CrmOpportunityTool extends CrmMcpTool
 			if ($stageId <= 0) {
 				return $this->fail('Pipeline has no matching stage');
 			}
-			return $this->moveDeal((int) $deal->id, $stageId, $this->argInt($args, 'loss_reason_id'), $this->argString($args, 'note'));
+			return $this->moveDeal((int) $deal->id, $stageId, $this->argInt($args, 'loss_reason_id'), $this->argText($args, 'note'));
 		}
 		if ($toolName === 'delete_crm_opportunity') {
 			$deal = $this->loadDeal($this->argInt($args, 'id'));
@@ -215,7 +220,7 @@ class CrmOpportunityTool extends CrmMcpTool
 				return $this->fail('Deal not found');
 			}
 			$propalId = $this->argInt($args, 'propal_id');
-			$result = ($toolName === 'add_crm_proposal_link') ? $deal->linkProposal($propalId) : $deal->unlinkProposal($propalId);
+			$result = ($toolName === 'add_crm_proposal_link') ? $deal->linkProposal($this->user, $propalId) : $deal->unlinkProposal($propalId);
 			if ($result <= 0) {
 				return $this->fail($deal->error !== '' ? $deal->error : 'Proposal link failed');
 			}
@@ -356,7 +361,7 @@ class CrmOpportunityTool extends CrmMcpTool
 		$deal->amount = isset($args['amount']) ? (float) $args['amount'] : 0.0;
 		$deal->date_close_expected = $this->argDate($args, 'expected_close');
 		$deal->fk_source = $this->argInt($args, 'source_id');
-		$deal->description = $this->argString($args, 'description');
+		$deal->description = $this->argText($args, 'description');
 		$id = $deal->create($this->user);
 		if ($id <= 0) {
 			return $this->fail($deal->error !== '' ? $deal->error : 'Create failed');
@@ -400,7 +405,7 @@ class CrmOpportunityTool extends CrmMcpTool
 			$deal->fk_source = $this->argInt($args, 'source_id');
 		}
 		if (isset($args['description'])) {
-			$deal->description = $this->argString($args, 'description');
+			$deal->description = $this->argText($args, 'description');
 		}
 		if ($deal->update($this->user) <= 0) {
 			return $this->fail($deal->error !== '' ? $deal->error : 'Update failed');

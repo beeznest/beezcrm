@@ -45,10 +45,12 @@ $action = GETPOST('action', 'aZ09');
 // The buttons are input elements, like Dolibarr's own (the theme styles input.button and not <button>): their value is their
 // label, so each one has its own name, act_<action>, and only the one that was clicked is posted.
 foreach (array('aisuggest', 'save', 'send', 'sentmanually', 'discard') as $buttonAction) {
-	if (GETPOSTISSET('act_'.$buttonAction)) {
+	if (GETPOSTISSET('act_'.$buttonAction) && $_SERVER['REQUEST_METHOD'] === 'POST') {
 		$action = $buttonAction;
 	}
 }
+// Every action but showing the form needs the token of the session (a link with act_send=1 must not send anything).
+crmRequireToken($action);
 $draft = new CrmEmailDraft($db);
 if ($draft->fetch(GETPOSTINT('id')) <= 0 || !crmCanReadOwner($user, (int) $draft->deal->fk_user_resp)) {
 	accessforbidden();
@@ -71,7 +73,7 @@ $canCopyMe = ($myAddress !== '' && isValidEmail($myAddress));
 $copyMe = $canCopyMe && (GETPOSTISSET('format') ? GETPOSTINT('bccme') === 1 : true);
 
 $to = GETPOSTISSET('to') ? trim(GETPOST('to', 'nohtml')) : $draft->contactEmail();
-$subject = GETPOSTISSET('subject') ? GETPOST('subject', 'nohtml') : $draft->subject();
+$subject = crmSingleLine(GETPOSTISSET('subject') ? strip_tags(GETPOST('subject', 'nohtml')) : $draft->subject(), 255);
 
 // The message is plain text or HTML, never both at once: the text version of an HTML message is made from it when it
 // is sent, as Dolibarr's mail library does, so the two can never disagree. A saved draft keeps the format it was in.
@@ -91,7 +93,7 @@ if ($action === 'previewtext') {
 	exit;
 }
 $aiAvailable = CrmAiReply::isAvailable() && $canAct;
-$aiPrompt = GETPOSTISSET('aiprompt') ? GETPOST('aiprompt', 'nohtml') : CrmAiReply::defaultPrompt();
+$aiPrompt = GETPOSTISSET('aiprompt') ? dol_substr(GETPOST('aiprompt', 'nohtml'), 0, 4000) : CrmAiReply::defaultPrompt();
 
 if ($action === 'aisuggest') {
 	// Fills the text box with a proposal. Nothing is saved or sent: the salesperson reads, edits and chooses.
@@ -100,9 +102,9 @@ if ($action === 'aisuggest') {
 		accessforbidden();
 	}
 	$reply = new CrmAiReply($db);
-	$suggestion = $reply->suggest($dealId, $aiPrompt, $subject, $content);
+	$suggestion = $reply->allow($user) ? $reply->suggest($dealId, $aiPrompt, $subject, $content) : null;
 	if ($suggestion === null) {
-		$aiError = (strpos($reply->error, 'CrmError') === 0) ? crmErrorText($reply->error) : $langs->trans('CrmAiError', $reply->error);
+		$aiError = (strpos($reply->error, 'CrmError') === 0) ? crmErrorText($reply->error) : $langs->trans('CrmAiError', dol_escape_htmltag($reply->error));
 		if ($user->admin) {
 			$aiError .= ' <a href="'.DOL_URL_ROOT.'/ai/admin/setup.php">'.$langs->trans('CrmAiGoToSetup').'</a>';
 		}

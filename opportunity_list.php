@@ -48,7 +48,7 @@ if (!in_array($sortField, array('ref', 'label', 'account', 'contact', 'stage', '
 	$sortField = 'ref';
 }
 $sortOrder = (GETPOST('sortorder', 'aZ09') === 'asc') ? 'asc' : (GETPOST('sortorder', 'aZ09') === 'desc' ? 'desc' : ($sortField === 'ref' ? 'desc' : 'asc'));
-$limit = GETPOSTINT('limit') > 0 ? GETPOSTINT('limit') : (int) $conf->liste_limit;
+$limit = min(500, GETPOSTINT('limit') > 0 ? GETPOSTINT('limit') : (int) $conf->liste_limit);
 $total = (new Opportunity($db))->countList($user, $status === 'all' ? '' : $status, 0, $ownerId, $search);
 $page = max(0, GETPOSTINT('page'));
 if ($page * $limit >= $total) {

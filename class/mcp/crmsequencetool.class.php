@@ -16,6 +16,10 @@
  */
 declare(strict_types=1);
 
+if (!defined('DOL_DOCUMENT_ROOT')) {
+	exit;
+}
+
 /**
  * \file    class/mcp/crmsequencetool.class.php
  * \ingroup crm
@@ -96,6 +100,10 @@ class CrmSequenceTool extends CrmMcpTool
 	{
 		if ($toolName === 'list_crm_sequences' || $toolName === 'get_crm_sequence') {
 			return array(array('crm', 'read'));
+		}
+		if ($toolName === 'update_crm_opportunity_replied') {
+			// It moves the deal to another stage: a write on deals, as well as the outreach right.
+			return array(array('crm', 'sequence'), array('crm', 'write'));
 		}
 		return array(array('crm', 'sequence'));
 	}
@@ -198,7 +206,7 @@ class CrmSequenceTool extends CrmMcpTool
 			if (!in_array($action, array('email', 'call', 'task'), true)) {
 				return $this->fail('Step action must be email, call or task');
 			}
-			$stepId = $sequence->addStep($action, $this->argInt($args, 'delay_days'), $this->argString($args, 'subject'), $this->argString($args, 'body'), $this->argString($args, 'send_mode'));
+			$stepId = $sequence->addStep($action, $this->argInt($args, 'delay_days'), $this->argString($args, 'subject'), $this->argBody($args, 'body'), $this->argString($args, 'send_mode'));
 			if ($stepId <= 0) {
 				return $this->fail($sequence->error !== '' ? $sequence->error : 'Could not add the step');
 			}
@@ -214,7 +222,7 @@ class CrmSequenceTool extends CrmMcpTool
 				isset($args['action']) ? $this->argString($args, 'action') : (string) $current->action,
 				isset($args['delay_days']) ? $this->argInt($args, 'delay_days') : (int) $current->delay_days,
 				isset($args['subject']) ? $this->argString($args, 'subject') : (string) $current->subject,
-				isset($args['body']) ? $this->argString($args, 'body') : (string) $current->body,
+				isset($args['body']) ? $this->argBody($args, 'body') : (string) $current->body,
 				isset($args['send_mode']) ? $this->argString($args, 'send_mode') : (string) ($current->send_mode ?? '')
 			);
 			if ($result <= 0) {
@@ -271,7 +279,7 @@ class CrmSequenceTool extends CrmMcpTool
 			);
 		}
 		$enrolments = array();
-		foreach ($sequence->fetchEnrolments() as $enrol) {
+		foreach ($sequence->fetchEnrolments($this->user) as $enrol) {
 			$enrolments[] = array(
 				'id' => (int) $enrol->rowid,
 				'opportunity_id' => (int) $enrol->fk_opportunity,
@@ -289,7 +297,7 @@ class CrmSequenceTool extends CrmMcpTool
 			$visible[(int) $enrol['id']] = true;
 		}
 		$log = array();
-		foreach ($sequence->fetchLog() as $line) {
+		foreach ($sequence->fetchLog($this->user) as $line) {
 			if (!isset($visible[(int) $line->fk_enrol])) {
 				continue;
 			}
@@ -337,13 +345,6 @@ class CrmSequenceTool extends CrmMcpTool
 
 	private function enrolVisible(int $enrolId): bool
 	{
-		$sql = 'SELECT o.fk_user_resp FROM '.$this->db->prefix().'crm_sequence_enrol as e';
-		$sql .= ' INNER JOIN '.$this->db->prefix().'crm_opportunity as o ON o.rowid = e.fk_opportunity';
-		$sql .= ' WHERE e.rowid = '.((int) $enrolId);
-		$resql = $this->db->query($sql);
-		if (!$resql || !($obj = $this->db->fetch_object($resql))) {
-			return false;
-		}
-		return $this->denyOwner((int) $obj->fk_user_resp) === '';
+		return (new Sequence($this->db))->enrolmentVisible($this->user, $enrolId);
 	}
 }

@@ -16,6 +16,10 @@
  */
 declare(strict_types=1);
 
+if (!defined('DOL_DOCUMENT_ROOT')) {
+	exit;
+}
+
 /**
  * \file    class/mcp/crmactivitytool.class.php
  * \ingroup crm
@@ -152,7 +156,11 @@ class CrmActivityTool extends CrmMcpTool
 			if ($date <= 0) {
 				return $this->fail('A date is required');
 			}
-			$percentage = isset($args['percentage']) ? $this->argInt($args, 'percentage') : 0;
+			if (!in_array($this->argString($args, 'kind'), array('call', 'meeting', 'task', 'email'), true)) {
+				return $this->fail('kind must be call, meeting, task or email');
+			}
+			// A next step is 0, a completed one 100; nothing else is meaningful here.
+			$percentage = (isset($args['percentage']) && $this->argInt($args, 'percentage') >= 100) ? 100 : 0;
 			$eventId = $activity->create($this->user, (int) $deal->id, (int) $deal->fk_soc, (int) $deal->fk_socpeople, (int) $deal->fk_user_resp, $this->argString($args, 'kind'), $this->argString($args, 'label'), $date, $percentage);
 			if ($eventId <= 0) {
 				return $this->fail($activity->error !== '' ? $activity->error : 'Could not create the event');

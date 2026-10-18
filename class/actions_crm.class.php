@@ -16,6 +16,10 @@
  */
 declare(strict_types=1);
 
+if (!defined('DOL_DOCUMENT_ROOT')) {
+	exit;
+}
+
 /**
  * \file    class/actions_crm.class.php
  * \ingroup crm
@@ -134,6 +138,8 @@ class ActionsCrm extends CommonHookActions
 			'subject' => (string) ($parameters['subject'] ?? ''),
 			'body' => (string) ($parameters['messagetext'] ?? ''),
 			'date' => ($date === false) ? 0 : (int) $date,
+			'auto' => crmIsAutomaticMail($header),
+			'authresults' => crmHeaderValue($header, 'Authentication-Results'),
 		));
 		dol_syslog('CRM e-mail archive: '.$result['status'].' deal='.$result['deal'].' event='.$result['event'], LOG_INFO);
 		if ($result['status'] === 'error') {

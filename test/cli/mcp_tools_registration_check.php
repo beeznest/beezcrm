@@ -29,7 +29,7 @@ foreach ($handler->getToolsSchemaUnfiltered() as $definition) {
 $crmNames = array_values(array_filter($names, static fn($name) => strpos($name, '_crm_') !== false));
 
 crmCliCheck('the core tools are there', count($names) > count($crmNames));
-crmCliCheck('the CRM tools are registered ('.count($crmNames).')', count($crmNames) >= 50);
+crmCliCheck('the CRM tools are registered ('.count($crmNames).')', count($crmNames) >= 49);
 crmCliCheck('a tool of each class is listed', count(array_intersect($crmNames, array('list_crm_pipelines', 'list_crm_opportunities', 'list_crm_activities', 'list_crm_sequences', 'get_crm_dashboard'))) === 5);
 crmCliCheck('no tool name is registered twice', count($names) === count(array_unique($names)));
 
@@ -54,7 +54,7 @@ if (defined('McpTool::NO_WRITE')) {
 			}
 		}
 	}
-	crmCliCheck('a tool that writes starts with a write verb and a read tool does not'.($misnamed ? ' ('.implode(', ', $misnamed).')' : ''), count($misnamed) === 0 && $writes === 30);
+	crmCliCheck('a tool that writes starts with a write verb and a read tool does not'.($misnamed ? ' ('.implode(', ', $misnamed).')' : ''), count($misnamed) === 0 && $writes === 29);
 } else {
 	print "SKIP names against the write verbs: this core has no write confirmation API (run it on a 25 core too)\n";
 }

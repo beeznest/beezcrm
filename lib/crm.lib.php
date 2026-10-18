@@ -1,6 +1,10 @@
 <?php
 declare(strict_types=1);
 
+if (!defined('DOL_DOCUMENT_ROOT')) {
+	exit;
+}
+
 /**
  * CRM helpers that need Dolibarr. Pure rules live in crmlogic.lib.php.
  */
@@ -213,11 +217,11 @@ function crmSender(): string
 	global $mysoc;
 	switch (crmSenderSource()) {
 		case 'crm':
-			return getDolGlobalString('CRM_MAIL_FROM');
+			return crmSingleLine(getDolGlobalString('CRM_MAIL_FROM'));
 		case 'main':
-			return getDolGlobalString('MAIN_MAIL_EMAIL_FROM');
+			return crmSingleLine(getDolGlobalString('MAIN_MAIL_EMAIL_FROM'));
 		case 'company':
-			return (string) $mysoc->email;
+			return crmSingleLine((string) $mysoc->email);
 	}
 	return '';
 }
@@ -640,11 +644,15 @@ function crmSendMail(string $to, string $subject, string $body, int $dealId = 0,
 	if ($from === '' || !isValidEmail($from)) {
 		$from = crmSender();
 	}
+	// Nothing that goes into a header may carry a line break: it would add a header (a Reply-To, a Bcc).
+	$subject = crmSingleLine($subject, 255);
+	$to = crmSingleLine($to);
+	$from = crmSingleLine($from);
 	if ($from === '' || $to === '') {
 		return array('ok' => false, 'error' => 'Missing sender or recipient', 'msgid' => '', 'from' => $from);
 	}
 	// The archive mailbox (for a message about a deal) and, on request, a hidden copy for the sender.
-	$copies = crmCopyRecipients(getDolGlobalString('CRM_ARCHIVE_MAILBOX'), getDolGlobalString('CRM_ARCHIVE_COPY'), $copyToMe, $dealId > 0);
+	$copies = crmCopyRecipients(crmSingleLine(getDolGlobalString('CRM_ARCHIVE_MAILBOX')), getDolGlobalString('CRM_ARCHIVE_COPY'), $copyToMe, $dealId > 0);
 	$cc = $copies['cc'];
 	$bcc = $copies['bcc'];
 	$trackId = ($dealId > 0) ? crmTrackId($dealId) : '';
@@ -694,8 +702,10 @@ function crmEnsureConstants(DoliDB $db): void
 		'CRM_AI_EMAIL_ASSIST' => '0',
 		'CRM_AI_EMAIL_PROMPT' => '',
 		'CRM_AI_TIMEOUT' => '120',
+		'CRM_AI_MAX_PER_HOUR' => '30',
 		'CRM_ARCHIVE_MAILBOX' => '',
 		'CRM_ARCHIVE_COPY' => 'bcc',
+		'CRM_ARCHIVE_REQUIRE_AUTH' => '0',
 		// Read by the theme: without it the top menu icon is overridden by a generic glyph.
 		'MAIN_MODULE_CRM_ICON' => 'fa-handshake',
 	);
@@ -854,13 +864,50 @@ function crmNextSequenceRef(DoliDB $db): string
  */
 function crmErrorText(string $error): string
 {
-	global $langs;
+	global $langs, $user;
 	if ($error === '') {
 		return '';
 	}
 	crmLoadLangs();
 	$translated = $langs->trans($error);
-	return ($translated === '' ? $error : $translated);
+	if ($translated !== '' && $translated !== $error) {
+		return $translated;
+	}
+	// Not a language key: a message from the database, the mail server or the AI service. It can hold markup and details
+	// about the installation, so it goes to the log, and only an administrator sees it, escaped.
+	dol_syslog('CRM error: '.crmSingleLine($error, 500), LOG_WARNING);
+	return (is_object($user) && !empty($user->admin)) ? dol_escape_htmltag($error) : $langs->trans('CrmErrorGeneric');
+}
+
+/**
+ * The error of the database as a language key, after writing the detail to the log: the detail (table and column names,
+ * values) is for an administrator reading the log, not for the person who clicked.
+ */
+function crmDbError(DoliDB $db): string
+{
+	dol_syslog('CRM database error: '.crmSingleLine((string) $db->lasterror(), 500), LOG_ERR);
+	return 'CrmErrorDatabase';
+}
+
+/**
+ * Refuse a request that asks for an action without the token of the session. Dolibarr checks the token of a POST and, at
+ * its default level, of a GET whose parameter is called "action"; it does not see a button name such as act_send, and an
+ * installation may lower its level. A page calls this once it knows its action: the pure display actions are exempt, every
+ * other one must carry the token, in a form or in the link.
+ *
+ * @param string   $action         Action of the request
+ * @param string[] $displayActions Actions of this page that only show something (a form, a confirmation)
+ */
+function crmRequireToken(string $action, array $displayActions = array()): void
+{
+	if (in_array($action, array_merge(array('', 'view', 'create', 'edit'), $displayActions), true)) {
+		return;
+	}
+	$token = (string) GETPOST('token', 'alphanohtml');
+	if ($token === '' || !hash_equals((string) currentToken(), $token)) {
+		dol_syslog('CRM: action '.crmSingleLine($action, 40).' refused, token missing or invalid', LOG_WARNING);
+		accessforbidden('Bad token');
+	}
 }
 
 /**

@@ -76,7 +76,7 @@ crmCliCheck('it keeps the sender and the position of the step', $first && $first
 crmCliCheck('an HTML step keeps its HTML and the values are escaped in it', $second && $second->body_format === 'html' && strpos((string) $second->body, 'ZDEAL &amp; co') !== false && (int) $second->step_position === 2);
 crmCliCheck('the day of the sequence counts from the enrolment', $first && crmSequenceDay((int) $db->jdate($first->date_enrol), (int) $db->jdate($first->date_send)) === 3);
 crmCliCheck('the line names the sequence and the deal', $first && $first->seq_ref === 'ZSEQ' && $first->deal_ref === $deal->ref && (int) $first->fk_opportunity === (int) $deal->id);
-crmCliCheck('the journal of the sequence lists the same lines', count($sequence->fetchLog()) === 2);
+crmCliCheck('the journal of the sequence lists the same lines', count($sequence->fetchLog($user)) === 2);
 
 // A line written before the content was kept: rebuilt from the step and saved.
 $db->query('UPDATE '.$db->prefix()."crm_sequence_log SET body = '', body_format = '', content_source = '', step_position = NULL WHERE rowid = ".(int) $first->rowid);

@@ -1,6 +1,11 @@
 <?php
 declare(strict_types=1);
 
+if (!defined('DOL_DOCUMENT_ROOT')) {
+	exit;
+}
+require_once __DIR__.'/../lib/crm.lib.php';
+
 /**
  * \file    class/stage.class.php
  * \ingroup crm
@@ -60,7 +65,7 @@ class Stage
 		$sql = 'SELECT * FROM '.$this->db->prefix().'crm_stage WHERE rowid = '.((int) $id);
 		$resql = $this->db->query($sql);
 		if (!$resql) {
-			$this->error = $this->db->lasterror();
+			$this->error = crmDbError($this->db);
 			return -1;
 		}
 		$obj = $this->db->fetch_object($resql);
@@ -122,7 +127,7 @@ class Stage
 		$sql .= ", '".$this->db->escape($this->forecast_category)."', ".((int) $this->is_won).', '.((int) $this->is_lost).', '.((int) $this->active);
 		$sql .= ($replySupported ? ', '.($this->is_reply ? 1 : 0) : '').')';
 		if (!$this->db->query($sql)) {
-			$this->error = $this->db->lasterror();
+			$this->error = crmDbError($this->db);
 			return -1;
 		}
 		$this->id = (int) $this->db->last_insert_id($this->db->prefix().'crm_stage');
@@ -145,6 +150,17 @@ class Stage
 	 */
 	private function validate(): bool
 	{
+		$this->label = crmSingleLine(strip_tags((string) $this->label), 255);
+		$this->probability = max(0, min(100, (int) $this->probability));
+		$this->rotting_days = max(0, min(3650, (int) $this->rotting_days));
+		if (!preg_match('/^#[0-9a-fA-F]{6}$/', (string) $this->color)) {
+			$this->error = 'CrmErrorStageColorInvalid';
+			return false;
+		}
+		if (!in_array($this->forecast_category, array('pipeline', 'upside', 'commit', 'closed', 'lost'), true)) {
+			$this->error = 'CrmErrorStageForecastInvalid';
+			return false;
+		}
 		if (trim($this->label) === '') {
 			$this->error = 'CrmErrorLabelRequired';
 			return false;
@@ -183,7 +199,7 @@ class Stage
 		}
 		$sql .= ' WHERE rowid = '.((int) $this->id);
 		if (!$this->db->query($sql)) {
-			$this->error = $this->db->lasterror();
+			$this->error = crmDbError($this->db);
 			return -1;
 		}
 		$this->keepOneReplyStage();
@@ -216,7 +232,7 @@ class Stage
 			}
 		}
 		if (!$this->db->query('DELETE FROM '.$this->db->prefix().'crm_stage WHERE rowid = '.((int) $this->id))) {
-			$this->error = $this->db->lasterror();
+			$this->error = crmDbError($this->db);
 			return -1;
 		}
 		return 1;

@@ -1,6 +1,10 @@
 <?php
 declare(strict_types=1);
 
+if (!defined('DOL_DOCUMENT_ROOT')) {
+	exit;
+}
+
 /**
  * \file    class/crmactivity.class.php
  * \ingroup crm
@@ -121,7 +125,7 @@ class CrmActivity
 	{
 		$event = new ActionComm($this->db);
 		$event->type_code = self::typeCode($this->db, $kind);
-		$event->label = $label;
+		$event->label = crmSingleLine(strip_tags($label), 255);
 		if ($note !== '') {
 			$event->note_private = $note;
 		}
@@ -222,7 +226,7 @@ class CrmActivity
 			return null;
 		}
 		$dealId = (int) $event->fk_element;
-		$sql = 'SELECT fk_user_resp FROM '.$this->db->prefix().'crm_opportunity WHERE rowid = '.$dealId;
+		$sql = 'SELECT fk_user_resp FROM '.$this->db->prefix().'crm_opportunity WHERE rowid = '.$dealId.' AND entity = '.((int) $GLOBALS['conf']->entity);
 		$resql = $this->db->query($sql);
 		$deal = $resql ? $this->db->fetch_object($resql) : null;
 		if (!$deal || !crmCanReadOwner($user, (int) $deal->fk_user_resp) || ($opportunityId > 0 && $dealId !== $opportunityId)) {
@@ -239,9 +243,9 @@ class CrmActivity
 	 * @param int  $eventId Agenda event id
 	 * @return int 1 if OK, -1 on error
 	 */
-	public function complete(User $user, int $eventId): int
+	public function complete(User $user, int $eventId, int $opportunityId = 0): int
 	{
-		$event = $this->loadStep($user, $eventId);
+		$event = $this->loadStep($user, $eventId, $opportunityId);
 		if ($event === null) {
 			return -1;
 		}
@@ -279,7 +283,7 @@ class CrmActivity
 		$isEmail = ((string) $event->code === 'AC_EMAIL');
 		if (!$isEmail) {
 			// An empty title keeps the current one.
-			$label = trim($label);
+			$label = crmSingleLine(strip_tags($label), 255);
 			if ($label !== '') {
 				$event->label = $label;
 			}

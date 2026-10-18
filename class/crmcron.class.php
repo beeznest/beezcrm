@@ -16,6 +16,10 @@
  */
 declare(strict_types=1);
 
+if (!defined('DOL_DOCUMENT_ROOT')) {
+	exit;
+}
+
 /**
  * \file    class/crmcron.class.php
  * \ingroup crm
@@ -75,7 +79,7 @@ class CrmCron
 		$sql .= " WHERE o.entity = ".$entity." AND o.status = 'open' AND u.statut = 1";
 		$resql = $this->db->query($sql);
 		if (!$resql) {
-			$this->error = $this->db->lasterror();
+			$this->error = crmDbError($this->db);
 			$this->output = $this->error;
 			return 0;
 		}

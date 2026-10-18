@@ -40,6 +40,7 @@ require_once __DIR__.'/class/sequence.class.php';
 crmStartPage();
 
 $action = GETPOST('action', 'aZ09');
+crmRequireToken($action, array('askdelactivity', 'editactivity'));
 $id = GETPOSTINT('id');
 $form = new Form($db);
 $object = new Opportunity($db);
@@ -145,7 +146,7 @@ if ($action === 'addactivity' && $object->id > 0) {
 if ($action === 'complete' && $object->id > 0) {
 	crmRequireRight('activity');
 	$activity = new CrmActivity($db);
-	if ($activity->complete($user, GETPOSTINT('eventid')) <= 0) {
+	if ($activity->complete($user, GETPOSTINT('eventid'), (int) $object->id) <= 0) {
 		setEventMessages(crmErrorText($activity->error), null, 'errors');
 	}
 	header('Location: '.$back);
@@ -191,7 +192,7 @@ if ($action === 'enroloutreach' && $object->id > 0) {
 
 if ($action === 'linkpropal' && $object->id > 0) {
 	crmRequireRight('write');
-	if ($object->linkProposal(GETPOSTINT('propalid')) <= 0) {
+	if ($object->linkProposal($user, GETPOSTINT('propalid')) <= 0) {
 		setEventMessages(crmErrorText($object->error), null, 'errors');
 	}
 	header('Location: '.$back);
@@ -225,7 +226,7 @@ llxHeader('', $langs->trans('CrmOpportunity'), '', '', 0, 0, '', array('/crm/css
 if ($action === 'askdelactivity' && $object->id > 0 && $user->hasRight('crm', 'activity')) {
 	$askEvent = (new CrmActivity($db))->fetchPlanned(GETPOSTINT('eventid'), (int) $object->id);
 	if ($askEvent !== null) {
-		print $form->formconfirm($back.'&eventid='.(int) $askEvent->rowid, $langs->trans('Delete'), $langs->trans('CrmConfirmDeleteActivity', (string) $askEvent->label), 'confirm_delactivity', '', 0, 1);
+		print $form->formconfirm($back.'&eventid='.(int) $askEvent->rowid, $langs->trans('Delete'), $langs->trans('CrmConfirmDeleteActivity', dol_escape_htmltag((string) $askEvent->label)), 'confirm_delactivity', '', 0, 1);
 	}
 }
 
@@ -246,7 +247,7 @@ if ($action === 'create' && !GETPOSTISSET('datecloseyear') && (int) $object->dat
 
 if ($action === 'create' || $action === 'edit') {
 	$creating = ($action === 'create');
-	print load_fiche_titre($creating ? $langs->trans('CrmNewOpportunity') : $object->ref, '', 'fa-handshake');
+	print load_fiche_titre($creating ? $langs->trans('CrmNewOpportunity') : dol_escape_htmltag($object->ref), '', 'fa-handshake');
 	print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'">';
 	print '<input type="hidden" name="token" value="'.newToken().'">';
 	print '<input type="hidden" name="action" value="'.($creating ? 'add' : 'update').'">';
@@ -276,7 +277,7 @@ if ($creating && $user->hasRight('societe', 'creer')) {
 	print ' <a id="crm-new-prospect" class="butActionNew" data-url="'.dol_escape_htmltag($prospectUrl).'" href="'.dol_escape_htmltag($prospectUrl.'&backtopage='.urlencode($backToCreate)).'">';
 	print '<span class="fa fa-plus-circle valignmiddle paddingright"></span>'.$langs->trans('CrmNewProspect').'</a>';
 	// Keep what was already typed: it travels in the return URL and is restored on return.
-	print '<script>
+	print '<script nonce="'.dol_escape_htmltag(getNonce()).'">
 	jQuery(function () {
 		jQuery("#crm-new-prospect").on("click", function (event) {
 			var form = jQuery(this).closest("form");
@@ -331,7 +332,7 @@ if ($creating && $user->hasRight('societe', 'creer')) {
 	return;
 }
 
-print load_fiche_titre($object->ref.' — '.$object->label, '', 'fa-handshake');
+print load_fiche_titre(dol_escape_htmltag($object->ref.' — '.$object->label), '', 'fa-handshake');
 print '<div class="tabsAction">';
 if ($user->hasRight('crm', 'write')) {
 	print '<a class="butAction" href="'.$_SERVER['PHP_SELF'].'?id='.$id.'&action=edit&token='.newToken().'">'.$langs->trans('Modify').'</a>';
