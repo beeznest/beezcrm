@@ -1,0 +1,6 @@
+# Files kept out of the archive made by "git archive" (and of the GitHub "Source code" downloads).
+# The documentation in doc/ is shipped on purpose.
+.gitattributes export-ignore
+.gitignore     export-ignore
+AGENTS.md      export-ignore
+test/          export-ignore
