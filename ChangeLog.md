@@ -23,8 +23,6 @@ A review against the OWASP Top 10 led to these changes. Nothing in the data mode
 
 ### Automated outreach
 
-- The feature "Sequences" is now called **Automated outreach** (menu CRM → Automated outreach; in French "Approche automatisée"), and one plan is an **outreach** ("approche"). The name changes everywhere a person reads it: menu, page titles, the right "Manage automated outreach", the settings, the scheduled job, messages and the documentation, in all languages. Internal names (tables, settings such as `CRM_SEQUENCES_ON`, MCP tool names such as `create_crm_sequence`) are unchanged.
-
 - The **deal card** has a section "Automated outreach": the outreach the lead is enrolled in with its status (running, stopped with the reason, done), the step it waits for and when it falls due. A lead that follows none, on an open deal, shows a list of the outreach that can be used (active, with at least one step) and the button "Enrol from now": the enrolment starts at the moment it is saved, the first step is due after its delay counted from then. A lead follows one outreach at a time; it needs the right "Manage automated outreach" to enrol.
 
 ### Prospects who reply
