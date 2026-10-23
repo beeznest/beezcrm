@@ -126,7 +126,7 @@ Test data created on the dev instance (deals, outreach, agenda events) is real d
 
 ## Known gaps and traps
 
-- The files of the notes go to `<documents>/crm/opportunity/<deal id>/` (here `/var/www/dolibarr/documents/crm`), and the CLI checks create that folder as the user who runs them. A folder owned by that user and closed to the web server (`drwxrwx---`) makes every web upload fail with "Le fichier n'a pas pu être écrit" / `ErrorDirNotWritable`. After running `test/cli/notes_check.php`, check the owner and rights of `documents/crm` (the instance uses `chmod 777`, as its other folders there), or run the checks as the web server user.
+- The files of the notes go to `<documents>/crm/opportunity/<deal id>/` (here `/var/www/dolibarr/documents/crm`), and the CLI checks create that folder as the user who runs them. A folder owned by that user and closed to the web server (`drwxrwx---`) makes every web upload fail with "Le fichier n'a pas pu être écrit" / `ErrorDirNotWritable`. After running `test/cli/notes_check.php`, check the owner and rights of `documents/crm` (on this dev instance the agent user cannot `chown` to the web server user, so it is `chmod 777` here, as its other folders there; never do that elsewhere: the production procedure is in `INSTALL.md`, "Folder for the files of the notes"), or run the checks as the web server user.
 
 - `doc/STRUCTURE_ANALYSIS.md` is the design record. When behaviour changes, update it in the same change, together with `doc/ADMIN_GUIDE.md` (anything an administrator sets, installs or checks), `doc/USER_GUIDE.md` (anything a salesperson sees or does) and this file if setup facts move. `README.md` stays a short overview: do not grow it again.
 - No purge action (explicitly deferred in the design doc).

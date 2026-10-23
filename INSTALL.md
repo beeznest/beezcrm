@@ -72,12 +72,33 @@ In this order:
 
 Leave the dry-run settings on, and the e-mail steps as drafts, until you have checked the journal and the e-mail setup.
 
+### Folder for the files of the notes (from v1.2.0)
+
+The files attached to the notes of a deal are stored in the Dolibarr **documents directory** (the value of `$dolibarr_main_data_root` in `conf.php`), under `crm/opportunity/<deal id>/`. The module creates the `crm` folder itself on the first upload, as the user the web server runs PHP as, so it only works if that user may write in the documents directory. Those files are customer documents: grant exactly that, and nothing more.
+
+1. **Keep the documents directory outside the web root** and never serve it. Dolibarr requires it; check that `$dolibarr_main_data_root` is not under `htdocs` or under any directory the web server publishes. The files are only ever downloaded through `custom/crm/note_file.php`, which checks the user's right on the deal. Do not add an alias or a link to the folder, and do not rely on an `.htaccess` file to protect it.
+2. **Give the folder to the web server user, and to nobody else.** Find that user (`www-data` on Debian and Ubuntu, `apache` on Red Hat and Fedora, the `user =` of the PHP-FPM pool when PHP runs under FPM), then, as root:
+
+```bash
+install -d -o www-data -g www-data -m 0750 /path/to/documents/crm
+chown -R www-data:www-data /path/to/documents/crm
+find /path/to/documents/crm -type d -exec chmod 0750 {} +
+find /path/to/documents/crm -type f -exec chmod 0640 {} +
+```
+
+   Directories `0750` and files `0640`: the owner reads and writes, the group only reads, others have no access. Never use `777`, `666` or any right for "others", on the folder or on the documents directory above it: any local account, or any other site on the same server, could then read or replace customer documents. If a backup account must read the files, put it in the group of the folder (or use a group of its own with `0750`/`0640`) instead of opening the folder to everybody.
+3. **Do not create the folder as another user.** A folder made by root, by an administrator's shell or by a command-line script (including the checks of `test/cli/`) belongs to that user and is closed to the web server, so every upload fails with a message about the documents directory. Run such commands as the web server user (`sudo -u www-data php ...`), and never run the checks on a production database; if it happened, apply the commands above.
+4. **SELinux** (Red Hat family): keep it enforcing and give the folder the label the web server may write, for example `semanage fcontext -a -t httpd_sys_rw_content_t '/path/to/documents(/.*)?'` then `restorecon -R /path/to/documents`.
+5. **PHP**: `upload_tmp_dir` (the default is the system temporary folder) must exist and be writable by the web server user only (`0700`); keep `open_basedir`, if you use it, listing the documents directory. The size limit of one file is Dolibarr's `MAIN_UPLOAD_DOC` (2 MB by default), capped by `upload_max_filesize` and `post_max_size`.
+6. **Check**: `stat -c '%A %U:%G' /path/to/documents/crm` shows `drwxr-x--- www-data:www-data`; `sudo -u www-data test -w /path/to/documents/crm && echo writable` answers `writable`; then attach a small file to a note of a test deal.
+7. **Back it up** with the database, with the owners and rights kept (`rsync -a`, `tar`), and protect the backups as you protect the database: they hold customer documents.
+
 ## 6. Check the installation
 
 - The **CRM** menu is there and CRM → Home opens without error.
 - CRM → Setup → **About** shows the module version `1.2.0` and a database schema "4 / 4, up to date".
 - Home → Setup → Scheduled jobs lists two CRM jobs: "Owner reminders" and "CRM automated outreach".
-- Create a test deal (CRM → Opportunities → New opportunity), plan a next step, move it between stages, then delete it.
+- Create a test deal (CRM → Opportunities → New opportunity), plan a next step, move it between stages, add a note with a small attached file (see "Folder for the files of the notes" if it fails), then delete it.
 
 ## 7. Optional: let an AI assistant use the CRM (MCP)
 
