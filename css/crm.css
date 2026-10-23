@@ -251,22 +251,52 @@ button.crm-help-toggle-fixed {
 	overflow-wrap: anywhere;
 }
 
-/* From v1.2.0: internal notes of a deal. */
+/* From v1.2.0: internal notes of a deal. Each note is a card; the colours are translucent so they suit light and dark themes. */
 .crm-note {
-	border-left: 3px solid #ddd;
-	padding: 4px 10px;
-	margin-bottom: 10px;
+	background: rgba(128, 128, 128, 0.07);
+	border: 1px solid rgba(128, 128, 128, 0.3);
+	border-left: 4px solid var(--colortextlink, #4a6fa5);
+	border-radius: 4px;
+	padding: 8px 12px;
+	margin: 0 0 12px 0;
+}
+.crm-note:target {
+	box-shadow: 0 0 0 2px var(--colortextlink, #4a6fa5);
+}
+.crm-note-head {
+	border-bottom: 1px solid rgba(128, 128, 128, 0.25);
+	padding-bottom: 5px;
+	margin-bottom: 6px;
+}
+.crm-note-head strong {
+	margin-right: 6px;
 }
 .crm-note-text {
-	margin: 4px 0;
+	margin: 6px 0;
+	line-height: 1.45;
 }
 ul.crm-note-files {
-	margin: 4px 0;
-	padding-left: 0;
+	margin: 8px 0 2px 0;
+	padding: 6px 0 0 0;
 	list-style: none;
+	border-top: 1px dashed rgba(128, 128, 128, 0.35);
+}
+ul.crm-note-files li {
+	padding: 1px 0;
 }
 .crm-note-history {
-	margin: 6px 0;
+	margin: 8px 0 2px 0;
+	padding: 6px 10px;
+	background: rgba(128, 128, 128, 0.08);
+	border-radius: 3px;
+}
+.crm-note-history table.noborder td {
+	vertical-align: top;
+}
+#crm-notes-older {
+	margin-left: 14px;
+	padding-left: 10px;
+	border-left: 2px dotted rgba(128, 128, 128, 0.45);
 }
 .crm-files-dialog {
 	min-width: 40em;
