@@ -89,6 +89,17 @@ From v1.2.0 the CRM shows itself on the Prospect tab of the Dolibarr third party
 
 Both use `CrmAccountView` (reads only, no table): `fetchDeals()` and a timeline that is one `UNION ALL` of the stage history rows (`llx_crm_stage_history`) and the **done** agenda events of the deals (`elementtype = 'opportunity@crm'`, `percent >= 100`; planned events are not history), newest first, with `countTimeline()` for paging. Both apply `crmOwnerSql()` and the entity, like the rest of the module, whatever the agenda rights are. The full list is `account_history.php?socid=`, which needs the right to read third parties and refuses an external user. Decision: "history" is the union of stage moves and done events, not only the stage history table that the deal card calls History, because a salesperson looking at an account wants the exchanges too.
 
+## Internal notes
+
+From v1.2.0 (schema step 4) the free "description" of a deal is replaced by internal notes (`CrmNote`, tables `llx_crm_note`, `llx_crm_note_revision`, `llx_crm_note_file`). Decisions:
+
+- A note is plain text (markup stripped, 20 000 characters), with `fk_user` and `datec` of its author. It is **edited in place**; before each edit the previous text goes to `llx_crm_note_revision` with the user who wrote that version and the date it was written, so the history is the current text plus the revisions, newest first (`fetchVersions()`). An unchanged text is not an edit. A note is never deleted by itself: a mistake is corrected by editing; the notes go with their deal (`Opportunity::delete`).
+- Who may edit: with the right `write`, the author or a user with `readall`. Reading follows the deal (`crmCanReadOwner`), in the class, so the card, the download page and the MCP tools agree.
+- A file belongs to a note and to the deal (`fk_note`, `fk_opportunity`). It is stored under `<documents>/crm/opportunity/<deal id>/<file id>_<clean name>` (`dol_sanitizeFileName`, moved by core's `dol_move_uploaded_file`, which adds `.noexe` to a name that could run). The table, not the directory, is the list of files (size and date come from it). Limits: `MAIN_UPLOAD_DOC` kB (2 MB unset), 10 files per note. Uploads from the web form and from MCP (base64, written to a temporary file then moved) share `CrmNote::addFile()`.
+- **No public URL**: `note_file.php?id=` checks the deal's visibility, answers with `Content-Disposition: attachment`, or `inline` only for a PDF with `mode=view`, and `nosniff`. The documents directory is outside the web root.
+- The paperclip on the card opens a `<dialog>` with every file of the deal. The older notes are hidden behind a link (`crm-notes-toggle`), the history of an edited note behind another; both are plain jQuery already loaded by Dolibarr.
+- Before the step has run, `CrmNote::supported()` is false and the card, the tools and the AI prompt keep using `description` (files are live before the module is re-enabled). The column `description` is kept but no longer written once notes exist. The AI reply prompt sends the latest three notes (1000 characters in all).
+
 ## Pipeline rules
 
 Several pipelines (new business, renewal, partners), each with its own stages.
@@ -222,6 +233,9 @@ One file, `sql/llx_crm.sql`. Indexes are inside each `CREATE TABLE`. There is no
 | `llx_crm_loss_reason` | Loss reason dictionary |
 | `llx_crm_opportunity` | Deal. See below |
 | `llx_crm_stage_history` | From stage, to stage, user, date |
+| `llx_crm_note` | From v1.2.0. Internal notes of a deal: author, date, text, last editor and date |
+| `llx_crm_note_revision` | From v1.2.0. Earlier texts of an edited note, with their author and date |
+| `llx_crm_note_file` | From v1.2.0. Files attached to a note: name, stored name, size, mime type, author, date |
 | `llx_crm_opportunity_propal` | Deal ↔ proposal |
 | `llx_crm_qualification` | Checklist definition |
 | `llx_crm_opportunity_qualification` | Answers |
@@ -260,6 +274,8 @@ CRM tools:
 | `list_crm_pipelines`, `list_crm_stages`, `list_crm_sources`, `list_crm_loss_reasons`, `list_crm_qualifications` | no |
 | `create_or_update_crm_pipeline`, `create_or_update_crm_stage`, `delete_crm_stage`, `create_or_update_crm_source`, `create_or_update_crm_loss_reason`, `create_or_update_crm_qualification` | yes |
 | `list_crm_opportunities`, `get_crm_opportunity`, `list_crm_stage_history` | no |
+| `list_crm_opportunity_notes`, `list_crm_opportunity_files`, `list_crm_note_versions` | no |
+| `add_crm_opportunity_note`, `update_crm_note`, `add_crm_note_file`, `delete_crm_note_file` | yes |
 | `create_crm_opportunity`, `update_crm_opportunity`, `change_crm_opportunity_stage` | yes |
 | `change_crm_opportunity_to_won`, `change_crm_opportunity_to_lost`, `delete_crm_opportunity` | yes |
 | `add_crm_proposal_link`, `remove_crm_proposal_link`, `update_crm_qualification_answers` | yes |
@@ -307,6 +323,7 @@ No purge button in v1. A later action can drop only `llx_crm_*` and `CRM_*` cons
 │   └── boxes/crmwidget.php
 ├── class/
 │   ├── actions_crm.class.php          # addMcpTools, e-mail collector operation, search entry, third party Prospect tab (v1.2.0)
+│   ├── crmnote.class.php              # internal notes, versions and files of a deal (v1.2.0)
 │   ├── crmaccountview.class.php       # deals and CRM history of a third party (v1.2.0)
 │   ├── crmmailarchive.class.php       # e-mail to deal matching and recording
 │   ├── crmemaildraft.class.php        # review, send, register or discard a planned e-mail

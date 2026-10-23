@@ -57,8 +57,19 @@ Nothing shows if the CRM module is off or if you have no CRM right. You only see
    - **Expected close**: the date you realistically expect a decision. By default it is a month from today.
    - **Source**: where the lead came from (website, referral, event...). Reports later show which sources really bring customers, so do not skip it.
    - **Owner**: you. Only a manager can set someone else.
-   - **Description**: what you know so far, in a few lines: who asked, about what, how urgent.
+   - **Description** (before v1.2.0) / **First note** (from v1.2.0): what you know so far, in a few lines: who asked, about what, how urgent. From v1.2.0 it becomes the first of the deal's internal notes, see below.
 4. Save. The deal starts in the first stage, usually **New**.
+
+### Internal notes (from v1.2.0)
+
+From v1.2.0 the "Description" of a deal is replaced by **Internal notes**: a list of notes that only your team sees (nothing is sent to the customer). On the deal card, the section **Internal notes** shows:
+
+- a box to **add a note**, with an optional choice of files to attach to it (several at once; the size limit is the one of Dolibarr's documents, 2 MB unless your administrator changed it; at most 10 files per note);
+- the **latest note**, with its author, its date and time, its text and its files. A link **Show the n earlier notes** shows the others, newest first, and hides them again;
+- for each file, its name (click to download), its size and, for a PDF, a link **preview** that opens it in a new tab;
+- a **paperclip with a number** next to the section title: click it to open the list of **all the files of the deal** (name, size, date added, author, and the note it belongs to), with the same download and preview links.
+
+**Editing a note.** The pencil icon of a note turns it into a form: change the text, add files, remove a file (trash icon), and save. Only the **author** of a note, or a manager who reads every owner's deals, may edit it, and you need the right to create and update deals. The note then shows "edited on ... by ...". The **earlier text is not lost**: the link **history (n)** under the note lists every version, newest first, with who wrote it and when. Notes are never deleted from the card; a note written by mistake is corrected by editing it. Deleting the whole deal deletes its notes and files.
 
 ## Step 2. Plan the first contact
 

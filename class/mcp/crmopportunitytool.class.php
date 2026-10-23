@@ -58,7 +58,7 @@ class CrmOpportunityTool extends CrmMcpTool
 				'amount' => array('type' => 'number'),
 				'expected_close' => array('type' => 'string', 'description' => 'YYYY-MM-DD or unix time'),
 				'source_id' => array('type' => 'integer'),
-				'description' => array('type' => 'string'),
+				'description' => array('type' => 'string', 'description' => 'First internal note of the deal (from v1.2.0; a description before)'),
 			), array('label', 'pipeline_id')),
 			$this->definition('update_crm_opportunity', 'Update deal fields. The stage is changed by change_crm_opportunity_stage.', array(
 				'id' => array('type' => 'integer'),
@@ -69,7 +69,6 @@ class CrmOpportunityTool extends CrmMcpTool
 				'amount' => array('type' => 'number'),
 				'expected_close' => array('type' => 'string'),
 				'source_id' => array('type' => 'integer'),
-				'description' => array('type' => 'string'),
 			), array('id')),
 			$this->definition('change_crm_opportunity_stage', 'Move a deal to a stage of the same pipeline. An open move needs a future next step when that rule is on.', array(
 				'id' => array('type' => 'integer'),
@@ -312,7 +311,7 @@ class CrmOpportunityTool extends CrmMcpTool
 			'expected_close' => $deal->date_close_expected > 0 ? dol_print_date((int) $deal->date_close_expected, '%Y-%m-%d') : '',
 			'source_id' => (int) $deal->fk_source,
 			'owner_id' => (int) $deal->fk_user_resp,
-			'description' => (string) $deal->description,
+			'notes' => $this->noteRows((int) $deal->id, (string) $deal->description),
 			'loss_reason_id' => (int) $deal->fk_loss_reason,
 			'loss_note' => (string) $deal->loss_note,
 			'score' => $qual->score($items),
@@ -322,6 +321,24 @@ class CrmOpportunityTool extends CrmMcpTool
 			'history' => $this->historyRows($deal),
 			'activities' => $events,
 		);
+	}
+
+	/**
+	 * The notes of a deal for get_crm_opportunity (text only: files and versions have their own tools).
+	 *
+	 * @return array<int,array<string,mixed>>
+	 */
+	private function noteRows(int $dealId, string $legacyDescription): array
+	{
+		require_once __DIR__.'/../crmnote.class.php';
+		if (!CrmNote::supported($this->db)) {
+			return trim($legacyDescription) !== '' ? array(array('note' => $legacyDescription)) : array();
+		}
+		$rows = array();
+		foreach ((new CrmNote($this->db))->fetchForOpportunity($this->user, $dealId) as $note) {
+			$rows[] = array('id' => (int) $note->rowid, 'author_id' => (int) $note->fk_user, 'date' => (string) $note->datec, 'note' => (string) $note->note, 'files' => count($note->files));
+		}
+		return $rows;
 	}
 
 	/**
@@ -361,10 +378,17 @@ class CrmOpportunityTool extends CrmMcpTool
 		$deal->amount = isset($args['amount']) ? (float) $args['amount'] : 0.0;
 		$deal->date_close_expected = $this->argDate($args, 'expected_close');
 		$deal->fk_source = $this->argInt($args, 'source_id');
-		$deal->description = $this->argText($args, 'description');
+		require_once __DIR__.'/../crmnote.class.php';
+		$notesOn = CrmNote::supported($this->db);
+		if (!$notesOn) {
+			$deal->description = $this->argText($args, 'description');
+		}
 		$id = $deal->create($this->user);
 		if ($id <= 0) {
 			return $this->fail($deal->error !== '' ? $deal->error : 'Create failed');
+		}
+		if ($notesOn && $this->argText($args, 'description') !== '') {
+			(new CrmNote($this->db))->add($this->user, $id, $this->argText($args, 'description'));
 		}
 		return array(array('id' => $id, 'ref' => (string) $deal->ref));
 	}
@@ -403,9 +427,6 @@ class CrmOpportunityTool extends CrmMcpTool
 		}
 		if (isset($args['source_id'])) {
 			$deal->fk_source = $this->argInt($args, 'source_id');
-		}
-		if (isset($args['description'])) {
-			$deal->description = $this->argText($args, 'description');
 		}
 		if ($deal->update($this->user) <= 0) {
 			return $this->fail($deal->error !== '' ? $deal->error : 'Update failed');

@@ -388,7 +388,7 @@ function crmLogViewLink(int $logId): string
  */
 function crmSchemaCurrent(): int
 {
-	return 3;
+	return 4;
 }
 
 /**
@@ -405,6 +405,7 @@ function crmSchemaSteps(): array
 		1 => array('label' => 'Column send_mode of the sequence steps', 'run' => 'crmSchemaStep1'),
 		2 => array('label' => 'Content of the e-mails of the sequence journal', 'run' => 'crmSchemaStep2'),
 		3 => array('label' => 'Stage "Replied to outreach" and the column is_reply of the stages', 'run' => 'crmSchemaStep3'),
+		4 => array('label' => 'Internal notes: the description of a deal becomes its first note', 'run' => 'crmSchemaStep4'),
 	);
 }
 
@@ -476,6 +477,32 @@ function crmSchemaStep3(DoliDB $db): bool
 	}
 	while ($pipeline = $db->fetch_object($pipelines)) {
 		crmEnsureReplyStage($db, (int) $pipeline->rowid, (int) $pipeline->entity);
+	}
+	return true;
+}
+
+/**
+ * Schema version 4 (from v1.2.0): internal notes. The tables llx_crm_note, llx_crm_note_revision and llx_crm_note_file come from
+ * sql/llx_crm.sql, which Dolibarr runs before this step; the step checks they exist, then turns the description of every deal
+ * that has one and no note yet into its first note, written by the creator of the deal (or its owner) on the creation date.
+ * The column llx_crm_opportunity.description is kept (a column is never dropped) but is no longer read or written.
+ * Safe to run twice: a deal that already has a note is left alone.
+ */
+function crmSchemaStep4(DoliDB $db): bool
+{
+	$prefix = $db->prefix();
+	$resql = $db->DDLDescTable($prefix.'crm_note', 'note');
+	if (!($resql && $db->fetch_object($resql))) {
+		dol_syslog('CRM: the table '.$prefix.'crm_note does not exist, enable the module again', LOG_ERR);
+		return false;
+	}
+	$sql = 'INSERT INTO '.$prefix.'crm_note (entity, fk_opportunity, fk_user, datec, note)';
+	$sql .= ' SELECT o.entity, o.rowid, CASE WHEN o.fk_user_creat > 0 THEN o.fk_user_creat ELSE o.fk_user_resp END, o.datec, o.description';
+	$sql .= ' FROM '.$prefix.'crm_opportunity as o';
+	$sql .= " WHERE o.description IS NOT NULL AND o.description <> '' AND NOT EXISTS (SELECT 1 FROM ".$prefix.'crm_note as n WHERE n.fk_opportunity = o.rowid)';
+	if (!$db->query($sql)) {
+		dol_syslog('CRM: could not move the descriptions to notes: '.$db->lasterror(), LOG_ERR);
+		return false;
 	}
 	return true;
 }

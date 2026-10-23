@@ -25,6 +25,8 @@ New files are active at once, but the database changes only when the module is *
 
 You can skip versions: going from 1.0.0 to a much later one runs every missing step in order. Going from 1.0.0 to 1.1.0 runs schema steps 2 and 3: the content of the outreach journal, then the reply stage (see "1.1.0" in [ChangeLog.md](ChangeLog.md)); the new stage is added to every pipeline that has an open stage and no reply stage, so look at your pipelines afterwards if you want it elsewhere or under another name.
 
+Going to **1.2.0** runs schema step 4 (internal notes): Dolibarr creates the tables `llx_crm_note`, `llx_crm_note_revision` and `llx_crm_note_file` when the module is enabled again, then the step turns the description of every deal that has one into its first note (written by the creator of the deal on its creation date). The column `description` stays in the table, unused. The files of the notes are stored in the documents directory of Dolibarr, under `crm/opportunity/<deal id>/`: include that directory in your backups.
+
 ## What an update does and does not touch
 
 - It **creates** what is missing: new columns, new settings with their defaults, new rights.

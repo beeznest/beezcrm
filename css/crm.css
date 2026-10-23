@@ -250,3 +250,25 @@ button.crm-help-toggle-fixed {
 	max-width: 60em;
 	overflow-wrap: anywhere;
 }
+
+/* From v1.2.0: internal notes of a deal. */
+.crm-note {
+	border-left: 3px solid #ddd;
+	padding: 4px 10px;
+	margin-bottom: 10px;
+}
+.crm-note-text {
+	margin: 4px 0;
+}
+ul.crm-note-files {
+	margin: 4px 0;
+	padding-left: 0;
+	list-style: none;
+}
+.crm-note-history {
+	margin: 6px 0;
+}
+.crm-files-dialog {
+	min-width: 40em;
+	max-width: 90vw;
+}

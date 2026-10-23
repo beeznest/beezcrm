@@ -324,6 +324,17 @@ The e-mail editor (Write / send, on a planned e-mail) can send **plain text** or
 - The e-mail collector stores a received HTML message as plain text.
 - If the WYSIWYG module is off, the HTML tab is a box showing the HTML source.
 
+## Internal notes and files
+
+**From v1.2.0.** The deal card has internal notes instead of a description (see the user guide). What an administrator needs to know:
+
+- Three tables hold them: `llx_crm_note` (text, author, date, last editor and date), `llx_crm_note_revision` (every earlier text of an edited note, with its author and date) and `llx_crm_note_file` (metadata of each attached file). The schema step 4 copies each existing description into a first note. The old column stays, unused.
+- **Files are stored on disk**, in the documents directory of Dolibarr: `<documents>/crm/opportunity/<deal id>/<file id>_<name>`. Back this directory up with the database. Disabling the module keeps them; deleting a deal deletes its files. A file that could run on the server (`.php`...) is stored with the extension `.noexe`.
+- **Size limit**: Dolibarr's own setting for documents, `MAIN_UPLOAD_DOC` (in kB, 2048 when unset), also limited by PHP (`upload_max_filesize`, `post_max_size`). At most 10 files per note.
+- **Downloads** go through `note_file.php`, never through a public link: the user needs the CRM read right and must be allowed to see the deal (own deals, or all with "Read every owner"). A PDF opens in the browser from the preview link; every other file is downloaded.
+- Rights: **Create and update deals** to add a note and files and to edit; editing is limited to the author and to users with **Read every owner**. Reading needs **Read own deals**. There is no right to delete a single note.
+- **MCP**: `list_crm_opportunity_notes`, `list_crm_opportunity_files`, `list_crm_note_versions` (read), `add_crm_opportunity_note`, `update_crm_note`, `add_crm_note_file`, `delete_crm_note_file` (write). Files are sent as base64 (`content_base64`) with a `filename`; reading a file's content is not offered, only its metadata. `get_crm_opportunity` returns `notes` instead of `description`, and `create_crm_opportunity` turns its `description` into the first note. `update_crm_opportunity` no longer takes a `description`.
+
 ## AI reply suggestions
 
 In the e-mail editor of a planned e-mail (Write / send), an **AI assistant** block lets a salesperson ask the AI service of Dolibarr to read the exchange so far and propose the next e-mail. The module has no AI client of its own: it uses the provider, key, model and privacy settings of Dolibarr's **AI module**.
@@ -345,7 +356,7 @@ In the e-mail editor of a planned e-mail (Write / send), an **AI assistant** blo
 **What is sent to the AI service** (and nothing else)
 
 - The prompt as written or edited by the salesperson.
-- A summary of the deal: reference, title, account, contact name, stage and probability, amount, expected close date, owner's name, and the notes of the deal (up to 1000 characters).
+- A summary of the deal: reference, title, account, contact name, stage and probability, amount, expected close date, owner's name, and the latest internal notes of the deal, up to three (from v1.2.0; the description before), cut at 1000 characters in all.
 - The e-mails already recorded on the deal: the latest 10, oldest first, each marked "WE SENT" or "THE CUSTOMER WROTE" with date and subject, quoted lines (starting with `>`) removed and each cut to 1500 characters, 10 000 characters in total (the oldest are dropped first).
 - The current text and subject of the draft, and a rule asking for the body of the e-mail only, in plain text.
 
@@ -392,9 +403,9 @@ The 49 tools by the CRM right they need (a user without it does not see the tool
 
 | Right | Tools |
 | --- | --- |
-| Read own deals (`read`) | `list_crm_opportunities`, `get_crm_opportunity`, `list_crm_activities`, `list_crm_sequences`, `get_crm_sequence`, `list_crm_pipelines`, `list_crm_stages`, `list_crm_sources`, `list_crm_loss_reasons`, `list_crm_qualifications`, `list_crm_stage_history` |
+| Read own deals (`read`) | `list_crm_opportunities`, `get_crm_opportunity`, `list_crm_opportunity_notes`, `list_crm_opportunity_files`, `list_crm_note_versions`, `list_crm_activities`, `list_crm_sequences`, `get_crm_sequence`, `list_crm_pipelines`, `list_crm_stages`, `list_crm_sources`, `list_crm_loss_reasons`, `list_crm_qualifications`, `list_crm_stage_history` |
 | Read CRM reports (`report`) | `get_crm_dashboard`, `get_crm_forecast`, `get_crm_conversion`, `get_crm_win_rate`, `get_crm_cycle_time`, `get_crm_loss_reasons`, `get_crm_by_owner`, `get_crm_by_source` |
-| Create and update deals (`write`) | `create_crm_opportunity`, `update_crm_opportunity`, `change_crm_opportunity_stage`, `change_crm_opportunity_to_won`, `change_crm_opportunity_to_lost`, `add_crm_proposal_link`, `remove_crm_proposal_link`, `update_crm_qualification_answers` |
+| Create and update deals (`write`) | `add_crm_opportunity_note`, `update_crm_note`, `add_crm_note_file`, `delete_crm_note_file`, `create_crm_opportunity`, `update_crm_opportunity`, `change_crm_opportunity_stage`, `change_crm_opportunity_to_won`, `change_crm_opportunity_to_lost`, `add_crm_proposal_link`, `remove_crm_proposal_link`, `update_crm_qualification_answers` |
 | Delete deals (`delete`) | `delete_crm_opportunity` |
 | Create and complete next steps (`activity`) | `create_crm_activity`, `change_crm_activity_to_done`, `update_crm_activity`, `delete_crm_activity` |
 | Manage automated outreach (`sequence`) | `create_crm_sequence`, `update_crm_sequence`, `add_crm_sequence_step`, `update_crm_sequence_step`, `delete_crm_sequence_step`, `add_crm_sequence_enrolment`, `change_crm_sequence_enrolment_to_stopped`, `update_crm_opportunity_replied`, `send_crm_due_sequence_steps` |

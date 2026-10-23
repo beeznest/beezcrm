@@ -189,3 +189,41 @@ CREATE TABLE llx_crm_reminder_log (
 	error_msg varchar(255) DEFAULT NULL,
 	UNIQUE KEY uk_crm_reminder_day (entity, fk_user, date_day)
 ) ENGINE=innodb;
+
+-- From v1.2.0. Internal notes of a deal. A note is edited in place; each edit keeps the previous text in llx_crm_note_revision.
+CREATE TABLE llx_crm_note (
+	rowid integer AUTO_INCREMENT PRIMARY KEY,
+	entity integer DEFAULT 1 NOT NULL,
+	fk_opportunity integer NOT NULL,
+	fk_user integer NOT NULL,
+	datec datetime NOT NULL,
+	fk_user_modif integer DEFAULT NULL,
+	date_modif datetime DEFAULT NULL,
+	note text NOT NULL,
+	KEY idx_crm_note_opportunity (fk_opportunity)
+) ENGINE=innodb;
+
+CREATE TABLE llx_crm_note_revision (
+	rowid integer AUTO_INCREMENT PRIMARY KEY,
+	entity integer DEFAULT 1 NOT NULL,
+	fk_note integer NOT NULL,
+	fk_user integer NOT NULL,
+	datec datetime NOT NULL,
+	note text NOT NULL,
+	KEY idx_crm_note_revision_note (fk_note)
+) ENGINE=innodb;
+
+CREATE TABLE llx_crm_note_file (
+	rowid integer AUTO_INCREMENT PRIMARY KEY,
+	entity integer DEFAULT 1 NOT NULL,
+	fk_opportunity integer NOT NULL,
+	fk_note integer NOT NULL,
+	fk_user integer NOT NULL,
+	datec datetime NOT NULL,
+	filename varchar(255) NOT NULL,
+	stored varchar(255) NOT NULL,
+	filesize integer DEFAULT 0 NOT NULL,
+	mimetype varchar(100) DEFAULT NULL,
+	KEY idx_crm_note_file_note (fk_note),
+	KEY idx_crm_note_file_opportunity (fk_opportunity)
+) ENGINE=innodb;

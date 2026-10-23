@@ -145,8 +145,11 @@ class CrmAiReply
 		$text .= 'Amount: '.price((float) $deal->amount)."\n";
 		$text .= 'Expected close: '.$expected."\n";
 		$text .= 'Salesperson, author of our e-mails: '.($owner !== '' ? $owner : '-')."\n";
-		if (trim((string) $deal->description) !== '') {
-			$text .= 'Notes: '.crmCompactMessage((string) $deal->description, 1000)."\n";
+		require_once __DIR__.'/crmnote.class.php';
+		$noteTexts = CrmNote::supported($this->db) ? (new CrmNote($this->db))->latestTexts((int) $dealId, 3) : array((string) $deal->description);
+		$noteTexts = array_filter(array_map('trim', $noteTexts), 'strlen');
+		if (count($noteTexts) > 0) {
+			$text .= 'Notes: '.crmCompactMessage(implode("\n", $noteTexts), 1000)."\n";
 		}
 		$text .= "\n=== E-mails exchanged so far, oldest first ===\n".$thread."\n";
 		if (trim(crmLooksLikeHtml($body) ? crmHtmlToText($body) : $body) !== '') {

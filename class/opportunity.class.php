@@ -395,6 +395,8 @@ class Opportunity extends CommonObject
 		$ok = $ok && $this->db->query('DELETE FROM '.$prefix.'crm_stage_history WHERE fk_opportunity = '.$id);
 		$ok = $ok && $this->db->query('DELETE FROM '.$prefix.'crm_sequence_log WHERE fk_enrol IN (SELECT rowid FROM '.$prefix.'crm_sequence_enrol WHERE fk_opportunity = '.$id.')');
 		$ok = $ok && $this->db->query('DELETE FROM '.$prefix.'crm_sequence_enrol WHERE fk_opportunity = '.$id);
+		require_once __DIR__.'/crmnote.class.php';
+		$ok = $ok && (new CrmNote($this->db))->deleteForOpportunity($id);
 		$ok = $ok && $this->db->query('DELETE FROM '.$prefix.'crm_opportunity WHERE rowid = '.$id);
 		if (!$ok) {
 			$this->error = crmDbError($this->db);

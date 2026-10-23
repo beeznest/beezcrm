@@ -37,10 +37,12 @@ require_once __DIR__.'/class/stage.class.php';
 require_once __DIR__.'/class/qualification.class.php';
 require_once __DIR__.'/class/crmactivity.class.php';
 require_once __DIR__.'/class/sequence.class.php';
+require_once __DIR__.'/class/crmnote.class.php';
 crmStartPage();
+$notesOn = CrmNote::supported($db); // From v1.2.0: internal notes replace the description once the tables exist
 
 $action = GETPOST('action', 'aZ09');
-crmRequireToken($action, array('askdelactivity', 'editactivity'));
+crmRequireToken($action, array('askdelactivity', 'editactivity', 'editnote'));
 $id = GETPOSTINT('id');
 $form = new Form($db);
 $object = new Opportunity($db);
@@ -54,7 +56,7 @@ if ($id > 0 && $object->id <= 0 && $action !== 'create' && $action !== 'add') {
 /**
  * Copy the posted fields onto the deal. The stage is not one of them.
  */
-$fill = function (Opportunity $deal) use ($user): void {
+$fill = function (Opportunity $deal) use ($user, $notesOn): void {
 	$deal->label = GETPOST('label', 'alphanohtml');
 	$deal->fk_soc = GETPOSTINT('socid');
 	$deal->fk_socpeople = GETPOSTINT('contactid');
@@ -68,7 +70,9 @@ $fill = function (Opportunity $deal) use ($user): void {
 		$owner = (int) $user->id;
 	}
 	$deal->fk_user_resp = $owner;
-	$deal->description = GETPOST('description', 'restricthtml');
+	if (!$notesOn) {
+		$deal->description = GETPOST('description', 'restricthtml');
+	}
 };
 
 $back = dol_buildpath('/crm/opportunity_card.php', 1).'?id='.$id;
@@ -81,6 +85,9 @@ if ($action === 'add') {
 		setEventMessages(crmErrorText($object->error), null, 'errors');
 		$action = 'create';
 	} else {
+		if ($notesOn && trim(GETPOST('firstnote', 'nohtml')) !== '') {
+			(new CrmNote($db))->add($user, (int) $newId, GETPOST('firstnote', 'nohtml'));
+		}
 		setEventMessages($langs->trans('RecordSaved'), null);
 		header('Location: '.dol_buildpath('/crm/opportunity_card.php', 1).'?id='.$newId);
 		exit;
@@ -98,6 +105,78 @@ if ($action === 'update' && $object->id > 0) {
 		header('Location: '.$back);
 		exit;
 	}
+}
+
+/**
+ * Attach the files posted in notefiles[] to a note. Returns the language key of the first error, '' when all went well.
+ */
+$attachPosted = function (int $noteId) use ($db, $user): string {
+	$notes = new CrmNote($db);
+	if (empty($_FILES['notefiles']['name']) || !is_array($_FILES['notefiles']['name'])) {
+		return '';
+	}
+	$error = '';
+	foreach ($_FILES['notefiles']['name'] as $i => $name) {
+		$code = (int) ($_FILES['notefiles']['error'][$i] ?? 0);
+		if ((string) $name === '' && $code === UPLOAD_ERR_NO_FILE) {
+			continue;
+		}
+		if ($notes->addFile($user, $noteId, (string) $name, (string) ($_FILES['notefiles']['tmp_name'][$i] ?? ''), true, $code) <= 0 && $error === '') {
+			$error = $notes->error;
+		}
+	}
+	return $error;
+};
+
+if ($action === 'addnote' && $object->id > 0 && $notesOn) {
+	crmRequireRight('write');
+	$notes = new CrmNote($db);
+	$noteId = $notes->add($user, (int) $object->id, GETPOST('note', 'nohtml'));
+	if ($noteId <= 0) {
+		setEventMessages(crmErrorText($notes->error), null, 'errors');
+	} else {
+		$fileError = $attachPosted($noteId);
+		setEventMessages($fileError === '' ? $langs->trans('RecordSaved') : crmErrorText($fileError), null, $fileError === '' ? 'mesgs' : 'errors');
+	}
+	header('Location: '.$back.'#crm-notes');
+	exit;
+}
+
+if ($action === 'savenote' && $object->id > 0 && $notesOn) {
+	crmRequireRight('write');
+	$notes = new CrmNote($db);
+	$noteId = GETPOSTINT('noteid');
+	$existing = $notes->fetch($user, $noteId);
+	if ($existing === null || (int) $existing->fk_opportunity !== (int) $object->id) {
+		accessforbidden();
+	}
+	$result = $notes->update($user, $noteId, GETPOST('note', 'nohtml'));
+	$fileError = ($result >= 0) ? $attachPosted($noteId) : '';
+	if ($result < 0) {
+		setEventMessages(crmErrorText($notes->error), null, 'errors');
+	} elseif ($fileError !== '') {
+		setEventMessages(crmErrorText($fileError), null, 'errors');
+	} else {
+		setEventMessages($langs->trans('RecordSaved'), null);
+	}
+	header('Location: '.$back.'#crm-notes');
+	exit;
+}
+
+if ($action === 'delnotefile' && $object->id > 0 && $notesOn) {
+	crmRequireRight('write');
+	$notes = new CrmNote($db);
+	$file = $notes->fetchFile($user, GETPOSTINT('fileid'));
+	if ($file === null || (int) $file->fk_opportunity !== (int) $object->id) {
+		accessforbidden();
+	}
+	if ($notes->deleteFile($user, (int) $file->rowid) <= 0) {
+		setEventMessages(crmErrorText($notes->error), null, 'errors');
+	} else {
+		setEventMessages($langs->trans('RecordSaved'), null);
+	}
+	header('Location: '.$back.'#crm-notes');
+	exit;
 }
 
 if ($action === 'move' && $object->id > 0) {
@@ -282,7 +361,7 @@ if ($creating && $user->hasRight('societe', 'creer')) {
 		jQuery("#crm-new-prospect").on("click", function (event) {
 			var form = jQuery(this).closest("form");
 			var back = ' . json_encode($backToCreate) . ';
-			jQuery.each(["label", "pipelineid", "amount", "sourceid", "userid", "description"], function (i, name) {
+			jQuery.each(["label", "pipelineid", "amount", "sourceid", "userid", "description", "firstnote"], function (i, name) {
 				var field = form.find("[name=" + name + "]");
 				if (field.length) {
 					back += "&" + name + "=" + encodeURIComponent(field.val());
@@ -322,7 +401,11 @@ if ($creating && $user->hasRight('societe', 'creer')) {
 		print '<input type="hidden" name="userid" value="'.((int) $user->id).'">';
 	}
 	print '</td></tr>';
-	print '<tr><td>'.$langs->trans('CrmDescription').'</td><td><textarea name="description" class="quatrevingtpercent" rows="4">'.dol_escape_htmltag((string) $object->description, 0, 1).'</textarea></td></tr>';
+	if (!$notesOn) {
+		print '<tr><td>'.$langs->trans('CrmDescription').'</td><td><textarea name="description" class="quatrevingtpercent" rows="4">'.dol_escape_htmltag((string) $object->description, 0, 1).'</textarea></td></tr>';
+	} elseif ($creating) {
+		print '<tr><td>'.$langs->trans('CrmFirstNote').'</td><td><textarea name="firstnote" class="quatrevingtpercent" rows="4">'.dol_escape_htmltag(GETPOST('firstnote', 'nohtml'), 0, 1).'</textarea></td></tr>';
+	}
 	print '</table>';
 	print '<div class="center"><input type="submit" class="button" value="'.$langs->trans('Save').'"></div>';
 	print '</form>';
@@ -439,10 +522,150 @@ print '</table>';
 print '</div>';
 print '</div>';
 print '<div class="clearboth"></div>';
-if (trim((string) $object->description) !== '') {
-	print '<table class="border centpercent tableforfield">';
-	print '<tr><td class="titlefield">'.$langs->trans('CrmDescription').'</td><td>'.dol_nl2br(dol_escape_htmltag((string) $object->description, 0, 1)).'</td></tr>';
-	print '</table>';
+if (!$notesOn) {
+	if (trim((string) $object->description) !== '') {
+		print '<table class="border centpercent tableforfield">';
+		print '<tr><td class="titlefield">'.$langs->trans('CrmDescription').'</td><td>'.dol_nl2br(dol_escape_htmltag((string) $object->description, 0, 1)).'</td></tr>';
+		print '</table>';
+	}
+} else {
+	// From v1.2.0: internal notes. The last one is shown, the others behind a link. Each keeps its author, its date, its files
+	// and the versions it had before an edit.
+	$noteModel = new CrmNote($db);
+	$noteRows = $noteModel->fetchForOpportunity($user, (int) $object->id);
+	$noteFiles = $noteModel->fetchFilesForOpportunity($user, (int) $object->id);
+	$editNoteId = ($action === 'editnote') ? GETPOSTINT('noteid') : 0;
+	$fileUrl = dol_buildpath('/crm/note_file.php', 1);
+	$whoName = function (int $uid, $row = null) use ($db): string {
+		if ($row !== null && (trim((string) $row->firstname.(string) $row->lastname) !== '' || (string) $row->login !== '')) {
+			return trim((string) $row->firstname.' '.(string) $row->lastname) !== '' ? trim((string) $row->firstname.' '.(string) $row->lastname) : (string) $row->login;
+		}
+		return $uid > 0 ? '#'.$uid : '';
+	};
+	$filesLink = '';
+	if (count($noteFiles) > 0) {
+		$filesLink = ' <a href="#" id="crm-files-open" class="crm-files-link" title="'.dol_escape_htmltag($langs->trans('CrmNoteAllFiles')).'">'.img_picto('', 'fa-paperclip', 'class="pictofixedwidth"').count($noteFiles).'</a>';
+	}
+	print '<a id="crm-notes"></a><h2>'.$langs->trans('CrmInternalNotes').$filesLink.'</h2>';
+	if ($user->hasRight('crm', 'write')) {
+		print '<form method="POST" enctype="multipart/form-data" action="'.$_SERVER['PHP_SELF'].'">';
+		print '<input type="hidden" name="token" value="'.newToken().'">';
+		print '<input type="hidden" name="action" value="addnote">';
+		print '<input type="hidden" name="id" value="'.((int) $object->id).'">';
+		print '<textarea name="note" class="quatrevingtpercent" rows="3" placeholder="'.dol_escape_htmltag($langs->trans('CrmNotePlaceholder')).'" required></textarea><br>';
+		print '<input type="file" name="notefiles[]" multiple> <span class="opacitymedium">'.dol_escape_htmltag($langs->trans('CrmNoteFilesMax', dol_print_size(CrmNote::maxFileBytes(), 1, 1))).'</span> ';
+		print '<input type="submit" class="button" value="'.dol_escape_htmltag($langs->trans('CrmAddNote')).'">';
+		print '</form><br>';
+	}
+	$renderNote = function (object $note) use ($db, $user, $noteModel, $whoName, $fileUrl, $editNoteId, $id, $langs): void {
+		$noteId = (int) $note->rowid;
+		print '<div class="crm-note" id="crm-note-'.$noteId.'">';
+		print '<div class="crm-note-head"><strong>'.dol_escape_htmltag($whoName((int) $note->fk_user, $note)).'</strong> <span class="opacitymedium">'.dol_print_date($db->jdate($note->datec), 'dayhour').'</span>';
+		if ($note->date_modif !== null) {
+			$editor = new User($db);
+			$editorName = ((int) $note->fk_user_modif > 0 && $editor->fetch((int) $note->fk_user_modif) > 0) ? trim((string) $editor->firstname.' '.(string) $editor->lastname) : '';
+			print ' <span class="opacitymedium">('.dol_escape_htmltag($langs->transnoentities('CrmNoteEdited', dol_print_date($db->jdate($note->date_modif), 'dayhour'), $editorName !== '' ? $editorName : (string) $editor->login)).')</span>';
+		}
+		if ((int) $note->revisions > 0) {
+			print ' <a href="#" class="crm-note-history-toggle" data-target="crm-note-history-'.$noteId.'">'.dol_escape_htmltag($langs->transnoentities('CrmNoteHistory', (int) $note->revisions)).'</a>';
+		}
+		if ($noteModel->canEdit($user, $note) && $editNoteId !== $noteId) {
+			print ' '.crmIconLink($_SERVER['PHP_SELF'].'?id='.$id.'&action=editnote&noteid='.$noteId.'&token='.newToken().'#crm-note-'.$noteId, 'edit', $langs->trans('Modify'));
+		}
+		print '</div>';
+		if ($editNoteId === $noteId && $noteModel->canEdit($user, $note)) {
+			print '<form method="POST" enctype="multipart/form-data" action="'.$_SERVER['PHP_SELF'].'">';
+			print '<input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="action" value="savenote">';
+			print '<input type="hidden" name="id" value="'.((int) $id).'"><input type="hidden" name="noteid" value="'.$noteId.'">';
+			print '<textarea name="note" class="quatrevingtpercent" rows="5" required>'.dol_escape_htmltag((string) $note->note, 0, 1).'</textarea><br>';
+			print '<input type="file" name="notefiles[]" multiple> ';
+			print '<input type="submit" class="button" value="'.dol_escape_htmltag($langs->trans('Save')).'"> <a class="button button-cancel" href="'.dol_escape_htmltag($_SERVER['PHP_SELF'].'?id='.$id.'#crm-note-'.$noteId).'">'.$langs->trans('Cancel').'</a>';
+			print '</form>';
+		} else {
+			print '<div class="crm-note-text">'.dol_nl2br(dol_escape_htmltag((string) $note->note, 0, 1)).'</div>';
+		}
+		if (count($note->files) > 0) {
+			print '<ul class="crm-note-files">';
+			foreach ($note->files as $file) {
+				$isPdf = (strtolower((string) pathinfo((string) $file->filename, PATHINFO_EXTENSION)) === 'pdf');
+				print '<li>'.img_picto('', 'fa-paperclip', 'class="pictofixedwidth"').'<a href="'.dol_escape_htmltag($fileUrl.'?id='.((int) $file->rowid)).'">'.dol_escape_htmltag((string) $file->filename).'</a> <span class="opacitymedium">('.dol_print_size((int) $file->filesize, 1, 1).')</span>';
+				if ($isPdf) {
+					print ' <a href="'.dol_escape_htmltag($fileUrl.'?id='.((int) $file->rowid).'&mode=view').'" target="_blank" rel="noopener">'.dol_escape_htmltag($langs->trans('CrmNotePreview')).'</a>';
+				}
+				if ($editNoteId === $noteId) {
+					print ' '.crmIconLink($_SERVER['PHP_SELF'].'?id='.$id.'&action=delnotefile&fileid='.((int) $file->rowid).'&token='.newToken(), 'delete', $langs->trans('Delete'));
+				}
+				print '</li>';
+			}
+			print '</ul>';
+		}
+		if ((int) $note->revisions > 0) {
+			print '<div class="crm-note-history" id="crm-note-history-'.$noteId.'" style="display:none"><table class="noborder centpercent">';
+			print '<tr class="liste_titre"><td>'.$langs->trans('CrmDate').'</td><td>'.$langs->trans('CrmNoteAuthor').'</td><td>'.$langs->trans('CrmNoteVersion').'</td></tr>';
+			foreach ($noteModel->fetchVersions($user, $noteId) as $version) {
+				print '<tr class="oddeven"><td class="nowraponall">'.dol_print_date($db->jdate($version->datec), 'dayhour').'</td><td>'.dol_escape_htmltag($whoName((int) $version->fk_user, $version)).'</td>';
+				print '<td>'.($version->current ? '<span class="badge badge-status4">'.dol_escape_htmltag($langs->trans('CrmNoteCurrent')).'</span> ' : '').dol_nl2br(dol_escape_htmltag((string) $version->note, 0, 1)).'</td></tr>';
+			}
+			print '</table></div>';
+		}
+		print '</div>';
+	};
+	if (count($noteRows) === 0) {
+		print '<p class="opacitymedium">'.$langs->trans('CrmNoNotes').'</p>';
+	}
+	foreach (array_slice($noteRows, 0, 1) as $note) {
+		$renderNote($note);
+	}
+	if (count($noteRows) > 1) {
+		$olderOpen = false;
+		foreach (array_slice($noteRows, 1) as $note) {
+			if ($editNoteId === (int) $note->rowid) {
+				$olderOpen = true;
+			}
+		}
+		print '<p><a href="#" id="crm-notes-toggle" data-more="'.dol_escape_htmltag($langs->trans('CrmNotesShowOlder', count($noteRows) - 1)).'" data-less="'.dol_escape_htmltag($langs->trans('CrmNotesHideOlder')).'">'.dol_escape_htmltag($olderOpen ? $langs->trans('CrmNotesHideOlder') : $langs->trans('CrmNotesShowOlder', count($noteRows) - 1)).'</a></p>';
+		print '<div id="crm-notes-older"'.($olderOpen ? '' : ' style="display:none"').'>';
+		foreach (array_slice($noteRows, 1) as $note) {
+			$renderNote($note);
+		}
+		print '</div>';
+	}
+	if (count($noteFiles) > 0) {
+		print '<dialog id="crm-files-dialog" class="crm-files-dialog"><h3>'.dol_escape_htmltag($langs->trans('CrmNoteAllFiles')).'</h3>';
+		print '<table class="noborder centpercent"><tr class="liste_titre"><td>'.$langs->trans('CrmNoteFile').'</td><td class="right">'.$langs->trans('CrmNoteSize').'</td><td>'.$langs->trans('CrmNoteUploaded').'</td><td>'.$langs->trans('CrmNoteAuthor').'</td></tr>';
+		foreach ($noteFiles as $file) {
+			$isPdf = (strtolower((string) pathinfo((string) $file->filename, PATHINFO_EXTENSION)) === 'pdf');
+			print '<tr class="oddeven"><td><a href="'.dol_escape_htmltag($fileUrl.'?id='.((int) $file->rowid)).'">'.dol_escape_htmltag((string) $file->filename).'</a>';
+			if ($isPdf) {
+				print ' <a href="'.dol_escape_htmltag($fileUrl.'?id='.((int) $file->rowid).'&mode=view').'" target="_blank" rel="noopener">'.dol_escape_htmltag($langs->trans('CrmNotePreview')).'</a>';
+			}
+			print '</td><td class="right nowraponall">'.dol_print_size((int) $file->filesize, 1, 1).'</td><td class="nowraponall">'.dol_print_date($db->jdate($file->datec), 'dayhour').'</td><td>'.dol_escape_htmltag($whoName((int) $file->fk_user, $file)).' <a href="#crm-note-'.((int) $file->fk_note).'" class="crm-files-close-link">#'.((int) $file->fk_note).'</a></td></tr>';
+		}
+		print '</table><p class="center"><input type="button" class="button" id="crm-files-close" value="'.dol_escape_htmltag($langs->trans('CloseWindow')).'"></p></dialog>';
+	}
+	print '<script nonce="'.dol_escape_htmltag(getNonce()).'">
+	jQuery(function () {
+		jQuery("#crm-notes-toggle").on("click", function (event) {
+			event.preventDefault();
+			var box = jQuery("#crm-notes-older");
+			box.toggle();
+			jQuery(this).text(box.is(":visible") ? jQuery(this).data("less") : jQuery(this).data("more"));
+		});
+		jQuery(".crm-note-history-toggle").on("click", function (event) {
+			event.preventDefault();
+			jQuery("#" + jQuery(this).data("target")).toggle();
+		});
+		var dialog = document.getElementById("crm-files-dialog");
+		jQuery("#crm-files-open").on("click", function (event) {
+			event.preventDefault();
+			if (dialog && dialog.showModal) { dialog.showModal(); } else if (dialog) { dialog.setAttribute("open", "open"); }
+		});
+		jQuery("#crm-files-close, .crm-files-close-link").on("click", function () {
+			if (dialog && dialog.close) { dialog.close(); } else if (dialog) { dialog.removeAttribute("open"); }
+			jQuery("#crm-notes-older").show();
+		});
+	});
+	</script>';
 }
 
 // Sections, in the order a salesperson works them: next step, qualification, stage, proposals, then the history.

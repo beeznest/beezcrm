@@ -67,6 +67,7 @@ class ActionsCrm extends CommonHookActions
 
 		require_once __DIR__.'/mcp/crmdictionarytool.class.php';
 		require_once __DIR__.'/mcp/crmopportunitytool.class.php';
+		require_once __DIR__.'/mcp/crmnotetool.class.php';
 		require_once __DIR__.'/mcp/crmactivitytool.class.php';
 		require_once __DIR__.'/mcp/crmsequencetool.class.php';
 		require_once __DIR__.'/mcp/crmreporttool.class.php';
@@ -76,6 +77,7 @@ class ActionsCrm extends CommonHookActions
 		$this->results = array(array(
 			new CrmDictionaryTool($db, $user, $conf),
 			new CrmOpportunityTool($db, $user, $conf),
+			new CrmNoteTool($db, $user, $conf),
 			new CrmActivityTool($db, $user, $conf),
 			new CrmSequenceTool($db, $user, $conf),
 			new CrmReportTool($db, $user, $conf),
