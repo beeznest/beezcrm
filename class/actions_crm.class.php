@@ -181,7 +181,7 @@ class ActionsCrm extends CommonHookActions
 	}
 
 	/**
-	 * From v1.2.0. Third party card (context thirdpartycard): a row "CRM opportunity" in the table of the card, with a link
+	 * From v1.2.0. Third party card (context thirdpartycomm, the Prospect tab): a row "CRM opportunity" in the table of the card, with a link
 	 * to each deal the user may read, or a link to create one for a prospect that has none.
 	 *
 	 * @param array<string,mixed> $parameters Hook parameters
@@ -222,8 +222,8 @@ class ActionsCrm extends CommonHookActions
 	}
 
 	/**
-	 * From v1.2.0. Third party card: the CRM history block, printed above the agenda box of the card through the title hook
-	 * of that box, which is the only hook core calls at that place. The core title is kept (0 is returned).
+	 * From v1.2.0. Prospect tab of the third party: the CRM history block, added to the lists of recent objects at the bottom
+	 * of the right column (core prints what the hook puts in resprints).
 	 *
 	 * @param array<string,mixed> $parameters Hook parameters
 	 * @param object              $object     The third party
@@ -231,16 +231,12 @@ class ActionsCrm extends CommonHookActions
 	 * @param HookManager         $hookmanager Hook manager
 	 * @return int 0
 	 */
-	public function showActionsLoadFicheTitre($parameters, &$object, &$action, $hookmanager)
+	public function addMoreRecentObjects($parameters, &$object, &$action, $hookmanager)
 	{
 		global $langs, $user, $db;
-		static $printed = false;
-		if ($printed || !is_array($parameters) || (($parameters['currentcontext'] ?? '') !== 'thirdpartycard')
-			|| !is_object($object) || ($object->element ?? '') !== 'societe' || (int) ($object->id ?? 0) <= 0
-			|| !isModEnabled('crm') || !($user->hasRight('crm', 'read') || $user->hasRight('crm', 'readall'))) {
+		if (!$this->onThirdpartyView($parameters, $object, (string) $action)) {
 			return 0;
 		}
-		$printed = true;
 		require_once __DIR__.'/crmaccountview.class.php';
 		$langs->load('crm@crm');
 		$view = new CrmAccountView($db);
@@ -250,11 +246,12 @@ class ActionsCrm extends CommonHookActions
 		}
 		$full = dol_buildpath('/crm/account_history.php', 1).'?socid='.((int) $object->id);
 		$link = dolGetButtonTitle($langs->trans('CrmAccountHistoryFull'), '', 'fa fa-bars imgforviewmode', $full);
-		print load_fiche_titre($langs->trans('CrmAccountHistory'), '<div class="nowraponall">'.$link.'</div>', '');
-		print '<div class="div-table-responsive-no-min"><table class="centpercent noborder">';
-		print '<tr class="liste_titre"><td>'.$langs->trans('CrmDate').'</td><td>'.$langs->trans('CrmOpportunity').'</td><td>'.$langs->trans('CrmAccountHistoryWhat').'</td><td>'.$langs->trans('CrmOwner').'</td></tr>';
-		print crmAccountTimelineRows($rows);
-		print '</table></div><br>';
+		$html = load_fiche_titre($langs->trans('CrmAccountHistory'), '<div class="nowraponall">'.$link.'</div>', '');
+		$html .= '<div class="div-table-responsive-no-min"><table class="centpercent noborder">';
+		$html .= '<tr class="liste_titre"><td>'.$langs->trans('CrmDate').'</td><td>'.$langs->trans('CrmOpportunity').'</td><td>'.$langs->trans('CrmAccountHistoryWhat').'</td><td>'.$langs->trans('CrmOwner').'</td></tr>';
+		$html .= crmAccountTimelineRows($rows);
+		$html .= '</table></div><br>';
+		$this->resprints = $html;
 		return 0;
 	}
 
@@ -264,7 +261,7 @@ class ActionsCrm extends CommonHookActions
 	private function onThirdpartyView($parameters, $object, string $action): bool
 	{
 		global $user;
-		return is_array($parameters) && (($parameters['currentcontext'] ?? '') === 'thirdpartycard')
+		return is_array($parameters) && (($parameters['currentcontext'] ?? '') === 'thirdpartycomm')
 			&& is_object($object) && ($object->element ?? '') === 'societe' && (int) ($object->id ?? 0) > 0
 			&& !in_array($action, array('create', 'edit', 'update', 'add'), true)
 			&& isModEnabled('crm') && ($user->hasRight('crm', 'read') || $user->hasRight('crm', 'readall'));

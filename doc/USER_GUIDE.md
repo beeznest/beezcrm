@@ -18,10 +18,10 @@ All menus are under **CRM** in the top bar.
 
 The general search box at the top of Dolibarr also has an entry **CRM opportunities** (shortcut `O`): type a reference, a title, an account name or a contact name, and choose it. The list then shows the matches in every status. It only shows deals you may see.
 
-**On the third party card (from v1.2.0).** When you open a third party (a prospect or a customer) in Dolibarr and it has deals you may see, the CRM adds two things to the card:
+**On the Prospect tab of a third party (from v1.2.0).** Open a third party in Dolibarr and click its **Prospect** tab (the **Third party** tab is not changed). When it has deals you may see, the CRM adds two things to that tab:
 
 - in the table of the basic data, a line **CRM opportunity** with the reference of its deals, each one a link to the deal in the CRM, with its title and its stage (open deals first, three at most, then a link "n more..."). A prospect with no deal shows a link **New opportunity** instead, if you may create deals;
-- lower on the page, above the agenda box, the block **CRM history**: the last **5** things that happened on the deals of this third party, newest first: stage moves and the steps and e-mails that are done. Each line gives the date, the deal (a link), what happened and who did it. The link **Full CRM history** at the top right of the block opens the whole list, in pages.
+- at the bottom of the right column, after the lists of recent proposals and orders, the block **CRM history**: the last **5** things that happened on the deals of this third party, newest first: stage moves and the steps and e-mails that are done. Each line gives the date, the deal (a link), what happened and who did it. The link **Full CRM history** at the top right of the block opens the whole list, in pages.
 
 Nothing shows if the CRM module is off or if you have no CRM right. You only see your own deals unless you have "Read every owner". Planned steps are not history: they stay on the deal card and in **Activities**.
 

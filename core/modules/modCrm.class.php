@@ -61,7 +61,7 @@ class modCrm extends DolibarrModules
 			'theme' => 0,
 			'css' => array(),
 			'js' => array(),
-			'hooks' => array('aimcp', 'emailcollectorcard', 'emailcollector', 'searchform', 'thirdpartycard'),
+			'hooks' => array('aimcp', 'emailcollectorcard', 'emailcollector', 'searchform', 'thirdpartycomm'),
 			'moduleforexternal' => 0,
 		);
 

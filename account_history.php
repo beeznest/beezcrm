@@ -20,7 +20,7 @@ declare(strict_types=1);
  * \file    account_history.php
  * \ingroup crm
  * \brief   From v1.2.0. Full CRM history of one third party: the stage moves and the done events of its deals, newest first.
- *          Linked from the "CRM history" block of the third party card.
+ *          Linked from the "CRM history" block of the Prospect tab of the third party.
  */
 
 require_once __DIR__.'/lib/crm_bootstrap.inc.php';
@@ -56,7 +56,7 @@ $param = '&socid='.$socId.'&limit='.$limit;
 
 llxHeader('', $langs->trans('CrmAccountHistory'), '', '', 0, 0, '', array('/crm/css/crm.css'));
 print_barre_liste($langs->trans('CrmAccountHistory').' - '.dol_escape_htmltag($societe->name), $page, $_SERVER['PHP_SELF'], $param, '', '', '', count($rows), $total, 'fa-handshake', 0, '', '', $limit);
-print '<p><a href="'.DOL_URL_ROOT.'/societe/card.php?socid='.$socId.'">'.$langs->trans('CrmAccountBackToCard').'</a></p>';
+print '<p><a href="'.DOL_URL_ROOT.'/comm/card.php?socid='.$socId.'">'.$langs->trans('CrmAccountBackToCard').'</a></p>';
 print '<table class="noborder centpercent">';
 print '<tr class="liste_titre"><td>'.$langs->trans('CrmDate').'</td><td>'.$langs->trans('CrmOpportunity').'</td><td>'.$langs->trans('CrmAccountHistoryWhat').'</td><td>'.$langs->trans('CrmOwner').'</td></tr>';
 print crmAccountTimelineRows($rows);
