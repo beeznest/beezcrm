@@ -542,12 +542,27 @@ if (!$notesOn) {
 		}
 		return $uid > 0 ? '#'.$uid : '';
 	};
+	// The preview of a PDF is the magnifier icon of Dolibarr's own document lists: it opens the file in a dialog of the page
+	// (an iframe on the same page, inline), and falls back to a new tab without JavaScript. The name of the file downloads it.
+	$previewLink = function (object $file) use ($fileUrl, $langs): string {
+		if (strtolower((string) pathinfo((string) $file->filename, PATHINFO_EXTENSION)) !== 'pdf') {
+			return '';
+		}
+		$title = $langs->trans('Preview').' '.(string) $file->filename;
+		return ' <a href="'.dol_escape_htmltag($fileUrl.'?id='.((int) $file->rowid).'&mode=view').'" class="crm-preview" target="_blank" rel="noopener" data-title="'.dol_escape_htmltag((string) $file->filename).'" title="'.dol_escape_htmltag($title).'" aria-label="'.dol_escape_htmltag($title).'">'.img_picto('', 'search-plus').'</a>';
+	};
+	$hasPdf = false;
+	foreach ($noteFiles as $previewable) {
+		if (strtolower((string) pathinfo((string) $previewable->filename, PATHINFO_EXTENSION)) === 'pdf') {
+			$hasPdf = true;
+		}
+	}
 	$filesLink = '';
 	if (count($noteFiles) > 0) {
 		$filesLink = ' <a href="#" id="crm-files-open" class="crm-files-link" title="'.dol_escape_htmltag($langs->trans('CrmNoteAllFiles')).'">'.img_picto('', 'fa-paperclip', 'class="pictofixedwidth"').count($noteFiles).'</a>';
 	}
 	print '<a id="crm-notes"></a><h2>'.$langs->trans('CrmInternalNotes').$filesLink.'</h2>';
-	$renderNote = function (object $note) use ($db, $user, $noteModel, $whoName, $fileUrl, $editNoteId, $id, $langs): void {
+	$renderNote = function (object $note) use ($db, $user, $noteModel, $whoName, $fileUrl, $previewLink, $editNoteId, $id, $langs): void {
 		$noteId = (int) $note->rowid;
 		print '<div class="crm-note" id="crm-note-'.$noteId.'">';
 		print '<div class="crm-note-head"><strong>'.dol_escape_htmltag($whoName((int) $note->fk_user, $note)).'</strong> <span class="opacitymedium">'.dol_print_date($db->jdate($note->datec), 'dayhour').'</span>';
@@ -577,11 +592,7 @@ if (!$notesOn) {
 		if (count($note->files) > 0) {
 			print '<ul class="crm-note-files">';
 			foreach ($note->files as $file) {
-				$isPdf = (strtolower((string) pathinfo((string) $file->filename, PATHINFO_EXTENSION)) === 'pdf');
-				print '<li>'.img_picto('', 'fa-paperclip', 'class="pictofixedwidth"').'<a href="'.dol_escape_htmltag($fileUrl.'?id='.((int) $file->rowid)).'">'.dol_escape_htmltag((string) $file->filename).'</a> <span class="opacitymedium">('.dol_print_size((int) $file->filesize, 1, 1).')</span>';
-				if ($isPdf) {
-					print ' <a href="'.dol_escape_htmltag($fileUrl.'?id='.((int) $file->rowid).'&mode=view').'" target="_blank" rel="noopener">'.dol_escape_htmltag($langs->trans('CrmNotePreview')).'</a>';
-				}
+				print '<li>'.img_picto('', 'fa-paperclip', 'class="pictofixedwidth"').'<a href="'.dol_escape_htmltag($fileUrl.'?id='.((int) $file->rowid)).'">'.dol_escape_htmltag((string) $file->filename).'</a> <span class="opacitymedium">('.dol_print_size((int) $file->filesize, 1, 1).')</span>'.$previewLink($file);
 				if ($editNoteId === $noteId) {
 					print ' '.crmIconLink($_SERVER['PHP_SELF'].'?id='.$id.'&action=delnotefile&fileid='.((int) $file->rowid).'&token='.newToken(), 'delete', $langs->trans('Delete'));
 				}
@@ -636,14 +647,14 @@ if (!$notesOn) {
 		print '<dialog id="crm-files-dialog" class="crm-files-dialog"><h3>'.dol_escape_htmltag($langs->trans('CrmNoteAllFiles')).'</h3>';
 		print '<table class="noborder centpercent"><tr class="liste_titre"><td>'.$langs->trans('CrmNoteFile').'</td><td class="right">'.$langs->trans('CrmNoteSize').'</td><td>'.$langs->trans('CrmNoteUploaded').'</td><td>'.$langs->trans('CrmNoteAuthor').'</td></tr>';
 		foreach ($noteFiles as $file) {
-			$isPdf = (strtolower((string) pathinfo((string) $file->filename, PATHINFO_EXTENSION)) === 'pdf');
-			print '<tr class="oddeven"><td><a href="'.dol_escape_htmltag($fileUrl.'?id='.((int) $file->rowid)).'">'.dol_escape_htmltag((string) $file->filename).'</a>';
-			if ($isPdf) {
-				print ' <a href="'.dol_escape_htmltag($fileUrl.'?id='.((int) $file->rowid).'&mode=view').'" target="_blank" rel="noopener">'.dol_escape_htmltag($langs->trans('CrmNotePreview')).'</a>';
-			}
+			print '<tr class="oddeven"><td><a href="'.dol_escape_htmltag($fileUrl.'?id='.((int) $file->rowid)).'">'.dol_escape_htmltag((string) $file->filename).'</a>'.$previewLink($file);
 			print '</td><td class="right nowraponall">'.dol_print_size((int) $file->filesize, 1, 1).'</td><td class="nowraponall">'.dol_print_date($db->jdate($file->datec), 'dayhour').'</td><td>'.dol_escape_htmltag($whoName((int) $file->fk_user, $file)).' <a href="#crm-note-'.((int) $file->fk_note).'" class="crm-files-close-link">#'.((int) $file->fk_note).'</a></td></tr>';
 		}
 		print '</table><p class="center"><input type="button" class="button" id="crm-files-close" value="'.dol_escape_htmltag($langs->trans('CloseWindow')).'"></p></dialog>';
+	}
+	if ($hasPdf) {
+		print '<dialog id="crm-preview-dialog" class="crm-preview-dialog"><div class="crm-preview-head"><strong id="crm-preview-title"></strong> <input type="button" class="button" id="crm-preview-close" value="'.dol_escape_htmltag($langs->trans('CloseWindow')).'"></div>';
+		print '<iframe id="crm-preview-frame" class="crm-preview-frame" title="'.dol_escape_htmltag($langs->trans('Preview')).'"></iframe></dialog>';
 	}
 	print '<script nonce="'.dol_escape_htmltag(getNonce()).'">
 	jQuery(function () {
@@ -662,6 +673,18 @@ if (!$notesOn) {
 			event.preventDefault();
 			if (dialog && dialog.showModal) { dialog.showModal(); } else if (dialog) { dialog.setAttribute("open", "open"); }
 		});
+		var preview = document.getElementById("crm-preview-dialog");
+		jQuery(document).on("click", "a.crm-preview", function (event) {
+			if (!preview || !preview.showModal) { return; }
+			event.preventDefault();
+			document.getElementById("crm-preview-title").textContent = jQuery(this).data("title");
+			document.getElementById("crm-preview-frame").setAttribute("src", this.href);
+			preview.showModal();
+		});
+		jQuery("#crm-preview-close").on("click", function () { preview.close(); });
+		if (preview) {
+			preview.addEventListener("close", function () { document.getElementById("crm-preview-frame").setAttribute("src", "about:blank"); });
+		}
 		jQuery("#crm-files-close, .crm-files-close-link").on("click", function () {
 			if (dialog && dialog.close) { dialog.close(); } else if (dialog) { dialog.removeAttribute("open"); }
 			jQuery("#crm-notes-older").show();

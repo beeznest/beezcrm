@@ -426,7 +426,6 @@ CrmNoteFilesMax=Fichiers jusqu'à %s chacun
 CrmAddNote=Ajouter la note
 CrmNoteEdited=modifiée le %s par %s
 CrmNoteHistory=historique (%s)
-CrmNotePreview=aperçu
 CrmNoteAuthor=Auteur
 CrmNoteVersion=Texte
 CrmNoteCurrent=actuelle

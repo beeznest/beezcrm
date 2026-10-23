@@ -426,7 +426,6 @@ CrmNoteFilesMax=Files up to %s each
 CrmAddNote=Add note
 CrmNoteEdited=edited %s by %s
 CrmNoteHistory=history (%s)
-CrmNotePreview=preview
 CrmNoteAuthor=Author
 CrmNoteVersion=Text
 CrmNoteCurrent=current

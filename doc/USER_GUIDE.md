@@ -66,8 +66,8 @@ From v1.2.0 the "Description" of a deal is replaced by **Internal notes**: a lis
 
 - the notes in **chronological order**, right under the data of the deal: only the **latest note** is shown, with its author, its date and time, its text and its files. A link **Show the n earlier notes** above it unfolds the others, oldest first, before the latest one, and folds them again;
 - under the notes, a box to **add a note**, with an optional choice of files to attach to it (several at once; the size limit is the one of Dolibarr's documents, 2 MB unless your administrator changed it; at most 10 files per note);
-- for each file, its name (click to download), its size and, for a PDF, a link **preview** that opens it in a new tab;
-- a **paperclip with a number** next to the section title: click it to open the list of **all the files of the deal** (name, size, date added, author, and the note it belongs to), with the same download and preview links.
+- for each file, its name (click to download it), its size and, for a PDF, a **magnifier icon** (the same as in Dolibarr's document lists) that opens the PDF in a window of the page itself, without leaving the card and without downloading it;
+- a **paperclip with a number** next to the section title: click it to open the list of **all the files of the deal** (name, size, date added, author, and the note it belongs to), with the same name link to download and magnifier icon to preview.
 
 **Editing a note.** The pencil icon of a note turns it into a form: change the text, add files, remove a file (trash icon), and save. Only the **author** of a note, or a manager who reads every owner's deals, may edit it, and you need the right to create and update deals. The note then shows "edited on ... by ...". The **earlier text is not lost**: the link **history (n)** under the note lists every version, newest first, with who wrote it and when. Notes are never deleted from the card; a note written by mistake is corrected by editing it. Deleting the whole deal deletes its notes and files.
 
