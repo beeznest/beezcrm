@@ -107,6 +107,8 @@ Users → Permissions, family CRM. A user can see and do only what the rights al
 
 Typical profiles: a **salesperson** gets Read own, Create and update, Create and complete next steps. A **sales manager** adds Read every owner, Read CRM reports, and Manage outreach. Only you (or a delegated administrator) need Configure CRM and Delete.
 
+**From v1.2.0**, the CRM adds a line and a block to the card of a third party (the deals of the account, and its CRM history). They need the right **Read own deals** or **Read every owner**, nothing else, and they only show deals that right allows. They use a new hook context of the module, `thirdpartycard`: after updating the files, **disable and re-enable the module once** (see [Maintenance](#maintenance)), otherwise the card does not change. There is no setting and no schema change; disabling the module removes both.
+
 Two more rights matter outside CRM: creating a prospect from the deal form needs the Dolibarr right to create third parties, and the general search box and the account list only show third parties the user may read.
 
 ## Module setup, page by page

@@ -18,6 +18,13 @@ All menus are under **CRM** in the top bar.
 
 The general search box at the top of Dolibarr also has an entry **CRM opportunities** (shortcut `O`): type a reference, a title, an account name or a contact name, and choose it. The list then shows the matches in every status. It only shows deals you may see.
 
+**On the third party card (from v1.2.0).** When you open a third party (a prospect or a customer) in Dolibarr and it has deals you may see, the CRM adds two things to the card:
+
+- in the table of the basic data, a line **CRM opportunity** with the reference of its deals, each one a link to the deal in the CRM, with its title and its stage (open deals first, three at most, then a link "n more..."). A prospect with no deal shows a link **New opportunity** instead, if you may create deals;
+- lower on the page, above the agenda box, the block **CRM history**: the last **5** things that happened on the deals of this third party, newest first: stage moves and the steps and e-mails that are done. Each line gives the date, the deal (a link), what happened and who did it. The link **Full CRM history** at the top right of the block opens the whole list, in pages.
+
+Nothing shows if the CRM module is off or if you have no CRM right. You only see your own deals unless you have "Read every owner". Planned steps are not history: they stay on the deal card and in **Activities**.
+
 **The "?" button.** Most pages carry long explanations of what a list or a field is for. To keep the screens light, they are **hidden** by default. A **"?" button** appears in the top right corner of the page title bar whenever the page has some; click it to show them, click it again to hide them. It does not remember your choice from one page to the next. Short hints and warnings are always visible.
 
 ## The vocabulary

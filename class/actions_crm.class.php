@@ -179,4 +179,94 @@ class ActionsCrm extends CommonHookActions
 		));
 		return 0;
 	}
+
+	/**
+	 * From v1.2.0. Third party card (context thirdpartycard): a row "CRM opportunity" in the table of the card, with a link
+	 * to each deal the user may read, or a link to create one for a prospect that has none.
+	 *
+	 * @param array<string,mixed> $parameters Hook parameters
+	 * @param object              $object     The third party
+	 * @param string              $action     Action of the card
+	 * @param HookManager         $hookmanager Hook manager
+	 * @return int 0 to keep the core rows
+	 */
+	public function formObjectOptions($parameters, &$object, &$action, $hookmanager)
+	{
+		global $langs, $user, $db;
+		if (!$this->onThirdpartyView($parameters, $object, (string) $action)) {
+			return 0;
+		}
+		require_once __DIR__.'/crmaccountview.class.php';
+		$langs->load('crm@crm');
+		$deals = (new CrmAccountView($db))->fetchDeals($user, (int) $object->id);
+		$base = dol_buildpath('/crm/opportunity_card.php', 1);
+		$cell = '';
+		foreach (array_slice($deals, 0, 3) as $deal) {
+			$stage = ((string) $deal->status === 'open')
+				? crmStageLabel((string) $deal->stage_label)
+				: $langs->trans($deal->status === 'won' ? 'CrmWon' : 'CrmLost');
+			$cell .= '<div><a href="'.dol_escape_htmltag($base.'?id='.((int) $deal->rowid)).'">'.img_picto('', 'fa-handshake', 'class="pictofixedwidth"').dol_escape_htmltag((string) $deal->ref).'</a> '.dol_escape_htmltag((string) $deal->label).' <span class="opacitymedium">('.dol_escape_htmltag($stage).')</span></div>';
+		}
+		if (count($deals) > 3) {
+			$more = dol_buildpath('/crm/opportunity_list.php', 1).'?status=all&search_all='.urlencode((string) $object->name);
+			$cell .= '<div><a href="'.dol_escape_htmltag($more).'">'.dol_escape_htmltag($langs->transnoentities('CrmAccountDealsMore', count($deals) - 3)).'</a></div>';
+		}
+		if (count($deals) === 0) {
+			if (!$user->hasRight('crm', 'write') || empty($object->prospect)) {
+				return 0;
+			}
+			$cell = '<a href="'.dol_escape_htmltag($base.'?action=create&socid='.((int) $object->id)).'">'.img_picto('', 'fa-plus-circle', 'class="pictofixedwidth"').dol_escape_htmltag($langs->transnoentities('CrmNewOpportunity')).'</a>';
+		}
+		$this->resprints = '<tr><td>'.dol_escape_htmltag($langs->trans('CrmAccountDeals')).'</td><td>'.$cell.'</td></tr>';
+		return 0;
+	}
+
+	/**
+	 * From v1.2.0. Third party card: the CRM history block, printed above the agenda box of the card through the title hook
+	 * of that box, which is the only hook core calls at that place. The core title is kept (0 is returned).
+	 *
+	 * @param array<string,mixed> $parameters Hook parameters
+	 * @param object              $object     The third party
+	 * @param string              $action     Not used
+	 * @param HookManager         $hookmanager Hook manager
+	 * @return int 0
+	 */
+	public function showActionsLoadFicheTitre($parameters, &$object, &$action, $hookmanager)
+	{
+		global $langs, $user, $db;
+		static $printed = false;
+		if ($printed || !is_array($parameters) || (($parameters['currentcontext'] ?? '') !== 'thirdpartycard')
+			|| !is_object($object) || ($object->element ?? '') !== 'societe' || (int) ($object->id ?? 0) <= 0
+			|| !isModEnabled('crm') || !($user->hasRight('crm', 'read') || $user->hasRight('crm', 'readall'))) {
+			return 0;
+		}
+		$printed = true;
+		require_once __DIR__.'/crmaccountview.class.php';
+		$langs->load('crm@crm');
+		$view = new CrmAccountView($db);
+		$rows = $view->fetchTimeline($user, (int) $object->id, 5);
+		if (count($rows) === 0 && count($view->fetchDeals($user, (int) $object->id)) === 0) {
+			return 0;
+		}
+		$full = dol_buildpath('/crm/account_history.php', 1).'?socid='.((int) $object->id);
+		$link = dolGetButtonTitle($langs->trans('CrmAccountHistoryFull'), '', 'fa fa-bars imgforviewmode', $full);
+		print load_fiche_titre($langs->trans('CrmAccountHistory'), '<div class="nowraponall">'.$link.'</div>', '');
+		print '<div class="div-table-responsive-no-min"><table class="centpercent noborder">';
+		print '<tr class="liste_titre"><td>'.$langs->trans('CrmDate').'</td><td>'.$langs->trans('CrmOpportunity').'</td><td>'.$langs->trans('CrmAccountHistoryWhat').'</td><td>'.$langs->trans('CrmOwner').'</td></tr>';
+		print crmAccountTimelineRows($rows);
+		print '</table></div><br>';
+		return 0;
+	}
+
+	/**
+	 * True when the hook runs on the view of a third party card for a user who may read deals.
+	 */
+	private function onThirdpartyView($parameters, $object, string $action): bool
+	{
+		global $user;
+		return is_array($parameters) && (($parameters['currentcontext'] ?? '') === 'thirdpartycard')
+			&& is_object($object) && ($object->element ?? '') === 'societe' && (int) ($object->id ?? 0) > 0
+			&& !in_array($action, array('create', 'edit', 'update', 'add'), true)
+			&& isModEnabled('crm') && ($user->hasRight('crm', 'read') || $user->hasRight('crm', 'readall'));
+	}
 }

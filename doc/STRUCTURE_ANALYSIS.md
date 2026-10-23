@@ -72,12 +72,22 @@ Top menu **CRM**. Left menu entries come from the module descriptor.
 | `pipeline.php` | Kanban for one pipeline, filtered by owner. Drag and drop moves the stage. |
 | `opportunity_list.php` | Ref, title, account, contact, stage, amount, expected close, owner, next step date, qualification gaps |
 | `opportunity_card.php` | Deal, linked proposals, qualification, next step, timeline of agenda events, win / loss |
+| `account_history.php` | From v1.2.0. Full CRM history of one third party (stage moves and done events of its deals), linked from its card. |
 | `activity_list.php` | A filtered view of `llx_actioncomm` for CRM deals. Not a second store. |
 | `sequence_list.php`, `sequence_card.php` | Customer cadences, enrolments, journal |
 | `report.php` | Forecast, cohort conversion, win rate, loss reasons, cycle time, by owner, by source |
 | `admin/setup.php` | Parameters, pipelines and stages, qualification items, loss reasons, sources |
 
 The home box lists the current user's overdue steps and deals with no next step.
+
+## Third party card
+
+From v1.2.0 the CRM shows itself on the Dolibarr third party card without patching core, through the hook context `thirdpartycard` (declared in `module_parts['hooks']`, so a re-enable is needed) in `ActionsCrm`:
+
+- `formObjectOptions` adds a row "CRM opportunity" to the table of the card (core prints `resprints` in `extrafields_view.tpl.php`, view mode only; the method ignores `create`, `edit`, `update` and `add`). It lists up to three deals of the third party, open first, each linked to `opportunity_card.php`, with a "n more" link to the deal list, or, for a prospect without deal and a user who may write, a link to the creation form with `socid`.
+- `showActionsLoadFicheTitre` prints the "CRM history" block. Core has no hook for the lower part of the card, and this one runs just before the core agenda box prints its title (`FormActions::showactions`) and lets core print it too (returns 0), so the block lands above that box. It prints once per request and only for `thirdpartycard`.
+
+Both use `CrmAccountView` (reads only, no table): `fetchDeals()` and a timeline that is one `UNION ALL` of the stage history rows (`llx_crm_stage_history`) and the **done** agenda events of the deals (`elementtype = 'opportunity@crm'`, `percent >= 100`; planned events are not history), newest first, with `countTimeline()` for paging. Both apply `crmOwnerSql()` and the entity, like the rest of the module, whatever the agenda rights are. The full list is `account_history.php?socid=`, which needs the right to read third parties and refuses an external user. Decision: "history" is the union of stage moves and done events, not only the stage history table that the deal card calls History, because a salesperson looking at an account wants the exchanges too.
 
 ## Pipeline rules
 
@@ -296,7 +306,8 @@ No purge button in v1. A later action can drop only `llx_crm_*` and `CRM_*` cons
 │   ├── modules/modCrm.class.php       # modCrm, id 104801
 │   └── boxes/crmwidget.php
 ├── class/
-│   ├── actions_crm.class.php          # addMcpTools, e-mail collector operation
+│   ├── actions_crm.class.php          # addMcpTools, e-mail collector operation, search entry, third party card (v1.2.0)
+│   ├── crmaccountview.class.php       # deals and CRM history of a third party (v1.2.0)
 │   ├── crmmailarchive.class.php       # e-mail to deal matching and recording
 │   ├── crmemaildraft.class.php        # review, send, register or discard a planned e-mail
 │   ├── crmaireply.class.php           # prompt and call for an AI-proposed reply

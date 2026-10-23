@@ -1133,3 +1133,35 @@ function crmDeleteItem(DoliDB $db, string $kind, int $id): string
 	}
 	return '';
 }
+
+/**
+ * From v1.2.0. The rows of the CRM history of a third party as table rows: date, deal, what happened, who.
+ *
+ * @param array<int,object> $rows Rows of CrmAccountView::fetchTimeline()
+ * @return string HTML, escaped
+ */
+function crmAccountTimelineRows(array $rows): string
+{
+	global $db, $langs;
+	$kinds = array('AC_TEL' => 'CrmCall', 'AC_RDV' => 'CrmMeeting', 'AC_OTH' => 'CrmTask', 'AC_EMAIL' => 'CrmEmail', 'AC_EMAIL_IN' => 'CrmEmail');
+	$html = '';
+	if (count($rows) === 0) {
+		return '<tr class="oddeven"><td colspan="4"><span class="opacitymedium">'.$langs->trans('CrmNoRows').'</span></td></tr>';
+	}
+	foreach ($rows as $row) {
+		if ($row->kind === 'stage') {
+			$what = $langs->trans('CrmStage').': '.trim(crmStageLabel((string) $row->label_from).' → '.crmStageLabel((string) $row->label_to), ' →');
+		} else {
+			$kind = isset($kinds[(string) $row->event_code]) ? $langs->trans($kinds[(string) $row->event_code]).': ' : '';
+			$what = $kind.(string) $row->event_label;
+		}
+		$who = trim((string) ($row->firstname ?? '').' '.(string) ($row->lastname ?? ''));
+		$html .= '<tr class="oddeven">';
+		$html .= '<td class="nowraponall">'.dol_print_date($db->jdate($row->dt), 'dayhour').'</td>';
+		$html .= '<td><a href="'.dol_escape_htmltag(dol_buildpath('/crm/opportunity_card.php', 1).'?id='.((int) $row->deal_id)).'">'.dol_escape_htmltag((string) $row->deal_ref).'</a></td>';
+		$html .= '<td>'.dol_escape_htmltag($what).'</td>';
+		$html .= '<td>'.dol_escape_htmltag($who).'</td>';
+		$html .= '</tr>';
+	}
+	return $html;
+}
