@@ -209,7 +209,7 @@ if ($action === 'qualify' && $object->id > 0) {
 
 if ($action === 'addactivity' && $object->id > 0) {
 	crmRequireRight('activity');
-	$when = GETPOSTDATE('actdate');
+	$when = GETPOSTDATE('actdate', 'getpost');
 	$datep = is_numeric($when) ? (int) $when : 0;
 	$activity = new CrmActivity($db);
 	$result = $activity->create($user, (int) $object->id, (int) $object->fk_soc, (int) $object->fk_socpeople, (int) $object->fk_user_resp, GETPOST('kind', 'aZ09'), GETPOST('actlabel', 'alphanohtml'), $datep, 0);
@@ -707,7 +707,8 @@ if ($user->hasRight('crm', 'activity')) {
 	}
 	print '</select> ';
 	print '<input name="actlabel" class="minwidth200" required placeholder="'.dol_escape_htmltag($langs->trans('CrmTitle')).'"> ';
-	print $form->selectDate(dol_now() + 86400, 'actdate', 0, 0, 0);
+	// Tomorrow at about the same time, to the nearest 5 minutes; date, hour and minute in one Dolibarr component, minutes by 5.
+	print $form->selectDate((int) (round((dol_now() + 86400) / 300) * 300), 'actdate', 1, 1, 0, '', 1, 0, 0, '', '', '', '', 5);
 	print ' <input type="submit" class="button" value="'.$langs->trans('Create').'">';
 	print '</form>';
 }
@@ -734,7 +735,9 @@ foreach ($events as $event) {
 			}
 			print '</select> <input name="actlabel" class="minwidth200" required value="'.dol_escape_htmltag((string) $event->label).'"> ';
 		}
-		print $form->selectDate((int) $db->jdate($event->datep), 'actdate', 1, 1, 0);
+		// Minutes by 5, unless the step was saved at a minute that is not a multiple of 5: it would be changed by saving.
+		$eventTime = (int) $db->jdate($event->datep);
+		print $form->selectDate($eventTime, 'actdate', 1, 1, 0, '', 1, 0, 0, '', '', '', '', ((int) dol_print_date($eventTime, '%M') % 5 === 0) ? 5 : 1);
 		print ' <input type="submit" class="button" value="'.$langs->trans('Save').'"> <a class="button button-cancel" href="'.dol_escape_htmltag($back).'">'.$langs->trans('Cancel').'</a>';
 		print '</form></td></tr>';
 		continue;

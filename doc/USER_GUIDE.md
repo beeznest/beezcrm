@@ -75,7 +75,7 @@ From v1.2.0 the "Description" of a deal is replaced by **Internal notes**: a lis
 
 **Why.** The deal is now open, so rule 1 applies from the start.
 
-**How.** On the deal card, section **Next step**: pick the kind (call, meeting, task, e-mail), give it a title and a date, and press Create. For example: "Call to understand the need", tomorrow.
+**How.** On the deal card, section **Next step**: pick the kind (call, meeting, task, e-mail), give it a title, a date **and a time** (hour and minutes, by steps of 5 minutes; from v1.2.0, before that only the date), and press Create. The form proposes tomorrow at about the same time. For example: "Call to understand the need", tomorrow at 10:30.
 
 **Change or remove a next step.** In the same list, a planned step has two more icons next to the check mark: **Modify** (the row becomes a small form: kind, title, date and time) and **Delete** (asks for a confirmation). Postponing a call is a change of date, not a new step. A planned e-mail only has its date changed here; its subject and text are edited in the e-mail editor (envelope icon). A step that is done is history and can be neither changed nor deleted. You may only act on steps of deals you are allowed to see.
 
