@@ -64,8 +64,8 @@ Nothing shows if the CRM module is off or if you have no CRM right. You only see
 
 From v1.2.0 the "Description" of a deal is replaced by **Internal notes**: a list of notes that only your team sees (nothing is sent to the customer). On the deal card, the section **Internal notes** shows:
 
-- a box to **add a note**, with an optional choice of files to attach to it (several at once; the size limit is the one of Dolibarr's documents, 2 MB unless your administrator changed it; at most 10 files per note);
-- the **latest note**, with its author, its date and time, its text and its files. A link **Show the n earlier notes** shows the others, newest first, and hides them again;
+- the notes in **chronological order**, right under the data of the deal: only the **latest note** is shown, with its author, its date and time, its text and its files. A link **Show the n earlier notes** above it unfolds the others, oldest first, before the latest one, and folds them again;
+- under the notes, a box to **add a note**, with an optional choice of files to attach to it (several at once; the size limit is the one of Dolibarr's documents, 2 MB unless your administrator changed it; at most 10 files per note);
 - for each file, its name (click to download), its size and, for a PDF, a link **preview** that opens it in a new tab;
 - a **paperclip with a number** next to the section title: click it to open the list of **all the files of the deal** (name, size, date added, author, and the note it belongs to), with the same download and preview links.
 

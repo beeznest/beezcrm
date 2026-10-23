@@ -547,16 +547,6 @@ if (!$notesOn) {
 		$filesLink = ' <a href="#" id="crm-files-open" class="crm-files-link" title="'.dol_escape_htmltag($langs->trans('CrmNoteAllFiles')).'">'.img_picto('', 'fa-paperclip', 'class="pictofixedwidth"').count($noteFiles).'</a>';
 	}
 	print '<a id="crm-notes"></a><h2>'.$langs->trans('CrmInternalNotes').$filesLink.'</h2>';
-	if ($user->hasRight('crm', 'write')) {
-		print '<form method="POST" enctype="multipart/form-data" action="'.$_SERVER['PHP_SELF'].'">';
-		print '<input type="hidden" name="token" value="'.newToken().'">';
-		print '<input type="hidden" name="action" value="addnote">';
-		print '<input type="hidden" name="id" value="'.((int) $object->id).'">';
-		print '<textarea name="note" class="quatrevingtpercent" rows="3" placeholder="'.dol_escape_htmltag($langs->trans('CrmNotePlaceholder')).'" required></textarea><br>';
-		print '<input type="file" name="notefiles[]" multiple> <span class="opacitymedium">'.dol_escape_htmltag($langs->trans('CrmNoteFilesMax', dol_print_size(CrmNote::maxFileBytes(), 1, 1))).'</span> ';
-		print '<input type="submit" class="button" value="'.dol_escape_htmltag($langs->trans('CrmAddNote')).'">';
-		print '</form><br>';
-	}
 	$renderNote = function (object $note) use ($db, $user, $noteModel, $whoName, $fileUrl, $editNoteId, $id, $langs): void {
 		$noteId = (int) $note->rowid;
 		print '<div class="crm-note" id="crm-note-'.$noteId.'">';
@@ -610,25 +600,37 @@ if (!$notesOn) {
 		}
 		print '</div>';
 	};
+	// Chronological order: the older notes (oldest first) are folded above the last one, which stays visible.
 	if (count($noteRows) === 0) {
 		print '<p class="opacitymedium">'.$langs->trans('CrmNoNotes').'</p>';
 	}
-	foreach (array_slice($noteRows, 0, 1) as $note) {
-		$renderNote($note);
-	}
 	if (count($noteRows) > 1) {
+		$olderNotes = array_reverse(array_slice($noteRows, 1));
 		$olderOpen = false;
-		foreach (array_slice($noteRows, 1) as $note) {
+		foreach ($olderNotes as $note) {
 			if ($editNoteId === (int) $note->rowid) {
 				$olderOpen = true;
 			}
 		}
-		print '<p><a href="#" id="crm-notes-toggle" data-more="'.dol_escape_htmltag($langs->trans('CrmNotesShowOlder', count($noteRows) - 1)).'" data-less="'.dol_escape_htmltag($langs->trans('CrmNotesHideOlder')).'">'.dol_escape_htmltag($olderOpen ? $langs->trans('CrmNotesHideOlder') : $langs->trans('CrmNotesShowOlder', count($noteRows) - 1)).'</a></p>';
+		print '<p><a href="#" id="crm-notes-toggle" data-more="'.dol_escape_htmltag($langs->trans('CrmNotesShowOlder', count($olderNotes))).'" data-less="'.dol_escape_htmltag($langs->trans('CrmNotesHideOlder')).'">'.dol_escape_htmltag($olderOpen ? $langs->trans('CrmNotesHideOlder') : $langs->trans('CrmNotesShowOlder', count($olderNotes))).'</a></p>';
 		print '<div id="crm-notes-older"'.($olderOpen ? '' : ' style="display:none"').'>';
-		foreach (array_slice($noteRows, 1) as $note) {
+		foreach ($olderNotes as $note) {
 			$renderNote($note);
 		}
 		print '</div>';
+	}
+	if (count($noteRows) > 0) {
+		$renderNote($noteRows[0]);
+	}
+	if ($user->hasRight('crm', 'write')) {
+		print '<form method="POST" enctype="multipart/form-data" action="'.$_SERVER['PHP_SELF'].'">';
+		print '<input type="hidden" name="token" value="'.newToken().'">';
+		print '<input type="hidden" name="action" value="addnote">';
+		print '<input type="hidden" name="id" value="'.((int) $object->id).'">';
+		print '<textarea name="note" class="quatrevingtpercent" rows="3" placeholder="'.dol_escape_htmltag($langs->trans('CrmNotePlaceholder')).'" required></textarea><br>';
+		print '<input type="file" name="notefiles[]" multiple> <span class="opacitymedium">'.dol_escape_htmltag($langs->trans('CrmNoteFilesMax', dol_print_size(CrmNote::maxFileBytes(), 1, 1))).'</span> ';
+		print '<input type="submit" class="button" value="'.dol_escape_htmltag($langs->trans('CrmAddNote')).'">';
+		print '</form>';
 	}
 	if (count($noteFiles) > 0) {
 		print '<dialog id="crm-files-dialog" class="crm-files-dialog"><h3>'.dol_escape_htmltag($langs->trans('CrmNoteAllFiles')).'</h3>';
