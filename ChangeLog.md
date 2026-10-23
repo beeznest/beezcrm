@@ -18,6 +18,7 @@ Documentation rule for this version: whatever changes an interface or the data i
 
 ### Fixed
 
+- **"Save the draft" did not save an e-mail text edited in the HTML editor.** A JavaScript error when the e-mail editor opened (it looked for an element, `crm-plain-note`, that the page no longer had) stopped the editor from hiding the pane that is not in use: on a draft stored as plain text, the HTML editor and the plain text box were both shown while the format stayed "plain text", so a change made in the HTML editor was ignored on save and the old text was kept. The element exists again, the script no longer fails without it, and the plain-text pane alone is shown for a plain-text draft. Switching to HTML, editing and saving now keeps the new text (tested in a browser).
 - **"Propose a reply with AI" gave a 500 error** (`Call to undefined function dol_set_user_param()`) on installations where Dolibarr had not already loaded `core/lib/functions2.lib.php` for the request. The AI call counter and the remembered sender choice of the e-mail editor now load that file themselves.
 
 ### Changed

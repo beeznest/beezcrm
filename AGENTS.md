@@ -127,6 +127,8 @@ Test data created on the dev instance (deals, outreach, agenda events) is real d
 
 ## Known gaps and traps
 
+- The scripts of `email_compose.php` look elements up by id (`field("crm-plain-note")`...). `crmHelp()` prints no id, so an element a script needs must be wrapped in a tag that has one; a lookup that returns null throws at load and leaves the two panes of the editor both visible, with the format radio on plain text, which silently ignores edits made in the HTML pane. Drive the page in a real browser after touching that script (headless Chromium over the DevTools protocol works: no login is needed with a throw-away PHP router that forces user 1, never left running).
+
 - The files of the notes go to `<documents>/crm/opportunity/<deal id>/` (here `/var/www/dolibarr/documents/crm`), and the CLI checks create that folder as the user who runs them. A folder owned by that user and closed to the web server (`drwxrwx---`) makes every web upload fail with "Le fichier n'a pas pu être écrit" / `ErrorDirNotWritable`. After running `test/cli/notes_check.php`, check the owner and rights of `documents/crm` (on this dev instance the agent user cannot `chown` to the web server user, so it is `chmod 777` here, as its other folders there; never do that elsewhere: the production procedure is in `INSTALL.md`, "Folder for the files of the notes"), or run the checks as the web server user.
 
 - `doc/STRUCTURE_ANALYSIS.md` is the design record. When behaviour changes, update it in the same change, together with `doc/ADMIN_GUIDE.md` (anything an administrator sets, installs or checks), `doc/USER_GUIDE.md` (anything a salesperson sees or does) and this file if setup facts move. `README.md` stays a short overview: do not grow it again.
