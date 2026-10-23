@@ -71,11 +71,12 @@ $constants = array(
 	'CRM_ARCHIVE_MAILBOX' => 'CrmArchiveMailbox',
 	'CRM_ARCHIVE_COPY' => 'CrmArchiveCopy',
 	'CRM_ARCHIVE_REQUIRE_AUTH' => 'CrmArchiveRequireAuth',
+	'CRM_OPTOUT_CONFIRM' => 'CrmOptOutConfirm',
 );
 
 // Settings that are only on or off are switches, saved at once. They are stored as 1 or 0, never deleted: a deleted
 // constant would be recreated with its default the next time the module is enabled.
-$switches = array('CRM_SEQUENCES_ON', 'CRM_DRY_RUN', 'CRM_REMINDERS_ON', 'CRM_REMINDER_DRY_RUN', 'CRM_REQUIRE_NEXT_STEP', 'CRM_REPLY_MOVES_DEAL', 'CRM_AI_EMAIL_ASSIST', 'CRM_ARCHIVE_REQUIRE_AUTH');
+$switches = array('CRM_SEQUENCES_ON', 'CRM_DRY_RUN', 'CRM_REMINDERS_ON', 'CRM_REMINDER_DRY_RUN', 'CRM_REQUIRE_NEXT_STEP', 'CRM_REPLY_MOVES_DEAL', 'CRM_AI_EMAIL_ASSIST', 'CRM_ARCHIVE_REQUIRE_AUTH', 'CRM_OPTOUT_CONFIRM');
 $switchName = '';
 $switchValue = 0;
 if ($action === 'toggle') {
@@ -290,7 +291,7 @@ if ($tab === 'parameters') {
 		}
 		if (in_array($name, $switches, true)) {
 			// A switch that is on until someone turns it off shows as on before the module has been enabled again to create it.
-			$on = getDolGlobalInt($name, $name === 'CRM_REPLY_MOVES_DEAL' ? 1 : 0) !== 0;
+			$on = getDolGlobalInt($name, in_array($name, array('CRM_REPLY_MOVES_DEAL', 'CRM_OPTOUT_CONFIRM'), true) ? 1 : 0) !== 0;
 			// A confirmation before the two switches that have a consequence outside the module.
 			$confirmOn = ($name === 'CRM_AI_EMAIL_ASSIST') ? $langs->trans('CrmConfirmAiOn') : '';
 			$confirmOff = ($name === 'CRM_DRY_RUN') ? $langs->trans('CrmConfirmDryRunOff') : (($name === 'CRM_REMINDER_DRY_RUN') ? $langs->trans('CrmConfirmReminderDryRunOff') : '');
@@ -306,6 +307,9 @@ if ($tab === 'parameters') {
 			}
 			if ($name === 'CRM_ARCHIVE_REQUIRE_AUTH') {
 				print crmHelp($langs->trans('CrmArchiveRequireAuthHelp'), 'span', true);
+			}
+			if ($name === 'CRM_OPTOUT_CONFIRM') {
+				print crmHelp($langs->trans('CrmOptOutConfirmHelp'), 'span', true);
 			}
 			print '</td></tr>';
 			continue;

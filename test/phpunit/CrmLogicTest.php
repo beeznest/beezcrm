@@ -436,4 +436,67 @@ class CrmLogicTest extends TestCase
 		$this->assertNull(crmNormalizeSetting('CRM_AI_EMAIL_PROMPT', str_repeat('x', 4001)));
 		$this->assertNull(crmNormalizeSetting('MAIN_ANYTHING', '1'));
 	}
+
+	public function testOptOutToken(): void
+	{
+		$token = crmOptOutToken('secret', 1, 42);
+		$this->assertSame(64, strlen($token));
+		$this->assertTrue(crmOptOutHashValid($token));
+		$this->assertSame($token, crmOptOutToken('secret', 1, 42));
+		$this->assertNotSame($token, crmOptOutToken('secret', 1, 43));
+		$this->assertNotSame($token, crmOptOutToken('secret', 2, 42));
+		$this->assertNotSame($token, crmOptOutToken('other', 1, 42));
+		$this->assertSame('', crmOptOutToken('', 1, 42));
+		$this->assertSame('', crmOptOutToken('secret', 1, 0));
+	}
+
+	public function testOptOutHashValid(): void
+	{
+		$good = str_repeat('a1', 32);
+		$this->assertTrue(crmOptOutHashValid($good));
+		$this->assertFalse(crmOptOutHashValid(strtoupper($good)));
+		$this->assertFalse(crmOptOutHashValid(substr($good, 1)));
+		$this->assertFalse(crmOptOutHashValid($good.'a'));
+		$this->assertFalse(crmOptOutHashValid($good."\n"));
+		$this->assertFalse(crmOptOutHashValid(str_repeat('g', 64)));
+		$this->assertFalse(crmOptOutHashValid(''));
+	}
+
+	public function testOptOutRequest(): void
+	{
+		$h = str_repeat('0f', 32);
+		$this->assertSame(array('hash' => $h, 'post' => false), crmOptOutRequest(array('h' => $h), array(), 'GET'));
+		$this->assertSame(array('hash' => $h, 'post' => false), crmOptOutRequest(array('h' => $h), array(), 'head'));
+		$this->assertSame(array('hash' => $h, 'post' => true), crmOptOutRequest(array(), array('h' => $h), 'POST'));
+		// Nothing but the hash: no second parameter, in the query or in the body, whatever the method.
+		$this->assertNull(crmOptOutRequest(array('h' => $h, 'x' => '1'), array(), 'GET'));
+		$this->assertNull(crmOptOutRequest(array('h' => $h), array('x' => '1'), 'GET'));
+		$this->assertNull(crmOptOutRequest(array('h' => $h), array('h' => $h), 'POST'));
+		$this->assertNull(crmOptOutRequest(array('x' => '1'), array('h' => $h), 'POST'));
+		$this->assertNull(crmOptOutRequest(array(), array('h' => $h, 'token' => 'x'), 'POST'));
+		$this->assertNull(crmOptOutRequest(array(), array('h' => $h), 'GET'));
+		$this->assertNull(crmOptOutRequest(array('h' => $h), array(), 'POST'));
+		$this->assertNull(crmOptOutRequest(array('H' => $h), array(), 'GET'));
+		$this->assertNull(crmOptOutRequest(array('h' => array($h)), array(), 'GET'));
+		$this->assertNull(crmOptOutRequest(array('h' => 'short'), array(), 'GET'));
+		$this->assertNull(crmOptOutRequest(array('h' => $h), array(), 'PUT'));
+		$this->assertNull(crmOptOutRequest(array('h' => $h), array(), 'DELETE'));
+		$this->assertNull(crmOptOutRequest(array(), array(), 'GET'));
+	}
+
+	public function testOptOutFooter(): void
+	{
+		$url = 'https://crm.example.com/custom/crm/optout.php?h='.str_repeat('ab', 32);
+		$text = "Not interested, don't contact me again soon.";
+		$plain = crmOptOutFooter("Hello\n", $url, $text, false);
+		$this->assertStringContainsString("Hello\n\n--\n".$text."\n".$url, $plain);
+		$html = crmOptOutFooter('<p>Hello</p>', $url, $text, true);
+		$this->assertStringContainsString('<a href="'.$url.'">Not interested, don&#039;t contact me again soon.</a>', $html);
+		$withBody = crmOptOutFooter('<html><body><p>Hi</p></body></html>', $url, $text, true);
+		$this->assertLessThan(strpos($withBody, '</body>'), strpos($withBody, 'optout.php'));
+		$this->assertSame('Hello', crmOptOutFooter('Hello', '', $text, false));
+		$evil = crmOptOutFooter('x', 'https://a.example/?h="><script>', '<b>t</b>', true);
+		$this->assertStringNotContainsString('<script>', $evil);
+		$this->assertStringNotContainsString('<b>t</b>', $evil);
+	}
 }

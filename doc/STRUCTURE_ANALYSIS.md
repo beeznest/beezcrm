@@ -72,6 +72,7 @@ Top menu **CRM**. Left menu entries come from the module descriptor.
 | `pipeline.php` | Kanban for one pipeline, filtered by owner. Drag and drop moves the stage. |
 | `opportunity_list.php` | Ref, title, account, contact, stage, amount, expected close, owner, next step date, qualification gaps |
 | `opportunity_card.php` | Deal, linked proposals, qualification, next step, timeline of agenda events, win / loss |
+| `optout.php` | From v1.2.0. PUBLIC page (no login, no session): the "not interested" link of an e-mail. |
 | `account_history.php` | From v1.2.0. Full CRM history of one third party (stage moves and done events of its deals), linked from its card. |
 | `activity_list.php` | A filtered view of `llx_actioncomm` for CRM deals. Not a second store. |
 | `sequence_list.php`, `sequence_card.php` | Customer cadences, enrolments, journal |
@@ -99,6 +100,18 @@ From v1.2.0 (schema step 4) the free "description" of a deal is replaced by inte
 - **No public URL**: `note_file.php?id=` checks the deal's visibility, answers with `Content-Disposition: attachment`, or `inline` only for a PDF with `mode=view`, and `nosniff`. The documents directory is outside the web root.
 - The paperclip on the card opens a `<dialog>` with every file of the deal. The preview of a PDF is the magnifier icon of core's document lists (`search-plus`), which opens `note_file.php?mode=view` (inline) in an `<iframe>` inside a second `<dialog>` of the page; without JavaScript the link opens a new tab. The name of a file always downloads it. The notes are in chronological order: the older ones (oldest first) are folded above the last one behind a link (`crm-notes-toggle`), and the add form is below the list; the history of an edited note is behind another link; both are plain jQuery already loaded by Dolibarr.
 - `CrmNote::supported()` is true only when the tables exist **and** the installed schema version is 4 or more, so the descriptions never look empty between the creation of the tables and the end of the migration. Until then it is false and the card, the tools and the AI prompt keep using `description` (files are live before the module is re-enabled). The column `description` is kept but no longer written once notes exist. The AI reply prompt sends the latest three notes (1000 characters in all).
+
+## Public "not interested" link
+
+From v1.2.0 (schema step 5). Every e-mail sent through `crmSendMail()` with a deal id ends with a link to `optout.php?h=<token>` (`crmOptOutFooter()`, text from `crmOptOutLinkText()`, so the language of the third party). It is added at that one function because everything goes through it: the editor, the outreach job, text written by the AI. It is not optional: if the link cannot be made while the feature is supported, the e-mail is **not sent** (`CrmErrorOptOutLink`); before the schema step has run the e-mail goes without it and a warning is logged. The editor adds the same line to the text of the mail-client and copy buttons. The AI prompts tell the model not to write such a line. The text stored on the deal as the sent e-mail is the text without the footer, so the link (a bearer secret) is not copied into the agenda.
+
+Token. `crmOptOutToken()` is `hash_hmac('sha256', 'crm-optout|<entity>|<deal id>', secret)`, 64 lowercase hex characters, deterministic per deal (the same link in every e-mail). The secret is `$dolibarr_main_instance_unique_id` of `conf.php` (not in the database), else a random `CRM_OPTOUT_SECRET` created at first use. `llx_crm_optout` stores only `sha256(token)`, unique, so the database alone yields no link and lookup is an exact match on a hash.
+
+The page (`optout.php`, all rules in `CrmOptOut`). It defines `NOLOGIN`, `NOSESSION`, `NOCSRFCHECK` (there is no session to tie a CSRF token to; the only effect of a request is the one the token authorises), loads no menu, and prints its own HTML with fixed texts and no data of the deal. `crmOptOutRequest()` accepts exactly one parameter `h` matching `^[a-f0-9]{64}$`: a GET whose query is only `h`, or a POST whose body is only `h` with an empty query; anything else gets the neutral "not valid" page (404). Headers: `no-store`, `Referrer-Policy: no-referrer`, `noindex`, `X-Frame-Options: DENY`, `Content-Security-Policy` with `default-src 'none'`, a nonce for the one style block and `form-action 'self'`.
+
+Two steps by default (`CRM_OPTOUT_CONFIRM`, on): a GET shows a button, a POST records. Mail scanners and previews fetch links by GET; recording on GET would let them close deals. The request said "when the prospect follows the link, we register"; the confirmation is the one deviation, and the switch restores the one-step behaviour.
+
+Effect (`CrmOptOut::record()`), in one transaction: an **open** deal moves to its pipeline's lost stage with the loss reason `NOTINTERESTED` ("Not interested", added by step 5 to every entity with a pipeline and by the seed), the actor being the deal owner (else its creator) because there is no logged user; a done `AC_OTH` event with the text of `CrmOptOutEvent` is added through `CrmActivity`; every running enrolment is stopped with the reason `optout` (`Sequence::stopOnOptOut()`, whatever "stop on reply" says); `date_used` is set. A deal that is not open is left alone and the page says "already recorded". Unknown tokens answer "not valid". Not done: a rate limit (the web server's job), a `List-Unsubscribe` header (RFC 8058 one-click uses a POST body that is not just the hash).
 
 ## Pipeline rules
 
@@ -235,6 +248,7 @@ One file, `sql/llx_crm.sql`. Indexes are inside each `CREATE TABLE`. There is no
 | `llx_crm_stage_history` | From stage, to stage, user, date |
 | `llx_crm_note` | From v1.2.0. Internal notes of a deal: author, date, text, last editor and date |
 | `llx_crm_note_revision` | From v1.2.0. Earlier texts of an edited note, with their author and date |
+| `llx_crm_optout` | From v1.2.0. One row per deal that has a "not interested" link: SHA-256 of its token (unique), creation and use dates |
 | `llx_crm_note_file` | From v1.2.0. Files attached to a note: name, stored name, size, mime type, author, date |
 | `llx_crm_opportunity_propal` | Deal ↔ proposal |
 | `llx_crm_qualification` | Checklist definition |
@@ -323,6 +337,7 @@ No purge button in v1. A later action can drop only `llx_crm_*` and `CRM_*` cons
 │   └── boxes/crmwidget.php
 ├── class/
 │   ├── actions_crm.class.php          # addMcpTools, e-mail collector operation, search entry, third party Prospect tab (v1.2.0)
+│   ├── crmoptout.class.php            # the "not interested" link of a deal and its effect (v1.2.0)
 │   ├── crmnote.class.php              # internal notes, versions and files of a deal (v1.2.0)
 │   ├── crmaccountview.class.php       # deals and CRM history of a third party (v1.2.0)
 │   ├── crmmailarchive.class.php       # e-mail to deal matching and recording

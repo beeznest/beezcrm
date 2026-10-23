@@ -96,8 +96,9 @@ find /path/to/documents/crm -type f -exec chmod 0640 {} +
 ## 6. Check the installation
 
 - The **CRM** menu is there and CRM → Home opens without error.
-- CRM → Setup → **About** shows the module version `1.2.0` and a database schema "4 / 4, up to date".
+- CRM → Setup → **About** shows the module version `1.2.0` and a database schema "5 / 5, up to date".
 - Home → Setup → Scheduled jobs lists two CRM jobs: "Owner reminders" and "CRM automated outreach".
+- From **outside your network**, `curl -i 'https://your-host/custom/crm/optout.php?h=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'` answers `404` with a short page saying the link is not valid: the public "not interested" page of the e-mails is reachable without a login. A `$dolibarr_main_url_root` that prospects cannot reach makes the link of every e-mail useless.
 - Create a test deal (CRM → Opportunities → New opportunity), plan a next step, move it between stages, add a note with a small attached file (see "Folder for the files of the notes" if it fails), then delete it.
 
 ## 7. Optional: let an AI assistant use the CRM (MCP)

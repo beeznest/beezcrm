@@ -27,6 +27,8 @@ You can skip versions: going from 1.0.0 to a much later one runs every missing s
 
 Going to **1.2.0** runs schema step 4 (internal notes): Dolibarr creates the tables `llx_crm_note`, `llx_crm_note_revision` and `llx_crm_note_file` when the module is enabled again, then the step turns the description of every deal that has one into its first note (written by the creator of the deal on its creation date). The column `description` stays in the table, unused. The files of the notes are stored in the documents directory of Dolibarr, under `crm/opportunity/<deal id>/`: include that directory in your backups.
 
+Going to **1.2.0** also runs schema step 5 (the public "not interested" link): the table `llx_crm_optout` is created when the module is enabled again, and the loss reason **Not interested** (code `NOTINTERESTED`) is added to each entity that has a pipeline. From then on every e-mail sent for a deal ends with the link, so check that `custom/crm/optout.php` is reachable by your prospects without a login (see "The public \"not interested\" link" in [doc/ADMIN_GUIDE.md](doc/ADMIN_GUIDE.md)). Until the module is enabled again the e-mails go out without the link.
+
 ## What an update does and does not touch
 
 - It **creates** what is missing: new columns, new settings with their defaults, new rights.

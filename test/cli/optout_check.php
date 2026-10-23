@@ -1,0 +1,108 @@
+<?php
+declare(strict_types=1);
+
+/**
+ * \file    test/cli/optout_check.php
+ * \ingroup crm
+ * \brief   From v1.2.0. The public "not interested" link: the link of a deal (stable, only the hash of the token is stored), and
+ *          what recording the request does (lost stage, reason, done event, outreach stopped, closed deals untouched,
+ *          wrong tokens refused). Rolled back. See crm_cli_bootstrap.inc.php.
+ */
+
+require_once __DIR__.'/crm_cli_bootstrap.inc.php';
+require_once __DIR__.'/../../class/pipeline.class.php';
+require_once __DIR__.'/../../class/stage.class.php';
+require_once __DIR__.'/../../class/opportunity.class.php';
+require_once __DIR__.'/../../class/sequence.class.php';
+require_once __DIR__.'/../../class/crmoptout.class.php';
+
+global $langs;
+/** @var DoliDB $db */
+/** @var Conf $conf */
+/** @var User $user */
+crmCliCheck('the table exists and schema step 5 ran (enable the module again)', CrmOptOut::supported($db));
+if (!CrmOptOut::supported($db)) {
+	crmCliFinish();
+}
+$db->begin();
+$prefix = $db->prefix();
+$entity = (int) $conf->entity;
+$optOut = new CrmOptOut($db);
+$pipelineId = (int) (new Pipeline($db))->fetchAll(true)[0]->id;
+$mkDeal = function (string $label) use ($db, $user, $pipelineId): Opportunity {
+	$d = new Opportunity($db);
+	$d->label = $label;
+	$d->fk_pipeline = $pipelineId;
+	$d->fk_user_resp = (int) $user->id;
+	$d->create($user);
+	return $d;
+};
+$tokenOf = function (string $url): string {
+	return (string) preg_replace('/^.*optout\.php\?h=/', '', $url);
+};
+
+$res = $db->query('SELECT rowid FROM '.$prefix.'crm_loss_reason WHERE entity = '.$entity." AND code = 'NOTINTERESTED'");
+crmCliCheck('the loss reason "Not interested" exists', $res && $db->num_rows($res) === 1);
+crmCliCheck('running its step again adds nothing', crmSchemaStep5($db) && $db->num_rows($db->query('SELECT rowid FROM '.$prefix.'crm_loss_reason WHERE entity = '.$entity." AND code = 'NOTINTERESTED'")) === 1);
+
+$deal = $mkDeal('ZOPTOUT');
+$url = $optOut->urlForDeal((int) $deal->id);
+$token = $tokenOf($url);
+crmCliCheck('the link is an address of the page with one hash', strpos($url, 'optout.php?h=') !== false && crmOptOutHashValid($token) && substr_count($url, '?') === 1 && strpos($url, '&') === false);
+crmCliCheck('the same deal always gets the same link', $optOut->urlForDeal((int) $deal->id) === $url);
+$stored = $db->fetch_object($db->query('SELECT token_hash FROM '.$prefix.'crm_optout WHERE fk_opportunity = '.((int) $deal->id)));
+crmCliCheck('only the SHA-256 of the token is stored', $stored && $stored->token_hash === hash('sha256', $token) && $stored->token_hash !== $token);
+$other = $mkDeal('ZOPTOUT2');
+crmCliCheck('another deal gets another link', $tokenOf($optOut->urlForDeal((int) $other->id)) !== $token);
+crmCliCheck('a link cannot be made for a deal that does not exist', $optOut->urlForDeal(99999999) === '');
+crmCliCheck('find() knows the token and nothing else', $optOut->find($token) !== null && (int) $optOut->find($token)->fk_opportunity === (int) $deal->id
+	&& $optOut->find(strtoupper($token)) === null && $optOut->find(str_repeat('0', 64)) === null && $optOut->find($token.'0') === null && $optOut->find("' OR '1'='1") === null);
+crmCliCheck('a wrong token records nothing', $optOut->record(str_repeat('0', 64)) === 'invalid' && $optOut->record('abc') === 'invalid');
+crmCliCheck('the text of the link is the one asked for', crmOptOutLinkText((int) $deal->id) !== '' && strpos(crmOptOutLinkText((int) $deal->id), 'contact') !== false);
+
+// An outreach running on the deal.
+$sequence = new Sequence($db);
+$sequence->ref = 'ZOPTSEQ';
+$sequence->label = 'Z';
+$sequence->create($user);
+$sequence->addStep('task', 0, 'a', '');
+$sequence->enrol((int) $deal->id);
+$running = function () use ($db, $prefix, $deal): int {
+	return (int) $db->fetch_object($db->query('SELECT COUNT(*) as nb FROM '.$prefix."crm_sequence_enrol WHERE fk_opportunity = ".((int) $deal->id)." AND status = 'running'"))->nb;
+};
+crmCliCheck('the outreach is running', $running() === 1);
+
+crmCliCheck('the request is recorded', $optOut->record($token) === 'recorded');
+$row = $db->fetch_object($db->query('SELECT o.status, o.date_close, r.code FROM '.$prefix.'crm_opportunity o LEFT JOIN '.$prefix.'crm_loss_reason r ON r.rowid = o.fk_loss_reason WHERE o.rowid = '.((int) $deal->id)));
+crmCliCheck('the deal is lost, with the reason "Not interested" and a close date', $row && $row->status === 'lost' && $row->code === 'NOTINTERESTED' && $row->date_close !== null);
+$hist = $db->fetch_object($db->query('SELECT COUNT(*) as nb FROM '.$prefix.'crm_stage_history WHERE fk_opportunity = '.((int) $deal->id).' AND fk_user = '.((int) $user->id)));
+crmCliCheck('the move is in the stage history', (int) $hist->nb >= 2);
+$eventLabel = $db->escape(crmSingleLine(strip_tags($langs->transnoentitiesnoconv('CrmOptOutEvent')), 255));
+$eventCount = function () use ($db, $prefix, $deal, $eventLabel): int {
+	return (int) $db->fetch_object($db->query('SELECT COUNT(*) as nb FROM '.$prefix."actioncomm WHERE elementtype = 'opportunity@crm' AND fk_element = ".((int) $deal->id)." AND percent = 100 AND label = '".$eventLabel."'"))->nb;
+};
+crmCliCheck('a done event on the deal says why', $eventCount() === 1);
+crmCliCheck('the outreach is stopped, with the reason', $running() === 0 && $db->fetch_object($db->query('SELECT stop_reason FROM '.$prefix.'crm_sequence_enrol WHERE fk_opportunity = '.((int) $deal->id)))->stop_reason === 'optout');
+crmCliCheck('the link is marked used', $db->fetch_object($db->query('SELECT date_used FROM '.$prefix.'crm_optout WHERE fk_opportunity = '.((int) $deal->id)))->date_used !== null);
+crmCliCheck('using it again changes nothing', $optOut->record($token) === 'already' && $eventCount() === 1);
+
+// A closed deal is never changed by a link.
+$wonStage = 0;
+foreach ((new Stage($db))->fetchAll($pipelineId) as $stage) {
+	if ((int) $stage->is_won === 1 && $wonStage === 0) {
+		$wonStage = (int) $stage->id;
+	}
+}
+$won = $mkDeal('ZOPTWON');
+$wonToken = $tokenOf($optOut->urlForDeal((int) $won->id));
+$won->moveToStage($user, $wonStage);
+crmCliCheck('a won deal stays won', $optOut->record($wonToken) === 'already' && $db->fetch_object($db->query('SELECT status FROM '.$prefix.'crm_opportunity WHERE rowid = '.((int) $won->id)))->status === 'won');
+
+// Deleting the deal... the link goes with it (nothing orphaned is usable).
+$gone = $mkDeal('ZOPTGONE');
+$goneToken = $tokenOf($optOut->urlForDeal((int) $gone->id));
+$gone->delete($user);
+crmCliCheck('the link of a deleted deal is refused', $optOut->record($goneToken) === 'invalid');
+
+$db->rollback();
+crmCliFinish();

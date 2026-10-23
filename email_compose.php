@@ -249,6 +249,7 @@ if ($canAct) {
 		$helpItems .= '<li>'.$langs->trans($key).'</li>';
 	}
 	print crmHelp($helpItems, 'ul');
+	print crmHelp($langs->trans('CrmOptOutComposeNote'));
 }
 print '</form>';
 print '<p><a href="'.$dealUrl.'">'.$langs->trans('CrmBackToDeal').'</a></p>';
@@ -355,7 +356,8 @@ $js = <<<'JS'
 				if (cfg.cc) { query.push("cc=" + encodeURIComponent(cfg.cc)); }
 				if (cfg.bcc) { query.push("bcc=" + encodeURIComponent(cfg.bcc)); }
 				query.push("subject=" + encodeURIComponent(field("crm-subject").value));
-				query.push("body=" + encodeURIComponent(plain.value.replace(/\r?\n/g, "\r\n")));
+				var tail = cfg.optOutUrl ? "\n\n--\n" + cfg.optOutText + "\n" + cfg.optOutUrl + "\n" : "";
+				query.push("body=" + encodeURIComponent((plain.value + tail).replace(/\r?\n/g, "\r\n")));
 				window.location.href = "mailto:" + encodeURIComponent(field("crm-to").value) + "?" + query.join("&");
 			});
 		});
@@ -369,9 +371,10 @@ $js = <<<'JS'
 		copy.addEventListener("click", function () {
 			var done = function () { copy.textContent = cfg.copied; };
 			refreshPlain(function () {
-				var text = field("crm-subject").value + "\n\n" + plain.value;
+				var tail = cfg.optOutUrl ? "\n\n--\n" + cfg.optOutText + "\n" + cfg.optOutUrl + "\n" : "";
+				var text = field("crm-subject").value + "\n\n" + plain.value + tail;
 				if (format === "html" && window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
-					var html = "<p><strong>" + field("crm-subject").value.replace(/&/g, "&amp;").replace(/</g, "&lt;") + "</strong></p>" + getHtml();
+					var html = "<p><strong>" + field("crm-subject").value.replace(/&/g, "&amp;").replace(/</g, "&lt;") + "</strong></p>" + getHtml() + (cfg.optOutUrl ? "<p>-- <br><a href=\"" + cfg.optOutUrl + "\">" + cfg.optOutText.replace(/&/g, "&amp;").replace(/</g, "&lt;") + "</a></p>" : "");
 					navigator.clipboard.write([new ClipboardItem({
 						"text/html": new Blob([html], { type: "text/html" }),
 						"text/plain": new Blob([text], { type: "text/plain" })
@@ -386,11 +389,17 @@ $js = <<<'JS'
 	apply();
 }());
 JS;
+// The link every e-mail of the deal ends with: Send adds it itself, a message written in a mail client gets it from here.
+require_once __DIR__.'/class/crmoptout.class.php';
+$optOutUrl = (new CrmOptOut($db))->urlForDeal((int) $draft->deal->rowid);
+$optOutText = $optOutUrl !== '' ? crmOptOutLinkText((int) $draft->deal->rowid) : '';
 $config = array(
 	'format' => $format,
 	'id' => (int) $draft->event->id,
 	'url' => $_SERVER['PHP_SELF'],
 	'readonly' => !$canAct,
+	'optOutUrl' => $optOutUrl,
+	'optOutText' => $optOutText,
 	'cc' => $mailtoCc,
 	'bcc' => $mailtoBcc,
 	'aiPrompt' => CrmAiReply::defaultPrompt(),

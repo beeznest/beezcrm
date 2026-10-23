@@ -158,7 +158,7 @@ class CrmAiReply
 			$text .= 'Subject: '.trim($subject)."\n".crmCompactMessage($draftText, 3000)."\n";
 		}
 		$text .= "\n=== Output rules ===\n";
-		$text .= "Write only the body of the next e-mail from us, as plain text: no subject line, no explanation, no markdown. Use the language of the exchange.\n";
+		$text .= "Write only the body of the next e-mail from us, as plain text: no subject line, no explanation, no markdown. Use the language of the exchange. Do not write any unsubscribe or \"not interested\" line or link: one is added automatically after the e-mail.\n";
 		return array('text' => $text, 'names' => array((string) $deal->soc_name, $contact, $owner));
 	}
 
@@ -372,6 +372,7 @@ class CrmAiReply
 			$text .= "Write a short template for this e-mail, to be sent to many different prospects: use the placeholders where the real value belongs.\n\n";
 		}
 		$text .= "=== Output rules ===\n";
+		$text .= "Do not write any unsubscribe or \"not interested\" line or link: one is added automatically after the e-mail.\n";
 		if ($html) {
 			$text .= "Return only the body of the e-mail as an HTML fragment: use simple tags (p, br, strong, em, ul, ol, li, a), no html, head or body tag, no style, no script, no markdown. No subject line and no explanation.\n";
 		} else {

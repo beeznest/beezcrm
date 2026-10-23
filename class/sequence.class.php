@@ -459,6 +459,23 @@ class Sequence
 	}
 
 	/**
+	 * From v1.2.0. Stop every running enrolment of a deal because the prospect used the "not interested" link, whatever the
+	 * outreach's own "stop on reply" rule says.
+	 */
+	public function stopOnOptOut(int $opportunityId): int
+	{
+		$sql = 'UPDATE '.$this->db->prefix().'crm_sequence_enrol';
+		$sql .= " SET status = 'stopped', stop_reason = 'optout', date_next = NULL";
+		$sql .= ' WHERE fk_opportunity = '.((int) $opportunityId)." AND status = 'running'";
+		$resql = $this->db->query($sql);
+		if (!$resql) {
+			$this->error = crmDbError($this->db);
+			return -1;
+		}
+		return (int) $this->db->affected_rows($resql);
+	}
+
+	/**
 	 * @return array<int,object>
 	 */
 	public function fetchEnrolments(User $user): array

@@ -137,6 +137,7 @@ The settings that are only on or off are **on/off switches** (the same switches 
 | Default AI prompt | `CRM_AI_EMAIL_PROMPT` (empty) | A text area. The prompt offered to salespeople, who can edit it for each request. Empty uses the built-in prompt (English or French by the user's language) |
 | Archive mailbox address | `CRM_ARCHIVE_MAILBOX` (empty) | The dedicated address copied on every customer e-mail sent for a deal. Empty: no copy |
 | Copy mode for the archive mailbox | `CRM_ARCHIVE_COPY` (`bcc`) | A drop-down: **Hidden copy (Bcc)** or **Visible copy (Cc)** |
+| Ask the prospect to confirm the "not interested" link | `CRM_OPTOUT_CONFIRM` (1) | From v1.2.0. On: the public page shows a button and records the request only when it is pressed. Off: opening the link records it at once. See [The public "not interested" link](#the-public-not-interested-link) |
 
 Under the table a note reminds you that outreach stay off until enabled and that dry-run is on for outreach and reminders, and a longer help text explains the e-mail history setup.
 
@@ -324,6 +325,22 @@ The e-mail editor (Write / send, on a planned e-mail) can send **plain text** or
 - The e-mail collector stores a received HTML message as plain text.
 - If the WYSIWYG module is off, the HTML tab is a box showing the HTML source.
 
+## The public "not interested" link
+
+**From v1.2.0.** Every e-mail the module sends for a deal ends with a link, **"Not interested, don't contact me again soon."** (in the language of the deal's third party when it has one, else the current language). It is added when the message is sent, whoever wrote the text: a salesperson in the editor, an automated outreach, or the AI assistant (the AI is told not to write such a line itself). It is also added to the text of "Open in my mail client" and "Copy text" of the editor, for a message sent from a mail program. There is no setting to leave it out. Owner reminders, which go to your own staff, do not carry it.
+
+**What happens.** The link opens a public page, `custom/crm/optout.php`, that asks the prospect to press a button; the request is then recorded: the **deal is closed as Lost** with the loss reason **Not interested** (added to every pipeline's reasons by the schema step 5; rename it if you like, its code is `NOTINTERESTED`), a **done event** is added to the deal, the running outreach of the deal **stop** (reason "the prospect is not interested"), and the prospect sees a confirmation. The move is made in the name of the deal's owner, who appears in the history. Only an **open** deal is changed: the link of a deal already won or lost does nothing (the page still answers "already recorded"). The salesperson can reopen the deal by moving it to an open stage, as with any lost deal.
+
+**The address.** The link uses the public address Dolibarr knows for itself (`$dolibarr_main_url_root`, with `$dolibarr_main_url_root_alt` for `custom`, in `conf.php`). **It must be an address your prospects can reach**: a link to `localhost` or to an intranet name is useless. The page must be reachable **without any login**: if a reverse proxy, a firewall or an HTTP authentication protects `/custom` or the whole instance, let `/custom/crm/optout.php` through. Test it from outside: `curl -i https://your-host/custom/crm/optout.php?h=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef` answers `404` with "This link is not valid" (a real link answers 200).
+
+**Why it is safe to leave public.**
+- The link carries **one** parameter, `h`: 64 lowercase hexadecimal characters, the HMAC-SHA256 of the entity and the deal number under a secret that is not in the database (the installation's unique id of `conf.php`). It cannot be guessed from a deal number. Any other parameter (in the query or in a POST body), another method or another shape of value gets the same neutral "not valid" page, and nothing is read from it.
+- The database holds only the **SHA-256 of the token** (table `llx_crm_optout`), never the token: a copy of the database gives no working link. The token is found by an exact lookup of that hash; an unknown token tells nothing.
+- The page shows **no data** of the deal or of the prospect, starts **no session**, sets **no cookie**, loads no script and no external file, and is sent with `Cache-Control: no-store`, `Referrer-Policy: no-referrer`, `X-Robots-Tag: noindex`, `X-Frame-Options: DENY` and a strict `Content-Security-Policy`.
+- By default (`CRM_OPTOUT_CONFIRM` on) opening the link **changes nothing**: it shows a button, and only the POST of that button records the request. Mail security scanners and link previews open every link of a message; without this step they would close your deals by themselves. Turn it off only if you accept that.
+- The link is the same in all the e-mails of a deal, and whoever holds it can use it, as with any unsubscribe link: do not publish a prospect's e-mail. A link can be used only on an **open** deal, once (the page then answers "already recorded").
+- What an attacker can do with a link is limited to closing that one deal as Lost. There is no rate limit in the module: if you want one, set it in your web server or firewall for `optout.php`.
+
 ## Internal notes and files
 
 **From v1.2.0.** The deal card has internal notes instead of a description (see the user guide). What an administrator needs to know:
@@ -459,6 +476,8 @@ The 49 tools by the CRM right they need (a user without it does not see the tool
 | `CRM_ARCHIVE_MAILBOX` | empty | Archive mailbox address; empty means no copy |
 | `CRM_ARCHIVE_COPY` | `bcc` | `bcc` or `cc` |
 | `CRM_ARCHIVE_REQUIRE_AUTH` | 0 | Keep a collected message only if its server reports a passed SPF/DKIM/DMARC check |
+| `CRM_OPTOUT_CONFIRM` | 1 | From v1.2.0. The public "not interested" page asks for a confirmation before it records the request |
+| `CRM_OPTOUT_SECRET` | created if needed | From v1.2.0. Secret of the "not interested" links, created only when `conf.php` has no `$dolibarr_main_instance_unique_id` (which is used first). Never change or delete it: every link already sent would stop working |
 | `SEARCHFORM_POSITION_CRM` | 42 | Position of "CRM opportunities" in the general search box (optional, set in Other setup) |
 | `MAIN_MODULE_CRM_ICON` | `fa-handshake` | Top menu icon; the theme reads it. Set at enable |
 

@@ -227,3 +227,15 @@ CREATE TABLE llx_crm_note_file (
 	KEY idx_crm_note_file_note (fk_note),
 	KEY idx_crm_note_file_opportunity (fk_opportunity)
 ) ENGINE=innodb;
+
+-- From v1.2.0. The public "not interested" link of a deal: only the SHA-256 of the token is stored, never the token itself.
+CREATE TABLE llx_crm_optout (
+	rowid integer AUTO_INCREMENT PRIMARY KEY,
+	entity integer DEFAULT 1 NOT NULL,
+	fk_opportunity integer NOT NULL,
+	token_hash char(64) NOT NULL,
+	datec datetime NOT NULL,
+	date_used datetime DEFAULT NULL,
+	UNIQUE KEY uk_crm_optout_token (token_hash),
+	UNIQUE KEY uk_crm_optout_opportunity (fk_opportunity)
+) ENGINE=innodb;

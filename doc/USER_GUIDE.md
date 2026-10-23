@@ -135,6 +135,19 @@ Moving is allowed to any open stage, forward or back, as long as the deal has a 
 
 The customer's reply is recognised by the same reference in the subject, so it is added to the deal when it reaches the archive mailbox. If a contact answers you by another way, ask whoever manages outreach to use **Mark replied** on the outreach so that it stops (it needs the outreach right).
 
+### The "Not interested" link (from v1.2.0)
+
+From v1.2.0 every e-mail sent for a deal (from the editor, by an automated outreach, or written with the AI assistant) ends with a line **"Not interested, don't contact me again soon."**, a link the prospect can follow. You do not add it and cannot remove it; the editor tells you so. If you write your message in your own mail program (**Open in my mail client**, **Copy text**), the line is added to the text it gets.
+
+When the prospect opens the link, a page asks them to confirm (a mail scanner opening the link does not trigger anything). After they confirm, the page thanks them and, in the CRM:
+
+- the deal is **closed as Lost**, with the loss reason **Not interested**;
+- a **done event** is added to the deal ("The prospect used the "Not interested, don't contact me again soon" link of an e-mail"), dated when they confirmed;
+- the **automated outreach** of the deal stop, so nothing else is sent;
+- the change is in the deal's **history**, made in the name of the deal's owner.
+
+Only an open deal changes: if the deal was already won or lost, nothing happens. If the prospect changes their mind, move the deal to an open stage again as for any lost deal (it needs a next step).
+
 ## Step 6. Close the deal
 
 **Won.** Move the deal to **Won**. The date is recorded and the deal leaves the forecast and the board. Then continue in Dolibarr as usual (order, invoice, contract). Do not delete the deal: it feeds the win-rate and sales-cycle reports.

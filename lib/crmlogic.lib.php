@@ -545,7 +545,7 @@ function crmNormalizeSetting(string $name, string $value): ?string
 {
 	$value = trim($value);
 	$switches = array('CRM_SEQUENCES_ON', 'CRM_DRY_RUN', 'CRM_REMINDERS_ON', 'CRM_REMINDER_DRY_RUN', 'CRM_REQUIRE_NEXT_STEP',
-		'CRM_REPLY_MOVES_DEAL', 'CRM_AI_EMAIL_ASSIST', 'CRM_ARCHIVE_REQUIRE_AUTH');
+		'CRM_REPLY_MOVES_DEAL', 'CRM_AI_EMAIL_ASSIST', 'CRM_ARCHIVE_REQUIRE_AUTH', 'CRM_OPTOUT_CONFIRM');
 	$numbers = array('CRM_ROTTING_DAYS' => array(1, 3650), 'CRM_FORECAST_MONTHS' => array(1, 36), 'CRM_MAX_EMAILS_PER_RUN' => array(1, 500),
 		'CRM_AI_TIMEOUT' => array(10, 600), 'CRM_AI_MAX_PER_HOUR' => array(1, 1000));
 	if (in_array($name, $switches, true)) {
@@ -578,3 +578,73 @@ function crmNormalizeSetting(string $name, string $value): ?string
 	return null;
 }
 
+
+/**
+ * From v1.2.0. The token of the public "not interested" link of a deal: an HMAC-SHA256 (64 lowercase hex characters) of the
+ * entity and the deal id under a secret that is not in the database, so it cannot be guessed from a deal number and a leaked
+ * copy of the database does not give the links. Empty when the secret or an id is missing.
+ */
+function crmOptOutToken(string $secret, int $entity, int $dealId): string
+{
+	if ($secret === '' || $entity <= 0 || $dealId <= 0) {
+		return '';
+	}
+	return hash_hmac('sha256', 'crm-optout|'.$entity.'|'.$dealId, $secret);
+}
+
+/**
+ * True for exactly what crmOptOutToken() produces: 64 lowercase hexadecimal characters, nothing else.
+ */
+function crmOptOutHashValid(string $hash): bool
+{
+	return (bool) preg_match('/^[a-f0-9]{64}$/D', $hash);
+}
+
+/**
+ * The public page accepts one parameter, `h`, and nothing more: a GET with the query `h=<hash>` only, or a POST whose body is
+ * `h=<hash>` only (and an empty query). Any other parameter, an array, another method or a hash of the wrong shape is refused.
+ *
+ * @param array<string,mixed> $get    $_GET
+ * @param array<string,mixed> $post   $_POST
+ * @param string              $method Request method
+ * @return array{hash:string,post:bool}|null null when the request is not one the page accepts
+ */
+function crmOptOutRequest(array $get, array $post, string $method): ?array
+{
+	$method = strtoupper($method);
+	if ($method === 'GET' || $method === 'HEAD') {
+		$source = $get;
+		$other = $post;
+		$isPost = false;
+	} elseif ($method === 'POST') {
+		$source = $post;
+		$other = $get;
+		$isPost = true;
+	} else {
+		return null;
+	}
+	if (count($other) !== 0 || count($source) !== 1 || !array_key_exists('h', $source) || !is_string($source['h']) || !crmOptOutHashValid($source['h'])) {
+		return null;
+	}
+	return array('hash' => $source['h'], 'post' => $isPost);
+}
+
+/**
+ * Add the "not interested" link at the end of an e-mail: a separated line with the text and the address for plain text, a
+ * paragraph with a link for HTML (before </body> when there is one). The text and the address are escaped for HTML.
+ */
+function crmOptOutFooter(string $body, string $url, string $text, bool $html): string
+{
+	if ($url === '' || $text === '') {
+		return $body;
+	}
+	if (!$html) {
+		return rtrim($body)."\n\n--\n".$text."\n".$url."\n";
+	}
+	$paragraph = '<p style="font-size:smaller;color:#666">-- <br><a href="'.htmlspecialchars($url, ENT_QUOTES, 'UTF-8').'">'.htmlspecialchars($text, ENT_QUOTES, 'UTF-8').'</a></p>';
+	$position = strripos($body, '</body>');
+	if ($position !== false) {
+		return substr($body, 0, $position).$paragraph.substr($body, $position);
+	}
+	return $body.$paragraph;
+}

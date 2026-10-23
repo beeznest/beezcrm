@@ -50,6 +50,7 @@ function crmDictLabel(string $label): string
 		'Timing' => 'CrmReasonTiming',
 		'No decision' => 'CrmReasonNoDecision',
 		'No answer' => 'CrmReasonNoAnswer',
+		'Not interested' => 'CrmReasonNotInterested',
 		'Need confirmed' => 'CrmQualNeed',
 		'Budget confirmed' => 'CrmQualBudget',
 		'Decision maker identified' => 'CrmQualDecision',
@@ -345,7 +346,7 @@ function crmEnrolStatusLabel(string $status, string $reason): string
 	global $langs;
 	crmLoadLangs();
 	$statuses = array('running' => 'CrmEnrolRunning', 'done' => 'CrmEnrolDone', 'stopped' => 'CrmEnrolStopped');
-	$reasons = array('replied' => 'CrmEnrolReasonReplied', 'won' => 'CrmEnrolReasonWon', 'lost' => 'CrmEnrolReasonLost', 'manual' => 'CrmEnrolReasonManual');
+	$reasons = array('replied' => 'CrmEnrolReasonReplied', 'won' => 'CrmEnrolReasonWon', 'lost' => 'CrmEnrolReasonLost', 'manual' => 'CrmEnrolReasonManual', 'optout' => 'CrmEnrolReasonOptOut');
 	$label = isset($statuses[$status]) ? $langs->trans($statuses[$status]) : $status;
 	if ($status === 'stopped' && isset($reasons[$reason])) {
 		$label .= ' ('.$langs->trans($reasons[$reason]).')';
@@ -388,7 +389,7 @@ function crmLogViewLink(int $logId): string
  */
 function crmSchemaCurrent(): int
 {
-	return 4;
+	return 5;
 }
 
 /**
@@ -406,6 +407,7 @@ function crmSchemaSteps(): array
 		2 => array('label' => 'Content of the e-mails of the sequence journal', 'run' => 'crmSchemaStep2'),
 		3 => array('label' => 'Stage "Replied to outreach" and the column is_reply of the stages', 'run' => 'crmSchemaStep3'),
 		4 => array('label' => 'Internal notes: the description of a deal becomes its first note', 'run' => 'crmSchemaStep4'),
+		5 => array('label' => 'Public "not interested" link: loss reason "Not interested"', 'run' => 'crmSchemaStep5'),
 	);
 }
 
@@ -503,6 +505,42 @@ function crmSchemaStep4(DoliDB $db): bool
 	if (!$db->query($sql)) {
 		dol_syslog('CRM: could not move the descriptions to notes: '.$db->lasterror(), LOG_ERR);
 		return false;
+	}
+	return true;
+}
+
+/**
+ * Make sure an entity has the loss reason "Not interested" (code NOTINTERESTED), after the others. A reason the administrator
+ * renamed or turned off keeps its row: only a missing code is added.
+ */
+function crmEnsureNotInterestedReason(DoliDB $db, int $entity): void
+{
+	$resql = $db->query('SELECT rowid FROM '.$db->prefix().'crm_loss_reason WHERE entity = '.$entity." AND code = 'NOTINTERESTED'");
+	if (!$resql || $db->num_rows($resql) > 0) {
+		return;
+	}
+	$position = 0;
+	$resMax = $db->query('SELECT MAX(position) as mx FROM '.$db->prefix().'crm_loss_reason WHERE entity = '.$entity);
+	if ($resMax && ($obj = $db->fetch_object($resMax)) && $obj->mx !== null && $obj->mx !== '') {
+		$position = ((int) $obj->mx) + 10;
+	}
+	$db->query('INSERT INTO '.$db->prefix().'crm_loss_reason (entity, code, label, position, active) VALUES ('.$entity.", 'NOTINTERESTED', 'Not interested', ".$position.', 1)');
+}
+
+/**
+ * Schema version 5 (from v1.2.0): the table llx_crm_optout comes from sql/llx_crm.sql, which Dolibarr runs before this step; the
+ * step checks it exists and adds the loss reason "Not interested" to every entity that has a pipeline. Safe to run twice.
+ */
+function crmSchemaStep5(DoliDB $db): bool
+{
+	$resql = $db->DDLDescTable($db->prefix().'crm_optout', 'token_hash');
+	if (!($resql && $db->fetch_object($resql))) {
+		dol_syslog('CRM: the table '.$db->prefix().'crm_optout does not exist, enable the module again', LOG_ERR);
+		return false;
+	}
+	$entities = $db->query('SELECT DISTINCT entity FROM '.$db->prefix().'crm_pipeline');
+	while ($entities && ($obj = $db->fetch_object($entities))) {
+		crmEnsureNotInterestedReason($db, (int) $obj->entity);
 	}
 	return true;
 }
@@ -649,6 +687,28 @@ function crmStepModeSupported(DoliDB $db): bool
 }
 
 /**
+ * From v1.2.0. The text of the "not interested" link of the e-mails of a deal, in the language of its third party when it has one,
+ * else in the current language.
+ */
+function crmOptOutLinkText(int $dealId): string
+{
+	global $conf, $langs, $db;
+	$lang = '';
+	$resql = $db->query('SELECT s.default_lang FROM '.$db->prefix().'crm_opportunity as o INNER JOIN '.$db->prefix().'societe as s ON s.rowid = o.fk_soc WHERE o.rowid = '.((int) $dealId));
+	if ($resql && ($obj = $db->fetch_object($resql)) && is_string($obj->default_lang) && preg_match('/^[a-z]{2}_[A-Z]{2}$/', $obj->default_lang)) {
+		$lang = $obj->default_lang;
+	}
+	if ($lang !== '' && $lang !== $langs->defaultlang) {
+		$other = new Translate('', $conf);
+		$other->setDefaultLang($lang);
+		$other->load('crm@crm');
+		return $other->transnoentitiesnoconv('CrmOptOutLink');
+	}
+	crmLoadLangs();
+	return $langs->transnoentitiesnoconv('CrmOptOutLink');
+}
+
+/**
  * Send one plain-text message through Dolibarr.
  *
  * With a deal id the message carries the deal tracking id (see crmTrackId) and is copied to the archive
@@ -665,6 +725,7 @@ function crmSendMail(string $to, string $subject, string $body, int $dealId = 0,
 {
 	global $conf;
 	require_once DOL_DOCUMENT_ROOT.'/core/class/CMailFile.class.php';
+	require_once __DIR__.'/../class/crmoptout.class.php';
 	// A sender is chosen by the caller among the addresses crmSenderChoices() offers; without one, or with one that is not an
 	// address, the sender of the module is used.
 	$from = trim($from);
@@ -685,6 +746,17 @@ function crmSendMail(string $to, string $subject, string $body, int $dealId = 0,
 	$trackId = ($dealId > 0) ? crmTrackId($dealId) : '';
 	if ($html) {
 		$body = crmHtmlForMail($body);
+	}
+	// From v1.2.0, every e-mail sent for a deal ends with the public "Not interested, don't contact me again soon." link, whoever
+	// wrote the text (a person, an outreach step, the AI): it is added here, at the one place all of them go through.
+	if ($dealId > 0 && CrmOptOut::supported($GLOBALS['db'])) {
+		$optOutUrl = (new CrmOptOut($GLOBALS['db']))->urlForDeal($dealId);
+		if ($optOutUrl === '') {
+			return array('ok' => false, 'error' => 'CrmErrorOptOutLink', 'msgid' => '', 'from' => $from);
+		}
+		$body = crmOptOutFooter($body, $optOutUrl, crmOptOutLinkText($dealId), $html);
+	} elseif ($dealId > 0) {
+		dol_syslog('CRM: e-mail for deal '.$dealId.' sent without the "not interested" link: enable the module again (schema step 5)', LOG_WARNING);
 	}
 	// With the "mail" send method Dolibarr adds the plain-text alternative only when this constant is set. It is forced
 	// for this message alone, in memory: the other send methods always add it, and nothing is saved.
@@ -733,6 +805,7 @@ function crmEnsureConstants(DoliDB $db): void
 		'CRM_ARCHIVE_MAILBOX' => '',
 		'CRM_ARCHIVE_COPY' => 'bcc',
 		'CRM_ARCHIVE_REQUIRE_AUTH' => '0',
+		'CRM_OPTOUT_CONFIRM' => '1',
 		// Read by the theme: without it the top menu icon is overridden by a generic glyph.
 		'MAIN_MODULE_CRM_ICON' => 'fa-handshake',
 	);
@@ -806,6 +879,7 @@ function crmSeedIfEmpty(DoliDB $db): void
 		array('TIMING', 'Timing'),
 		array('NODECISION', 'No decision'),
 		array('NOANSWER', 'No answer'),
+		array('NOTINTERESTED', 'Not interested'),
 	);
 	$position = 0;
 	foreach ($reasons as $reason) {
