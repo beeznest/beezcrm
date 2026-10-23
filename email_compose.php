@@ -220,7 +220,7 @@ $editor = new DolEditor('bodyhtml', $bodyHtml, '', 320, 'dolibarr_mailings', 'In
 $editor->Create(0, '', true);
 print '</div>';
 print '<div id="crm-pane-plain" class="crm-pane"><textarea class="quatrevingtpercent" id="crm-body" name="body" rows="16"'.$readonly.'>'.dol_escape_htmltag($bodyText, 0, 1).'</textarea>';
-print crmHelp($langs->trans('CrmPlainAlternativeNote'), 'div').'</div>';
+print '<div id="crm-plain-note">'.crmHelp($langs->trans('CrmPlainAlternativeNote'), 'div').'</div></div>';
 if ($optOutUrl !== '') {
 	// Shown as text, not as a link: the address is the one the prospect uses, and opening it from here would not be a test.
 	print '<div class="crm-optout-preview opacitymedium"><span class="fa fa-link paddingright"></span>'.dol_escape_htmltag($langs->trans('CrmOptOutAppended')).' <em>'.dol_escape_htmltag($optOutText).'</em> <code>'.dol_escape_htmltag($optOutUrl).'</code></div>';
@@ -308,7 +308,7 @@ $js = <<<'JS'
 	var apply = function () {
 		var isHtml = format === "html";
 		plain.readOnly = isHtml || cfg.readonly;
-		note.style.display = isHtml ? "" : "none";
+		if (note) { note.style.display = isHtml ? "" : "none"; }
 		tabHtml.disabled = !isHtml;
 		tabPlain.textContent = isHtml ? cfg.tabPlainAlt : cfg.tabPlain;
 		show(isHtml ? "html" : "plain");
