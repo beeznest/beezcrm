@@ -444,3 +444,5 @@ CrmErrorFileTooBig=The file is larger than the size allowed.
 CrmErrorFileUpload=The file could not be saved.
 CrmErrorFileEmpty=The file is empty.
 CrmErrorFileTooMany=A note holds at most 10 files.
+CrmErrorFileDir=The file could not be written: the web server may not write in the documents directory of Dolibarr (folder crm). Ask your administrator to check its rights.
+CrmErrorFileNoTmp=The file could not be received: PHP has no usable temporary folder for uploads (upload_tmp_dir). Ask your administrator.

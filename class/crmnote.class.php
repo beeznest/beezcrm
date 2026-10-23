@@ -326,7 +326,10 @@ class CrmNote
 			return -1;
 		}
 		if ($uploadError !== 0) {
-			$this->error = ($uploadError === UPLOAD_ERR_INI_SIZE || $uploadError === UPLOAD_ERR_FORM_SIZE) ? 'CrmErrorFileTooBig' : 'CrmErrorFileUpload';
+			// The PHP upload codes: the size ones have a CRM message, the others use the core message of the same problem.
+			$causes = array(UPLOAD_ERR_PARTIAL => 'ErrorPartialFile', UPLOAD_ERR_NO_TMP_DIR => 'ErrorNoTmpDir', UPLOAD_ERR_CANT_WRITE => 'ErrorFailedToWriteInDir', UPLOAD_ERR_EXTENSION => 'ErrorUploadBlockedByAddon');
+			dol_syslog('CRM note file "'.crmSingleLine($name, 100).'": PHP upload error code '.$uploadError, LOG_ERR);
+			$this->error = ($uploadError === UPLOAD_ERR_INI_SIZE || $uploadError === UPLOAD_ERR_FORM_SIZE) ? 'CrmErrorFileTooBig' : $this->coreError($causes[$uploadError] ?? '');
 			return -1;
 		}
 		$size = (int) @filesize($source);
@@ -362,12 +365,16 @@ class CrmNote
 		$dir = $this->directory((int) $note->fk_opportunity);
 		$stored = $fileId.'_'.$clean;
 		$moved = 0;
+		$cause = 'ErrorDirNotWritable';
 		if (dol_mkdir($dir) >= 0) {
 			$moved = dol_move_uploaded_file($source, $dir.'/'.$stored, 1, 0, 0, 0, 'notefiles', $dir, $uploaded ? 0 : 1);
+			$cause = is_string($moved) ? $moved : '';
 		}
 		if (!is_int($moved) || $moved <= 0) {
+			// Say why: the cause is the core's own error key (antivirus, directory not writable...), kept in the log as well.
+			dol_syslog('CRM note file "'.crmSingleLine($clean, 100).'" in '.$dir.' not saved: '.(is_string($moved) ? $moved : 'code '.$moved).', writable='.(is_writable($dir) ? 'yes' : 'no'), LOG_ERR);
 			$this->db->query('DELETE FROM '.$prefix.'crm_note_file WHERE rowid = '.$fileId);
-			$this->error = 'CrmErrorFileUpload';
+			$this->error = $this->coreError($cause);
 			return -1;
 		}
 		if ($moved === 2) {
@@ -375,6 +382,25 @@ class CrmNote
 		}
 		$this->db->query('UPDATE '.$prefix."crm_note_file SET stored = '".$this->db->escape($stored)."' WHERE rowid = ".$fileId);
 		return $fileId;
+	}
+
+	/**
+	 * Language key to report: the core error key when it is a plain one (it is translated from the errors file), else the
+	 * generic CRM message.
+	 */
+	private function coreError(string $key): string
+	{
+		global $langs;
+		// Core messages that carry a %s the CRM cannot fill have their own text.
+		$own = array('ErrorDirNotWritable' => 'CrmErrorFileDir', 'ErrorFailedToWriteInDir' => 'CrmErrorFileDir', 'ErrorNoTmpDir' => 'CrmErrorFileNoTmp');
+		if (isset($own[$key])) {
+			return $own[$key];
+		}
+		if (preg_match('/^Error[A-Za-z]{3,60}$/', $key)) {
+			$langs->load('errors');
+			return $key;
+		}
+		return 'CrmErrorFileUpload';
 	}
 
 	/**
