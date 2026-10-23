@@ -75,7 +75,7 @@ Leave the dry-run settings on, and the e-mail steps as drafts, until you have ch
 ## 6. Check the installation
 
 - The **CRM** menu is there and CRM → Home opens without error.
-- CRM → Setup → **About** shows the module version `1.1.0` and a database schema "3 / 3, up to date".
+- CRM → Setup → **About** shows the module version `1.2.0` and a database schema "3 / 3, up to date".
 - Home → Setup → Scheduled jobs lists two CRM jobs: "Owner reminders" and "CRM automated outreach".
 - Create a test deal (CRM → Opportunities → New opportunity), plan a next step, move it between stages, then delete it.
 
