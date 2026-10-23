@@ -10,7 +10,7 @@ Documentation rule for this version: whatever changes an interface or the data i
 
 ### Added
 
-- (nothing yet)
+- **E-mails to or from the deal contact are recorded without a marker.** When the archive (lead collection) mailbox receives a copy, in Cc or Bcc, of a message with no tracking id, thread or `[OPP…]` reference in its subject, it is now recorded in the history of the deal if the other end is clearly the contact of that deal: the sender of a received message, or a To/Cc recipient of a message sent by us, has the e-mail address of the deal contact. Only open deals are considered, and when the contact has several open deals nothing is attached (use the reference in the subject). The sender, authentication and automatic-mail checks of 1.1.0 still apply, so a received message from the contact also stops the outreach and moves the deal to the reply stage. No setting, no schema change. New check: `test/cli/mail_contact_match_check.php`.
 
 ### Changed
 

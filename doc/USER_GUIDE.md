@@ -95,7 +95,7 @@ Moving is allowed to any open stage, forward or back, as long as the deal has a 
 
 **Move a deal when something real happened, not when you feel optimistic.** For instance: Negotiation when the customer discusses price or terms with you.
 
-**Customer e-mails.** If your administrator has set up the archive mailbox, e-mails sent by the tool are stored on the deal with their full text. When you answer a customer from your own mail program, answer **in the same thread** and put the archive address in copy: the message is then added to the deal too. A new message written from scratch cannot be recognised. An answer from the customer is recorded the same way, and it stops any automatic outreach on the deal, so the customer is not chased after they replied.
+**Customer e-mails.** If your administrator has set up the archive mailbox, e-mails sent by the tool are stored on the deal with their full text. When you answer a customer from your own mail program, answer **in the same thread** and put the archive address in copy: the message is then added to the deal too. **From v1.2.0**, a message written from scratch is recognised too when it goes to (or comes from) the **contact of the deal**, at the e-mail address saved on the contact, and that contact has only one open deal: no marker is needed, the archive address in copy or hidden copy is enough. If the contact has two open deals, add the deal reference in square brackets to the subject. Before v1.2.0, or for any other recipient, a new message cannot be recognised. An answer from the customer is recorded the same way, and it stops any automatic outreach on the deal, so the customer is not chased after they replied.
 
 **Automatic outreach.** Your manager may enrol deals in an outreach: a planned series of reminders, calls and e-mails after a set number of days. It saves you from forgetting, but it does not replace a real conversation. Calls and tasks of an outreach appear as next steps on the deal.
 
@@ -159,6 +159,6 @@ The home box of Dolibarr's main page shows your overdue steps and deals without 
 | A card refuses to drop in **Lost** | Lost needs a reason | Use the Stage section of the card |
 | No **New opportunity**, **Move** or **Link proposal** button | You do not have the right to create and update deals | Ask your administrator (see the administrator guide, "Rights") |
 | You cannot find a colleague's deal | You only see your own deals unless you have "Read every owner" | Ask the owner or your manager |
-| The customer replied but nothing is on the deal | The message did not reach the archive mailbox, or it is not in a thread already on the deal | Forward it to the archive address, from the thread |
+| The customer replied but nothing is on the deal | The message did not reach the archive mailbox, or it is not in a thread already on the deal | Forward it to the archive address, from the thread. From v1.2.0, a message to or from the deal's contact is found without a thread, unless that contact has several open deals: then keep `[OPP…]` in the subject |
 | An error after **Link proposal** | The proposal is already linked to this deal | Nothing to do: it is already there |
 | The linked proposal shows the wrong ref or total | The id is not checked when linking, so a mistyped id links another proposal | Unlink it and link the right id, read on the proposal's own page |

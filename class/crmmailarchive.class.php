@@ -123,6 +123,39 @@ class CrmMailArchive
 	}
 
 	/**
+	 * From v1.2.0. Open deal whose contact has one of these addresses, when there is exactly one such deal.
+	 * Several open deals for the same contact is ambiguous: nothing is attached rather than the wrong deal.
+	 *
+	 * @param string[] $addresses The other end of the message: the sender of a received one, the recipients of a sent one
+	 */
+	public function findDealByContact(array $addresses): int
+	{
+		global $conf;
+		$quoted = array();
+		foreach ($addresses as $address) {
+			$address = strtolower(trim((string) $address));
+			if ($address !== '' && !$this->isInternalAddress($address)) {
+				$quoted[$address] = "'".$this->db->escape($address)."'";
+			}
+		}
+		if (count($quoted) === 0) {
+			return 0;
+		}
+		$prefix = $this->db->prefix();
+		$sql = 'SELECT DISTINCT o.rowid FROM '.$prefix.'crm_opportunity as o';
+		$sql .= ' INNER JOIN '.$prefix.'socpeople as c ON c.rowid = o.fk_socpeople';
+		$sql .= ' WHERE o.entity = '.((int) $conf->entity)." AND o.status = 'open'";
+		$sql .= ' AND LOWER(TRIM(c.email)) IN ('.implode(',', $quoted).')';
+		$sql .= $this->db->plimit(2, 0);
+		$resql = $this->db->query($sql);
+		if (!$resql || $this->db->num_rows($resql) !== 1) {
+			return 0;
+		}
+		$obj = $this->db->fetch_object($resql);
+		return $obj ? (int) $obj->rowid : 0;
+	}
+
+	/**
 	 * The addresses the deal knows: its contact, the other contacts of its third party, and the third party itself.
 	 *
 	 * @param object $deal Deal row with fk_soc and fk_socpeople
@@ -194,7 +227,17 @@ class CrmMailArchive
 				}
 			}
 		}
+		$fromAddresses = crmAddressesIn((string) ($mail['from'] ?? ''));
+		$fromAddress = count($fromAddresses) > 0 ? $fromAddresses[0] : '';
+		$direction = $this->isInternalAddress($fromAddress) ? 'out' : 'in';
 		$dealId = $this->findDeal($ids, (string) ($mail['subject'] ?? ''));
+		if ($dealId <= 0) {
+			// From v1.2.0: no tracking id, thread or reference, but the other end is the contact of exactly one open deal.
+			$counterparts = $direction === 'in'
+				? array($fromAddress)
+				: array_merge(crmAddressesIn((string) ($mail['to'] ?? '')), crmAddressesIn((string) ($mail['cc'] ?? '')));
+			$dealId = $this->findDealByContact($counterparts);
+		}
 		if ($dealId <= 0) {
 			return array('status' => 'ignored', 'deal' => 0, 'event' => 0);
 		}
@@ -212,9 +255,6 @@ class CrmMailArchive
 			return array('status' => 'ignored', 'deal' => 0, 'event' => 0);
 		}
 		$known = $this->knownAddresses($deal);
-		$fromAddresses = crmAddressesIn((string) ($mail['from'] ?? ''));
-		$fromAddress = count($fromAddresses) > 0 ? $fromAddresses[0] : '';
-		$direction = $this->isInternalAddress($fromAddress) ? 'out' : 'in';
 		$trusted = false;
 		if ($direction === 'in') {
 			$trusted = crmSenderTrusted($fromAddress, $known);
