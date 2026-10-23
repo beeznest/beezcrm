@@ -137,7 +137,7 @@ The customer's reply is recognised by the same reference in the subject, so it i
 
 ### The "Not interested" link (from v1.2.0)
 
-From v1.2.0 every e-mail sent for a deal (from the editor, by an automated outreach, or written with the AI assistant) ends with a line **"Not interested, don't contact me again soon."**, a link the prospect can follow. You do not add it and cannot remove it; the editor tells you so. If you write your message in your own mail program (**Open in my mail client**, **Copy text**), the line is added to the text it gets.
+From v1.2.0 every e-mail sent for a deal (from the editor, by an automated outreach, or written with the AI assistant) ends with a line **"Not interested, don't contact me again soon."**, a link the prospect can follow. You do not add it and cannot remove it: the editor shows it, in a dashed box under the text ("Added at the end of the e-mail when it is sent"), but it is not part of the text you edit, so the AI suggestion and the preview do not contain it. If you write your message in your own mail program (**Open in my mail client**, **Copy text**), the line is added to the text it gets.
 
 When the prospect opens the link, a page asks them to confirm (a mail scanner opening the link does not trigger anything). After they confirm, the page thanks them and, in the CRM:
 

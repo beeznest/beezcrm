@@ -209,6 +209,10 @@ print '<tr><td>'.$langs->trans('CrmFormat').'</td><td>';
 print '<label><input type="radio" name="format" value="html"'.($format === 'html' ? ' checked' : '').($canAct ? '' : ' disabled').'> '.$langs->trans('CrmFormatHtml').'</label> &nbsp; ';
 print '<label><input type="radio" name="format" value="text"'.($format === 'text' ? ' checked' : '').($canAct ? '' : ' disabled').'> '.$langs->trans('CrmFormatText').'</label>';
 print crmHelp($langs->trans('CrmFormatHelp'), 'span', true).'</td></tr>';
+// The link every e-mail of the deal ends with: Send adds it itself, a message written in a mail client gets it from here.
+require_once __DIR__.'/class/crmoptout.class.php';
+$optOutUrl = (new CrmOptOut($db))->urlForDeal($dealId);
+$optOutText = $optOutUrl !== '' ? crmOptOutLinkText($dealId) : '';
 print '<tr><td>'.$langs->trans('CrmBody').'</td><td>';
 print '<div class="crm-tabs"><button type="button" id="crm-tab-html" class="crm-tab">'.$langs->trans('CrmTabHtml').'</button><button type="button" id="crm-tab-plain" class="crm-tab">'.$langs->trans('CrmTabPlain').'</button></div>';
 print '<div id="crm-pane-html" class="crm-pane">';
@@ -217,6 +221,10 @@ $editor->Create(0, '', true);
 print '</div>';
 print '<div id="crm-pane-plain" class="crm-pane"><textarea class="quatrevingtpercent" id="crm-body" name="body" rows="16"'.$readonly.'>'.dol_escape_htmltag($bodyText, 0, 1).'</textarea>';
 print crmHelp($langs->trans('CrmPlainAlternativeNote'), 'div').'</div>';
+if ($optOutUrl !== '') {
+	// Shown as text, not as a link: the address is the one the prospect uses, and opening it from here would not be a test.
+	print '<div class="crm-optout-preview opacitymedium"><span class="fa fa-link paddingright"></span>'.dol_escape_htmltag($langs->trans('CrmOptOutAppended')).' <em>'.dol_escape_htmltag($optOutText).'</em> <code>'.dol_escape_htmltag($optOutUrl).'</code></div>';
+}
 print '</td></tr>';
 if ($aiAvailable) {
 	print '<tr><td>'.$langs->trans('CrmAiAssistant').'</td><td>';
@@ -389,10 +397,6 @@ $js = <<<'JS'
 	apply();
 }());
 JS;
-// The link every e-mail of the deal ends with: Send adds it itself, a message written in a mail client gets it from here.
-require_once __DIR__.'/class/crmoptout.class.php';
-$optOutUrl = (new CrmOptOut($db))->urlForDeal((int) $draft->deal->rowid);
-$optOutText = $optOutUrl !== '' ? crmOptOutLinkText((int) $draft->deal->rowid) : '';
 $config = array(
 	'format' => $format,
 	'id' => (int) $draft->event->id,

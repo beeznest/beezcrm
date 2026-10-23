@@ -321,3 +321,10 @@ ul.crm-note-files li {
 a.crm-preview {
 	text-decoration: none;
 }
+.crm-optout-preview {
+	margin-top: 6px;
+	padding: 6px 10px;
+	border: 1px dashed rgba(128, 128, 128, 0.5);
+	border-radius: 3px;
+	word-break: break-all;
+}
