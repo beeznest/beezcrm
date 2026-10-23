@@ -12,6 +12,10 @@ Documentation rule for this version: whatever changes an interface or the data i
 
 - **E-mails to or from the deal contact are recorded without a marker.** When the archive (lead collection) mailbox receives a copy, in Cc or Bcc, of a message with no tracking id, thread or `[OPP…]` reference in its subject, it is now recorded in the history of the deal if the other end is clearly the contact of that deal: the sender of a received message, or a To/Cc recipient of a message sent by us, has the e-mail address of the deal contact. Only open deals are considered, and when the contact has several open deals nothing is attached (use the reference in the subject). The sender, authentication and automatic-mail checks of 1.1.0 still apply, so a received message from the contact also stops the outreach and moves the deal to the reply stage. No setting, no schema change. New check: `test/cli/mail_contact_match_check.php`.
 
+### Fixed
+
+- **"Propose a reply with AI" gave a 500 error** (`Call to undefined function dol_set_user_param()`) on installations where Dolibarr had not already loaded `core/lib/functions2.lib.php` for the request. The AI call counter and the remembered sender choice of the e-mail editor now load that file themselves.
+
 ### Changed
 
 - (nothing yet)

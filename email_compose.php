@@ -137,6 +137,7 @@ if ($action !== '' && $action !== 'view') {
 	if ($result > 0) {
 		// The sender used is remembered for this user: the next e-mail starts from it.
 		if (($action === 'send' || $action === 'sentmanually') && $senderCode !== '' && ($user->conf->CRM_MAIL_FROM_CHOICE ?? '') !== $senderCode) {
+			require_once DOL_DOCUMENT_ROOT.'/core/lib/functions2.lib.php'; // dol_set_user_param(), not loaded on every request
 			dol_set_user_param($db, $conf, $user, array('CRM_MAIL_FROM_CHOICE' => $senderCode));
 		}
 		setEventMessages($langs->trans($done), null);

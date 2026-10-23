@@ -180,6 +180,7 @@ class CrmAiReply
 			$this->error = 'CrmAiRateLimited';
 			return false;
 		}
+		require_once DOL_DOCUMENT_ROOT.'/core/lib/functions2.lib.php'; // dol_set_user_param(), not loaded on every request
 		dol_set_user_param($this->db, $conf, $user, array('CRM_AI_CALLS' => implode(',', $result['timestamps'])));
 		return true;
 	}
