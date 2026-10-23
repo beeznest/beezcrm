@@ -21,6 +21,12 @@ crmCliCheck('the note tables exist (enable the module again)', CrmNote::supporte
 if (!CrmNote::supported($db)) {
 	crmCliFinish();
 }
+crmCliCheck('schema version 4 is installed', crmSchemaInstalled() >= 4);
+$installedVersion = $conf->global->CRM_SCHEMA_VERSION;
+$conf->global->CRM_SCHEMA_VERSION = '3';
+crmCliCheck('with the tables but before step 4 ran, notes are not used (the description is)', !CrmNote::supported($db));
+$conf->global->CRM_SCHEMA_VERSION = $installedVersion;
+crmCliCheck('after step 4, notes are used', CrmNote::supported($db));
 $db->begin();
 $prefix = $db->prefix();
 $pipelineId = (int) (new Pipeline($db))->fetchAll(true)[0]->id;

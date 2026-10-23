@@ -39,16 +39,18 @@ class CrmNote
 	}
 
 	/**
-	 * True when the tables exist (schema version 4 ran or the module was enabled again): files are live before that.
+	 * True when the tables exist and schema step 4 has run, which copies the descriptions of the deals into notes: the tables
+	 * alone are not enough, or the descriptions would look empty between their creation and the end of the step. Files are
+	 * live before the module is enabled again, so until then the description is used.
 	 */
 	public static function supported(DoliDB $db): bool
 	{
-		static $supported = null;
-		if ($supported === null) {
+		static $tables = null;
+		if ($tables === null) {
 			$resql = $db->DDLDescTable($db->prefix().'crm_note', 'note');
-			$supported = ($resql && $db->fetch_object($resql)) ? true : false;
+			$tables = ($resql && $db->fetch_object($resql)) ? true : false;
 		}
-		return $supported;
+		return $tables && crmSchemaInstalled() >= 4;
 	}
 
 	/**
