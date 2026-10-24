@@ -389,7 +389,7 @@ function crmLogViewLink(int $logId): string
  */
 function crmSchemaCurrent(): int
 {
-	return 5;
+	return 6;
 }
 
 /**
@@ -408,6 +408,7 @@ function crmSchemaSteps(): array
 		3 => array('label' => 'Stage "Replied to outreach" and the column is_reply of the stages', 'run' => 'crmSchemaStep3'),
 		4 => array('label' => 'Internal notes: the description of a deal becomes its first note', 'run' => 'crmSchemaStep4'),
 		5 => array('label' => 'Public "not interested" link: loss reason "Not interested"', 'run' => 'crmSchemaStep5'),
+		6 => array('label' => 'Notes as agenda events: column fk_action of the notes, events for the existing notes', 'run' => 'crmSchemaStep6'),
 	);
 }
 
@@ -541,6 +542,36 @@ function crmSchemaStep5(DoliDB $db): bool
 	$entities = $db->query('SELECT DISTINCT entity FROM '.$db->prefix().'crm_pipeline');
 	while ($entities && ($obj = $db->fetch_object($entities))) {
 		crmEnsureNotInterestedReason($db, (int) $obj->entity);
+	}
+	return true;
+}
+
+/**
+ * Schema version 6 (from v1.2.0): every internal note is also an agenda event "CRM note added" on the third party and on the
+ * deal. The step adds the column llx_crm_note.fk_action (the event of the note) and creates the event of each note that has none,
+ * dated like the note and made in the name of its author. A note whose event cannot be created is left without one (the next
+ * edit tries again): the step does not fail for it. Safe to run twice.
+ */
+function crmSchemaStep6(DoliDB $db): bool
+{
+	$table = $db->prefix().'crm_note';
+	$resql = $db->DDLDescTable($table, 'fk_action');
+	if (!($resql && $db->fetch_object($resql))) {
+		if (!$db->query('ALTER TABLE '.$table.' ADD COLUMN fk_action integer DEFAULT NULL')) {
+			dol_syslog('CRM: could not add the column fk_action to '.$table.': '.$db->lasterror(), LOG_ERR);
+			return false;
+		}
+		$db->query('ALTER TABLE '.$table.' ADD INDEX idx_crm_note_action (fk_action)');
+	}
+	require_once __DIR__.'/../class/crmnote.class.php';
+	$notes = new CrmNote($db);
+	$missing = $db->query('SELECT n.rowid FROM '.$table.' as n WHERE n.fk_action IS NULL ORDER BY n.rowid');
+	$ids = array();
+	while ($missing && ($obj = $db->fetch_object($missing))) {
+		$ids[] = (int) $obj->rowid;
+	}
+	foreach ($ids as $noteId) {
+		$notes->createEventForNote($noteId);
 	}
 	return true;
 }
@@ -1242,13 +1273,13 @@ function crmDeleteItem(DoliDB $db, string $kind, int $id): string
  * @param array<int,object> $rows Rows of CrmAccountView::fetchTimeline()
  * @return string HTML, escaped
  */
-function crmAccountTimelineRows(array $rows): string
+function crmAccountTimelineRows(array $rows, bool $withDeal = true): string
 {
 	global $db, $langs;
 	$kinds = array('AC_TEL' => 'CrmCall', 'AC_RDV' => 'CrmMeeting', 'AC_OTH' => 'CrmTask', 'AC_EMAIL' => 'CrmEmail', 'AC_EMAIL_IN' => 'CrmEmail');
 	$html = '';
 	if (count($rows) === 0) {
-		return '<tr class="oddeven"><td colspan="4"><span class="opacitymedium">'.$langs->trans('CrmNoRows').'</span></td></tr>';
+		return '<tr class="oddeven"><td colspan="'.($withDeal ? 4 : 3).'"><span class="opacitymedium">'.$langs->trans('CrmNoRows').'</span></td></tr>';
 	}
 	foreach ($rows as $row) {
 		if ($row->kind === 'stage') {
@@ -1256,11 +1287,17 @@ function crmAccountTimelineRows(array $rows): string
 		} else {
 			$kind = isset($kinds[(string) $row->event_code]) ? $langs->trans($kinds[(string) $row->event_code]).': ' : '';
 			$what = $kind.(string) $row->event_label;
+			if (!empty($row->is_note)) {
+				// An internal note: its label ("CRM note added") and the beginning of its text.
+				$what = (string) $row->event_label.' : '.dol_trunc((string) preg_replace('/\s+/', ' ', trim((string) $row->event_note)), 200);
+			}
 		}
 		$who = trim((string) ($row->firstname ?? '').' '.(string) ($row->lastname ?? ''));
 		$html .= '<tr class="oddeven">';
 		$html .= '<td class="nowraponall">'.dol_print_date($db->jdate($row->dt), 'dayhour').'</td>';
-		$html .= '<td><a href="'.dol_escape_htmltag(dol_buildpath('/crm/opportunity_card.php', 1).'?id='.((int) $row->deal_id)).'">'.dol_escape_htmltag((string) $row->deal_ref).'</a></td>';
+		if ($withDeal) {
+			$html .= '<td><a href="'.dol_escape_htmltag(dol_buildpath('/crm/opportunity_card.php', 1).'?id='.((int) $row->deal_id)).'">'.dol_escape_htmltag((string) $row->deal_ref).'</a></td>';
+		}
 		$html .= '<td>'.dol_escape_htmltag($what).'</td>';
 		$html .= '<td>'.dol_escape_htmltag($who).'</td>';
 		$html .= '</tr>';

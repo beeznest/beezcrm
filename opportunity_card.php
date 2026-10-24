@@ -39,6 +39,7 @@ require_once __DIR__.'/class/crmactivity.class.php';
 require_once __DIR__.'/class/sequence.class.php';
 require_once __DIR__.'/class/crmnote.class.php';
 require_once __DIR__.'/class/crmcategory.class.php';
+require_once __DIR__.'/class/crmaccountview.class.php';
 crmStartPage();
 $notesOn = CrmNote::supported($db); // From v1.2.0: internal notes replace the description once the tables exist
 
@@ -998,12 +999,10 @@ if (isModEnabled('propal')) {
 
 print '<h2>'.$langs->trans('CrmHistory').'</h2>';
 print '<table class="noborder centpercent">';
-print '<tr class="liste_titre"><td>'.$langs->trans('CrmDate').'</td><td>'.$langs->trans('CrmStage').'</td><td>'.$langs->trans('CrmOwner').'</td></tr>';
-foreach ($object->fetchHistory() as $hist) {
-	$who = trim((string) $hist->firstname.' '.(string) $hist->lastname);
-	$label = trim(crmStageLabel((string) $hist->from_label).' → '.crmStageLabel((string) $hist->to_label), ' →');
-	print '<tr class="oddeven"><td>'.dol_print_date($db->jdate($hist->datec), 'dayhour').'</td><td>'.dol_escape_htmltag($label).'</td><td>'.dol_escape_htmltag($who).'</td></tr>';
-}
+// From v1.2.0 the history is the whole story of the deal, oldest first: stage moves and done events (calls, meetings, e-mails, and
+// the internal notes, each one an event "CRM note added").
+print '<tr class="liste_titre"><td>'.$langs->trans('CrmDate').'</td><td>'.$langs->trans('CrmAccountHistoryWhat').'</td><td>'.$langs->trans('CrmOwner').'</td></tr>';
+print crmAccountTimelineRows((new CrmAccountView($db))->fetchDealHistory($user, (int) $object->id), false);
 print '</table>';
 
 // The e-mails that sequences made for this deal, and on what ground: which sequence, which step, which day.

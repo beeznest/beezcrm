@@ -200,7 +200,9 @@ CREATE TABLE llx_crm_note (
 	fk_user_modif integer DEFAULT NULL,
 	date_modif datetime DEFAULT NULL,
 	note text NOT NULL,
-	KEY idx_crm_note_opportunity (fk_opportunity)
+	fk_action integer DEFAULT NULL,
+	KEY idx_crm_note_opportunity (fk_opportunity),
+	KEY idx_crm_note_action (fk_action)
 ) ENGINE=innodb;
 
 CREATE TABLE llx_crm_note_revision (

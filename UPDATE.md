@@ -29,6 +29,8 @@ Going to **1.2.0** runs schema step 4 (internal notes): Dolibarr creates the tab
 
 Going to **1.2.0** also runs schema step 5 (the public "not interested" link): the table `llx_crm_optout` is created when the module is enabled again, and the loss reason **Not interested** (code `NOTINTERESTED`) is added to each entity that has a pipeline. From then on every e-mail sent for a deal ends with the link, so check that `custom/crm/optout.php` is reachable by your prospects without a login (see "The public \"not interested\" link" in [doc/ADMIN_GUIDE.md](doc/ADMIN_GUIDE.md)). Until the module is enabled again the e-mails go out without the link.
 
+Going to **1.2.0** also runs schema step 6 (notes as agenda events): the column `llx_crm_note.fk_action` is added, then an agenda event "CRM note added" is made for every existing note (dated like the note, in the name of its author, on the deal and its third party). For a base with many notes the step takes a moment; a note whose event cannot be made is left without one and gets it at its next edit.
+
 ## What an update does and does not touch
 
 - It **creates** what is missing: new columns, new settings with their defaults, new rights.

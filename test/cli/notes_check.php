@@ -13,6 +13,8 @@ require_once __DIR__.'/crm_cli_bootstrap.inc.php';
 require_once __DIR__.'/../../class/pipeline.class.php';
 require_once __DIR__.'/../../class/opportunity.class.php';
 require_once __DIR__.'/../../class/crmnote.class.php';
+require_once __DIR__.'/../../class/crmactivity.class.php';
+require_once __DIR__.'/../../class/crmaccountview.class.php';
 
 /** @var DoliDB $db */
 /** @var Conf $conf */
@@ -109,6 +111,48 @@ $limited->rights->crm->read = 1;
 crmCliCheck('a user who may not read the deal cannot open its files', $notes->fetchFile($limited, $fileId) === null);
 $path = $notes->path($file);
 crmCliCheck('removing a file removes it from disk too', $notes->deleteFile($user, $fileId) === 1 && !is_file($path) && $notes->fetchFile($user, $fileId) === null);
+
+// Each note is also an agenda event "CRM note added", on the third party and on the deal.
+crmCliCheck('notes are agenda events (schema step 6)', CrmNote::eventsSupported($db));
+$db->query('INSERT INTO '.$prefix."societe (nom, entity, client, datec) VALUES ('ZNOTEEVSOC', ".((int) $conf->entity).", 2, '".$db->idate(dol_now())."')");
+$socId = (int) $db->last_insert_id($prefix.'societe');
+$evDeal = $mkDeal('ZNOTEEVENT');
+$db->query('UPDATE '.$prefix.'crm_opportunity SET fk_soc = '.$socId.' WHERE rowid = '.((int) $evDeal->id));
+$evNote = $notes->add($user, (int) $evDeal->id, "Called the prospect\nWill decide in May");
+$actionId = (int) $db->fetch_object($db->query('SELECT fk_action FROM '.$prefix.'crm_note WHERE rowid = '.$evNote))->fk_action;
+crmCliCheck('adding a note makes its event', $actionId > 0);
+$ev = $db->fetch_object($db->query('SELECT a.code, a.percent, a.label, a.note, a.fk_soc, a.fk_user_author, a.elementtype, a.fk_element, a.fk_user_action FROM '.$prefix.'actioncomm a WHERE a.id = '.$actionId));
+crmCliCheck('the event is done, "Other", labelled, with the text', $ev && $ev->code === 'AC_OTH' && (int) $ev->percent === 100 && $ev->label === $langs->transnoentitiesnoconv('CrmNoteEventLabel') && $ev->note === "Called the prospect\nWill decide in May");
+crmCliCheck('it is on the third party and on the deal, in the name of the author', (int) $ev->fk_soc === $socId && $ev->elementtype === 'opportunity@crm' && (int) $ev->fk_element === (int) $evDeal->id && (int) $ev->fk_user_author === (int) $user->id && (int) $ev->fk_user_action === (int) $user->id);
+$notes->update($user, $evNote, 'Will decide in June');
+crmCliCheck('editing the note edits its event', $db->fetch_object($db->query('SELECT note FROM '.$prefix.'actioncomm WHERE id = '.$actionId))->note === 'Will decide in June');
+$labels = array_map(function ($e) {
+	return (int) $e->rowid;
+}, (new CrmActivity($db))->fetchForOpportunity((int) $evDeal->id));
+crmCliCheck('the next steps do not list the note events', !in_array($actionId, $labels, true));
+crmCliCheck('a note is not a contact: it does not restart the rotting clock', CrmActivity::latestDone($db, (int) $evDeal->id) === 0);
+$view = new CrmAccountView($db);
+$history = $view->fetchDealHistory($user, (int) $evDeal->id);
+$noteLines = array_values(array_filter($history, function ($r) {
+	return (int) $r->is_note === 1;
+}));
+crmCliCheck('the history of the deal has the note, with its text and its author', count($noteLines) === 1 && $noteLines[0]->event_note === 'Will decide in June' && (int) $noteLines[0]->fk_user === (int) $user->id);
+crmCliCheck('the CRM history of the third party has it too', count(array_filter($view->fetchTimeline($user, $socId, 20), function ($r) {
+	return (int) $r->is_note === 1;
+})) === 1);
+crmCliCheck('and the rows show the beginning of the text', strpos(crmAccountTimelineRows($history, false), 'Will decide in June') !== false);
+// The step makes the event of a note that has none, once.
+$db->query('UPDATE '.$prefix.'crm_note SET fk_action = NULL WHERE rowid = '.$evNote);
+$db->query('DELETE FROM '.$prefix.'actioncomm WHERE id = '.$actionId);
+crmCliCheck('the schema step makes the missing events', crmSchemaStep6($db) && (int) $db->fetch_object($db->query('SELECT COUNT(*) as nb FROM '.$prefix."actioncomm WHERE elementtype = 'opportunity@crm' AND fk_element = ".((int) $evDeal->id).' AND percent = 100'))->nb === 1);
+crmSchemaStep6($db);
+crmCliCheck('running it again makes no second event', (int) $db->fetch_object($db->query('SELECT COUNT(*) as nb FROM '.$prefix."actioncomm WHERE elementtype = 'opportunity@crm' AND fk_element = ".((int) $evDeal->id).' AND percent = 100'))->nb === 1);
+// Before the step, a note still works, without an event.
+$conf->global->CRM_SCHEMA_VERSION = '5';
+crmCliCheck('before schema step 6 events are off', !CrmNote::eventsSupported($db));
+$plainNote = $notes->add($user, (int) $evDeal->id, 'Added before the step');
+crmCliCheck('a note is still added, without an event', $plainNote > 0 && $db->fetch_object($db->query('SELECT fk_action FROM '.$prefix.'crm_note WHERE rowid = '.$plainNote))->fk_action === null);
+$conf->global->CRM_SCHEMA_VERSION = (string) $installedVersion;
 
 // Cascade.
 $dir = $notes->directory((int) $deal->id);

@@ -54,6 +54,20 @@ class CrmNote
 	}
 
 	/**
+	 * True when each note is also an agenda event: the column fk_action exists and schema step 6 has run. Until then notes work
+	 * without events.
+	 */
+	public static function eventsSupported(DoliDB $db): bool
+	{
+		static $column = null;
+		if ($column === null) {
+			$resql = $db->DDLDescTable($db->prefix().'crm_note', 'fk_action');
+			$column = ($resql && $db->fetch_object($resql)) ? true : false;
+		}
+		return $column && crmSchemaInstalled() >= 6;
+	}
+
+	/**
 	 * Largest file accepted, in bytes: the Dolibarr limit for documents (MAIN_UPLOAD_DOC, in kB), 2 MB when unset.
 	 */
 	public static function maxFileBytes(): int
@@ -242,7 +256,71 @@ class CrmNote
 			$this->error = crmDbError($this->db);
 			return -1;
 		}
-		return (int) $this->db->last_insert_id($this->db->prefix().'crm_note');
+		$noteId = (int) $this->db->last_insert_id($this->db->prefix().'crm_note');
+		// The note is also an agenda event on the third party and on the deal; the note is kept if the event cannot be made.
+		if (self::eventsSupported($this->db)) {
+			$this->createEventForNote($noteId);
+		}
+		return $noteId;
+	}
+
+	/**
+	 * Make the agenda event "CRM note added" of a note, on its deal and on the third party of the deal: a done event of type
+	 * "Other" (no new event type), dated like the note, in the name of the author, holding the text. The event is the one the
+	 * deal history and the agenda of the third party show. The link is kept in llx_crm_note.fk_action.
+	 *
+	 * @return int Event id, or -1 (nothing is changed)
+	 */
+	public function createEventForNote(int $noteId): int
+	{
+		global $conf, $langs;
+		require_once __DIR__.'/crmactivity.class.php';
+		if (!self::eventsSupported($this->db)) {
+			return -1;
+		}
+		$sql = 'SELECT n.rowid, n.fk_opportunity, n.fk_user, n.datec, n.note, o.fk_soc, o.fk_socpeople FROM '.$this->db->prefix().'crm_note as n';
+		$sql .= ' INNER JOIN '.$this->db->prefix().'crm_opportunity as o ON o.rowid = n.fk_opportunity';
+		$sql .= ' WHERE n.rowid = '.((int) $noteId).' AND n.fk_action IS NULL AND n.entity = '.((int) $conf->entity);
+		$resql = $this->db->query($sql);
+		$note = $resql ? $this->db->fetch_object($resql) : null;
+		if (!$note) {
+			return -1;
+		}
+		$author = new User($this->db);
+		if ($author->fetch((int) $note->fk_user) <= 0) {
+			return -1;
+		}
+		crmLoadLangs();
+		$activity = new CrmActivity($this->db);
+		$eventId = $activity->create($author, (int) $note->fk_opportunity, (int) $note->fk_soc, (int) $note->fk_socpeople, (int) $author->id, 'task', $langs->transnoentitiesnoconv('CrmNoteEventLabel'), (int) $this->db->jdate($note->datec), 100, (string) $note->note);
+		if ($eventId <= 0) {
+			dol_syslog('CRM note '.$noteId.': agenda event not made: '.$activity->error, LOG_WARNING);
+			return -1;
+		}
+		$this->db->query('UPDATE '.$this->db->prefix().'crm_note SET fk_action = '.((int) $eventId).' WHERE rowid = '.((int) $noteId));
+		return $eventId;
+	}
+
+	/**
+	 * Keep the event of a note in step with its text (or make it for a note that has none).
+	 */
+	private function refreshEvent(User $user, int $noteId, string $text): void
+	{
+		if (!self::eventsSupported($this->db)) {
+			return;
+		}
+		$resql = $this->db->query('SELECT fk_action FROM '.$this->db->prefix().'crm_note WHERE rowid = '.((int) $noteId));
+		$row = $resql ? $this->db->fetch_object($resql) : null;
+		if (!$row || $row->fk_action === null || (int) $row->fk_action <= 0) {
+			$this->createEventForNote($noteId);
+			return;
+		}
+		require_once DOL_DOCUMENT_ROOT.'/comm/action/class/actioncomm.class.php';
+		$event = new ActionComm($this->db);
+		if ($event->fetch((int) $row->fk_action) > 0) {
+			$event->note_private = $text;
+			$event->update($user);
+		}
 	}
 
 	/**
@@ -283,6 +361,7 @@ class CrmNote
 			return -1;
 		}
 		$this->db->commit();
+		$this->refreshEvent($user, $noteId, $text);
 		return 1;
 	}
 

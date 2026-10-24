@@ -470,3 +470,4 @@ CrmCategoryModuleOff=Le module Tags/Catégories de Dolibarr n'est pas activé.
 CrmErrorCategoryModule=Le module Tags/Catégories de Dolibarr n'est pas activé.
 CrmErrorCategoryRights=Vous ne pouvez pas modifier les catégories du compte de cette affaire.
 CrmErrorCategoryNoAccount=Cette affaire n'a pas de compte.
+CrmNoteEventLabel=Ajout de note CRM

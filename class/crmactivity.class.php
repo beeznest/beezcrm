@@ -99,6 +99,7 @@ class CrmActivity
 		$sql .= " WHERE elementtype = '".$db->escape(self::ELEMENT_TYPE)."'";
 		$sql .= ' AND fk_element = '.((int) $opportunityId);
 		$sql .= ' AND percent >= 100';
+		$sql .= self::notNoteEventSql($db, '');
 		$resql = $db->query($sql);
 		if ($resql && ($obj = $db->fetch_object($resql)) && !empty($obj->datep)) {
 			return (int) $db->jdate($obj->datep);
@@ -344,6 +345,22 @@ class CrmActivity
 	}
 
 	/**
+	 * From v1.2.0. SQL that leaves out the events that are internal notes (`llx_crm_note.fk_action`): they are history, shown in the
+	 * history of the deal, not next steps or contacts with the customer, and a note must not restart the "rotting" clock of a deal.
+	 *
+	 * @param string $alias Alias of the actioncomm table in the query, '' when it has none
+	 */
+	public static function notNoteEventSql(DoliDB $db, string $alias): string
+	{
+		require_once __DIR__.'/crmnote.class.php';
+		if (!CrmNote::eventsSupported($db)) {
+			return '';
+		}
+		$id = ($alias !== '' ? $alias.'.' : '').'id';
+		return ' AND NOT EXISTS (SELECT 1 FROM '.$db->prefix().'crm_note as cn WHERE cn.fk_action = '.$id.')';
+	}
+
+	/**
 	 * Events of one deal, newest first.
 	 *
 	 * @return array<int,object>
@@ -355,6 +372,7 @@ class CrmActivity
 		$sql .= ' LEFT JOIN '.$this->db->prefix().'c_actioncomm as c ON c.id = a.fk_action';
 		$sql .= " WHERE a.elementtype = '".$this->db->escape(self::ELEMENT_TYPE)."'";
 		$sql .= ' AND a.fk_element = '.((int) $opportunityId);
+		$sql .= self::notNoteEventSql($this->db, 'a');
 		$sql .= ' ORDER BY a.datep DESC';
 		return $this->fetchRows($sql);
 	}

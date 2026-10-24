@@ -470,3 +470,4 @@ CrmCategoryModuleOff=The Tags/Categories module of Dolibarr is not enabled.
 CrmErrorCategoryModule=The Tags/Categories module of Dolibarr is not enabled.
 CrmErrorCategoryRights=You may not change the categories of this deal's account.
 CrmErrorCategoryNoAccount=This deal has no account.
+CrmNoteEventLabel=CRM note added
