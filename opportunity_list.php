@@ -33,11 +33,13 @@ require_once __DIR__.'/lib/crm_bootstrap.inc.php';
 
 require_once __DIR__.'/class/opportunity.class.php';
 require_once __DIR__.'/class/qualification.class.php';
+require_once __DIR__.'/class/crmcategory.class.php';
 crmStartPage();
 
 $status = GETPOST('status', 'aZ09');
 $search = GETPOST('search_all', 'alphanohtml') !== '' ? GETPOST('search_all', 'alphanohtml') : GETPOST('search', 'alphanohtml');
 $ownerId = GETPOSTINT('userid');
+$categoryId = GETPOSTINT('catid'); // From v1.2.0: category of the third party
 if (!in_array($status, array('open', 'won', 'lost', 'all'), true)) {
 	$status = 'open';
 }
@@ -49,13 +51,17 @@ if (!in_array($sortField, array('ref', 'label', 'account', 'contact', 'stage', '
 }
 $sortOrder = (GETPOST('sortorder', 'aZ09') === 'asc') ? 'asc' : (GETPOST('sortorder', 'aZ09') === 'desc' ? 'desc' : ($sortField === 'ref' ? 'desc' : 'asc'));
 $limit = min(500, GETPOSTINT('limit') > 0 ? GETPOSTINT('limit') : (int) $conf->liste_limit);
-$total = (new Opportunity($db))->countList($user, $status === 'all' ? '' : $status, 0, $ownerId, $search);
+$total = (new Opportunity($db))->countList($user, $status === 'all' ? '' : $status, 0, $ownerId, $search, $categoryId);
 $page = max(0, GETPOSTINT('page'));
 if ($page * $limit >= $total) {
 	$page = 0;
 }
-$deals = (new Opportunity($db))->fetchList($user, $status === 'all' ? '' : $status, 0, $ownerId, $search, $limit, $page * $limit, $sortField, $sortOrder);
-$param = '&status='.urlencode($status).'&search='.urlencode($search).($ownerId > 0 ? '&userid='.$ownerId : '').'&limit='.$limit;
+$deals = (new Opportunity($db))->fetchList($user, $status === 'all' ? '' : $status, 0, $ownerId, $search, $limit, $page * $limit, $sortField, $sortOrder, $categoryId);
+$categories = new CrmCategory($db);
+$accountCategories = $categories->fetchForThirdparties(array_map(function ($deal) {
+	return (int) $deal->fk_soc;
+}, $deals));
+$param = '&status='.urlencode($status).'&search='.urlencode($search).($ownerId > 0 ? '&userid='.$ownerId : '').($categoryId > 0 ? '&catid='.$categoryId : '').'&limit='.$limit;
 $qual = new Qualification($db);
 
 $newUrl = '';
@@ -72,6 +78,7 @@ foreach (array('open' => 'CrmOpen', 'won' => 'CrmWon', 'lost' => 'CrmLost', 'all
 }
 print '</select> ';
 print $langs->trans('CrmSearch').' <input type="text" name="search" value="'.dol_escape_htmltag($search).'"> ';
+print crmCategorySelect('catid', $categoryId, $categories->fetchAvailable(), $langs->trans('CrmAllCategories')).' ';
 if ($user->hasRight('crm', 'readall')) {
 	$form = new Form($db);
 	print $form->select_dolusers($ownerId, 'userid', 1, null, 0, '', '', (string) $conf->entity);
@@ -104,7 +111,7 @@ foreach ($deals as $deal) {
 	print '<tr class="oddeven">';
 	print '<td><a href="'.$url.'">'.dol_escape_htmltag((string) $deal->ref).'</a></td>';
 	print '<td>'.dol_escape_htmltag((string) $deal->label).'</td>';
-	print '<td>'.dol_escape_htmltag((string) $deal->soc_name).'</td>';
+	print '<td>'.crmAccountMarks(dol_escape_htmltag((string) $deal->soc_name), $accountCategories[(int) $deal->fk_soc] ?? array()).'</td>';
 	print '<td>'.dol_escape_htmltag($contact).'</td>';
 	print '<td>'.dol_escape_htmltag(crmStageLabel((string) $deal->stage_label)).'</td>';
 	print '<td class="right">'.price((float) $deal->amount).'</td>';

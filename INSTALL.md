@@ -7,7 +7,7 @@ For an administrator who installs the module on a Dolibarr instance for the firs
 - Dolibarr 21 or later. The module is tested on Dolibarr 24.0.0 and 25.0.0 (alpha); 21 to 23 are accepted but not tested.
 - PHP 8.1 or later, and a MariaDB or MySQL database (the module is tested on MariaDB).
 - The Dolibarr modules **Third parties** and **Agenda**, enabled. The module refuses to be enabled without them.
-- Optional, each for one feature: Proposals, Scheduled jobs, working e-mail sending, the E-mail collector with the PHP `imap` extension, the AI module. See [doc/ADMIN_GUIDE.md](doc/ADMIN_GUIDE.md), "Dolibarr settings the module relies on".
+- Optional, each for one feature: **Tags/Categories** (from v1.2.0: colours under the account names, categories on the deal card), Proposals, Scheduled jobs, working e-mail sending, the E-mail collector with the PHP `imap` extension, the AI module. See [doc/ADMIN_GUIDE.md](doc/ADMIN_GUIDE.md), "Dolibarr settings the module relies on".
 
 ## 1. Get the module
 
@@ -92,6 +92,15 @@ find /path/to/documents/crm -type f -exec chmod 0640 {} +
 5. **PHP**: `upload_tmp_dir` (the default is the system temporary folder) must exist and be writable by the web server user only (`0700`); keep `open_basedir`, if you use it, listing the documents directory. The size limit of one file is Dolibarr's `MAIN_UPLOAD_DOC` (2 MB by default), capped by `upload_max_filesize` and `post_max_size`.
 6. **Check**: `stat -c '%A %U:%G' /path/to/documents/crm` shows `drwxr-x--- www-data:www-data`; `sudo -u www-data test -w /path/to/documents/crm && echo writable` answers `writable`; then attach a small file to a note of a test deal.
 7. **Back it up** with the database, with the owners and rights kept (`rsync -a`, `tar`), and protect the backups as you protect the database: they hold customer documents.
+
+### Categories (tags) of the accounts (from v1.2.0)
+
+The CRM uses the categories of Dolibarr's own **Tags/Categories** module (Home → Setup → Modules → Tools), type **Customers/Prospects**: it adds no table. Without the module nothing about categories shows in the CRM.
+
+1. **Enable Tags/Categories** (Home → Setup → Modules). Dolibarr adds the rights "Read categories", "Create/modify categories" and "Delete categories" to Users → Permissions.
+2. **Create the categories** in Tools → Tags/Categories → Customers/Prospects, with the **colour** field of each one; a category with a colour underlines the account name in the CRM, one without a colour is only a label. Parents and children are supported: for example **Language** (Francophone, Dutch-speaking...) and **Interest** (Hot, Warm, Cold).
+3. **A degree with a single answer** (Hot, Warm *or* Cold): in CRM → Setup → Parameters, **Categories with a single answer**, select the parent category (here "Interest"). The deal card then offers its sub-categories as radio buttons.
+4. **Rights of the salespeople.** Give them the Dolibarr right **Read categories** (Users → Permissions, family Categories), so that the tags show on the cards of Dolibarr itself (the Prospect tab of the third party). **Do not give them "Create/modify categories"**: that right opens every category of every third party in Dolibarr, whoever owns the deal. The CRM lets a salesperson who may write deals choose the categories of the account **of the deals they own** (everybody's with "Read every owner") from the deal card, and for that it asks for no Dolibarr right on categories. Creating categories and colours stays with whoever holds "Create/modify categories" (the administrator).
 
 ## 6. Check the installation
 

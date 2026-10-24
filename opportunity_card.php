@@ -38,11 +38,12 @@ require_once __DIR__.'/class/qualification.class.php';
 require_once __DIR__.'/class/crmactivity.class.php';
 require_once __DIR__.'/class/sequence.class.php';
 require_once __DIR__.'/class/crmnote.class.php';
+require_once __DIR__.'/class/crmcategory.class.php';
 crmStartPage();
 $notesOn = CrmNote::supported($db); // From v1.2.0: internal notes replace the description once the tables exist
 
 $action = GETPOST('action', 'aZ09');
-crmRequireToken($action, array('askdelactivity', 'editactivity', 'editnote'));
+crmRequireToken($action, array('askdelactivity', 'editactivity', 'editnote', 'edittags'));
 $id = GETPOSTINT('id');
 $form = new Form($db);
 $object = new Opportunity($db);
@@ -176,6 +177,23 @@ if ($action === 'delnotefile' && $object->id > 0 && $notesOn) {
 		setEventMessages($langs->trans('RecordSaved'), null);
 	}
 	header('Location: '.$back.'#crm-notes');
+	exit;
+}
+
+if ($action === 'savetags' && $object->id > 0) {
+	// From v1.2.0: the categories (tags) of the third party, chosen on the deal card.
+	crmRequireRight('write');
+	$tagModel = new CrmCategory($db);
+	$chosen = array_map('intval', (array) GETPOST('tags', 'array:int'));
+	foreach ($tagModel->singleParents() as $singleParent) {
+		$chosen[] = GETPOSTINT('single_'.$singleParent);
+	}
+	if ($tagModel->setForDeal($user, (int) $object->id, $chosen) < 0) {
+		setEventMessages(crmErrorText($tagModel->error), null, 'errors');
+	} else {
+		setEventMessages($langs->trans('RecordSaved'), null);
+	}
+	header('Location: '.$back);
 	exit;
 }
 
@@ -488,7 +506,12 @@ if ($object->fk_soc > 0) {
 	require_once DOL_DOCUMENT_ROOT.'/societe/class/societe.class.php';
 	$societe = new Societe($db);
 	if ($societe->fetch((int) $object->fk_soc) > 0) {
-		print $societe->getNomUrl(1);
+		$tagModel = new CrmCategory($db);
+		$tagByAccount = $tagModel->fetchForThirdparties(array((int) $object->fk_soc));
+		print crmAccountMarks($societe->getNomUrl(1), $tagByAccount[(int) $object->fk_soc] ?? array());
+		if (preg_match('/^[a-z]{2}_[A-Z]{2}$/', (string) $societe->default_lang)) {
+			print ' <span class="badge badge-secondary" title="'.dol_escape_htmltag($langs->trans('Language').': '.(string) $societe->default_lang).'">'.dol_escape_htmltag(strtoupper(substr((string) $societe->default_lang, 0, 2))).'</span>';
+		}
 	} else {
 		print $crmEmpty;
 	}
@@ -496,6 +519,66 @@ if ($object->fk_soc > 0) {
 	print $crmEmpty;
 }
 print '</td></tr>';
+if ($object->fk_soc > 0 && CrmCategory::enabled()) {
+	// From v1.2.0: the categories of the third party, with their colours, and the choice of them for who may write.
+	$tagModel = new CrmCategory($db);
+	$tagAvailable = $tagModel->fetchAvailable();
+	$tagAssigned = $tagModel->assigned((int) $object->fk_soc);
+	$tagSingle = array_values(array_intersect($tagModel->singleParents(), array_keys($tagAvailable)));
+	$tagCanEdit = $user->hasRight('crm', 'write') && count($tagAvailable) > 0;
+	print '<tr><td>'.$langs->trans('CrmCategories').'</td><td>';
+	if ($tagCanEdit && $action === 'edittags') {
+		print '<form method="POST" class="crm-tag-form" action="'.$_SERVER['PHP_SELF'].'">';
+		print '<input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="action" value="savetags"><input type="hidden" name="id" value="'.((int) $object->id).'">';
+		$dot = function (array $row): string {
+			$color = crmCategoryColor($row['color']);
+			return '<span class="crm-tag-dot"'.($color !== '' ? ' style="background:'.$color.'"' : '').'></span>';
+		};
+		foreach ($tagSingle as $parentId) {
+			$current = 0;
+			print '<fieldset><legend>'.dol_escape_htmltag($tagAvailable[$parentId]['label']).'</legend>';
+			print '<label><input type="radio" name="single_'.$parentId.'" value="0" checked> '.dol_escape_htmltag($langs->trans('CrmCategoryNone')).'</label>';
+			foreach ($tagAvailable as $row) {
+				if ($row['fk_parent'] === $parentId) {
+					$checked = in_array($row['id'], $tagAssigned, true);
+					print '<label><input type="radio" name="single_'.$parentId.'" value="'.$row['id'].'"'.($checked ? ' checked' : '').'> '.$dot($row).dol_escape_htmltag($row['label']).'</label>';
+				}
+			}
+			print '</fieldset>';
+		}
+		print '<fieldset><legend>'.dol_escape_htmltag($langs->trans('CrmCategories')).'</legend>';
+		$others = 0;
+		foreach ($tagAvailable as $row) {
+			if (in_array($row['id'], $tagSingle, true) || in_array($row['fk_parent'], $tagSingle, true)) {
+				continue;
+			}
+			$others++;
+			print '<label><input type="checkbox" name="tags[]" value="'.$row['id'].'"'.(in_array($row['id'], $tagAssigned, true) ? ' checked' : '').'> '.$dot($row).dol_escape_htmltag(($row['parent_label'] !== '' ? $row['parent_label'].' >> ' : '').$row['label']).'</label>';
+		}
+		if ($others === 0) {
+			print '<span class="opacitymedium">'.dol_escape_htmltag($langs->trans('CrmNoRows')).'</span>';
+		}
+		print '</fieldset>';
+		print '<input type="submit" class="button" value="'.dol_escape_htmltag($langs->trans('Save')).'"> <a class="button button-cancel" href="'.dol_escape_htmltag($back).'">'.$langs->trans('Cancel').'</a>';
+		print '</form>';
+	} else {
+		$shown = 0;
+		foreach ($tagAvailable as $row) {
+			if (in_array($row['id'], $tagAssigned, true)) {
+				$color = crmCategoryColor($row['color']);
+				print '<span class="badge badge-secondary" style="'.($color !== '' ? 'background:'.$color.';color:'.(colorIsLight(ltrim($color, '#')) ? '#000' : '#fff') : '').'">'.dol_escape_htmltag($row['label']).'</span> ';
+				$shown++;
+			}
+		}
+		if ($shown === 0) {
+			print $crmEmpty;
+		}
+		if ($tagCanEdit) {
+			print ' '.crmIconLink($_SERVER['PHP_SELF'].'?id='.$id.'&action=edittags', 'edit', $langs->trans('Modify'));
+		}
+	}
+	print '</td></tr>';
+}
 print '<tr><td>'.$langs->trans('CrmContact').'</td><td>';
 if ($object->fk_socpeople > 0) {
 	require_once DOL_DOCUMENT_ROOT.'/contact/class/contact.class.php';

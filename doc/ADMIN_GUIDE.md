@@ -24,6 +24,7 @@ The module works only if these global Dolibarr settings are in place. Go through
 | **Proposals** | Linking a proposal to a deal. Without it the Proposals section of the deal is simply absent |
 | **E-mail collector** | Reading the archive mailbox (e-mail history). Not needed if you do not archive e-mails |
 | **WYSIWYG editor** (module `fckeditor`) | The formatted (HTML) mode of the e-mail editor. Without it the HTML tab is a plain box where the HTML source must be typed |
+| **Tags/Categories** (module `categorie`) | From v1.2.0: the colours under the account names and the categories chosen on the deal card, see [Categories of the accounts](#categories-of-the-accounts). Without it nothing about categories shows |
 | **AI** | The MCP tools, and the "Suggest a reply with AI" block of the e-mail editor. Not needed for the screens |
 
 **E-mail sending** (Home → Setup → Emails). Needed for reminders and for any real send from an outreach or from the "Send from here" button.
@@ -325,6 +326,17 @@ The e-mail editor (Write / send, on a planned e-mail) can send **plain text** or
 - The e-mail collector stores a received HTML message as plain text.
 - If the WYSIWYG module is off, the HTML tab is a box showing the HTML source.
 
+## Categories of the accounts
+
+**From v1.2.0.** The CRM shows and uses the **categories of third parties** of Dolibarr's Tags/Categories module (type Customers/Prospects). Nothing is copied: no table, no field of the CRM.
+
+- **Setup.** Enable the module, create the categories in Tools → Tags/Categories → Customers/Prospects, each with its **colour**. A category with a colour underlines the account name wherever the CRM prints it (kanban cards, opportunity list, deal card): one coloured band per coloured category, three at most, side by side under the name, with all the labels in the tooltip. The deal card also shows the labels as coloured badges, the language of the third party as a small badge (FR, NL...), and a pencil to choose the categories.
+- **A one-answer degree.** In CRM → Setup → Parameters, **Categories with a single answer** (`CRM_CATEGORY_SINGLE`) takes one or more parent categories (for example "Interest" with Hot, Warm, Cold). On the deal card their sub-categories are radio buttons (plus "None"), so an account has at most one of them; the parent itself is only a heading and cannot be chosen. The other categories are checkboxes.
+- **Filter.** The deal list and the kanban have a category filter (`catid`); choosing a parent includes its sub-categories.
+- **Rights.** Choosing categories from the deal card needs the CRM right **Create and update deals** and a deal the user may see (own deals, or all with "Read every owner"). It needs **no Dolibarr right on categories**, on purpose: "Create/modify categories" opens all the categories of all the third parties. Give the salespeople **Read categories** only, so that Dolibarr's own cards show the tags; leave "Create/modify categories" to the administrator, who keeps the names and colours. A change made by the CRM is a normal Dolibarr link between the category and the third party (it fires the usual category triggers).
+- **MCP.** `get_crm_opportunity` returns the `categories` (label and colour) of the account, `list_crm_opportunities` takes a `category_id`, and `update_crm_opportunity_categories` (right Create and update deals) replaces the categories of the account of a deal, with the same one-answer rule.
+- **What is not there.** Categories belong to the **third party**, not to one deal (a second deal of the same account has the same tags); a category type for deals does not exist in Dolibarr.
+
 ## The public "not interested" link
 
 **From v1.2.0.** Every e-mail the module sends for a deal ends with a link, **"Not interested, don't contact me again soon."** (in the language of the deal's third party when it has one, else the current language). It is added when the message is sent, whoever wrote the text: a salesperson in the editor, an automated outreach, or the AI assistant (the AI is told not to write such a line itself). It is also added to the text of "Open in my mail client" and "Copy text" of the editor, for a message sent from a mail program. There is no setting to leave it out. Owner reminders, which go to your own staff, do not carry it.
@@ -423,7 +435,7 @@ The 49 tools by the CRM right they need (a user without it does not see the tool
 | --- | --- |
 | Read own deals (`read`) | `list_crm_opportunities`, `get_crm_opportunity`, `list_crm_opportunity_notes`, `list_crm_opportunity_files`, `list_crm_note_versions`, `list_crm_activities`, `list_crm_sequences`, `get_crm_sequence`, `list_crm_pipelines`, `list_crm_stages`, `list_crm_sources`, `list_crm_loss_reasons`, `list_crm_qualifications`, `list_crm_stage_history` |
 | Read CRM reports (`report`) | `get_crm_dashboard`, `get_crm_forecast`, `get_crm_conversion`, `get_crm_win_rate`, `get_crm_cycle_time`, `get_crm_loss_reasons`, `get_crm_by_owner`, `get_crm_by_source` |
-| Create and update deals (`write`) | `add_crm_opportunity_note`, `update_crm_note`, `add_crm_note_file`, `delete_crm_note_file`, `create_crm_opportunity`, `update_crm_opportunity`, `change_crm_opportunity_stage`, `change_crm_opportunity_to_won`, `change_crm_opportunity_to_lost`, `add_crm_proposal_link`, `remove_crm_proposal_link`, `update_crm_qualification_answers` |
+| Create and update deals (`write`) | `update_crm_opportunity_categories`, `add_crm_opportunity_note`, `update_crm_note`, `add_crm_note_file`, `delete_crm_note_file`, `create_crm_opportunity`, `update_crm_opportunity`, `change_crm_opportunity_stage`, `change_crm_opportunity_to_won`, `change_crm_opportunity_to_lost`, `add_crm_proposal_link`, `remove_crm_proposal_link`, `update_crm_qualification_answers` |
 | Delete deals (`delete`) | `delete_crm_opportunity` |
 | Create and complete next steps (`activity`) | `create_crm_activity`, `change_crm_activity_to_done`, `update_crm_activity`, `delete_crm_activity` |
 | Manage automated outreach (`sequence`) | `create_crm_sequence`, `update_crm_sequence`, `add_crm_sequence_step`, `update_crm_sequence_step`, `delete_crm_sequence_step`, `add_crm_sequence_enrolment`, `change_crm_sequence_enrolment_to_stopped`, `update_crm_opportunity_replied`, `send_crm_due_sequence_steps` |
@@ -477,6 +489,7 @@ The 49 tools by the CRM right they need (a user without it does not see the tool
 | `CRM_ARCHIVE_COPY` | `bcc` | `bcc` or `cc` |
 | `CRM_ARCHIVE_REQUIRE_AUTH` | 0 | Keep a collected message only if its server reports a passed SPF/DKIM/DMARC check |
 | `CRM_OPTOUT_CONFIRM` | 1 | From v1.2.0. The public "not interested" page asks for a confirmation before it records the request |
+| `CRM_CATEGORY_SINGLE` | empty | From v1.2.0. Ids of the categories of third parties whose sub-categories exclude each other (a degree of interest), set in CRM → Setup → Parameters |
 | `CRM_OPTOUT_SECRET` | created if needed | From v1.2.0. Secret of the "not interested" links, created only when `conf.php` has no `$dolibarr_main_instance_unique_id` (which is used first). Never change or delete it: every link already sent would stop working |
 | `SEARCHFORM_POSITION_CRM` | 42 | Position of "CRM opportunities" in the general search box (optional, set in Other setup) |
 | `MAIN_MODULE_CRM_ICON` | `fa-handshake` | Top menu icon; the theme reads it. Set at enable |

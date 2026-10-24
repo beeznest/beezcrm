@@ -72,6 +72,7 @@ $constants = array(
 	'CRM_ARCHIVE_COPY' => 'CrmArchiveCopy',
 	'CRM_ARCHIVE_REQUIRE_AUTH' => 'CrmArchiveRequireAuth',
 	'CRM_OPTOUT_CONFIRM' => 'CrmOptOutConfirm',
+	'CRM_CATEGORY_SINGLE' => 'CrmCategorySingle',
 );
 
 // Settings that are only on or off are switches, saved at once. They are stored as 1 or 0, never deleted: a deleted
@@ -114,7 +115,8 @@ if ($action === 'setconst') {
 		if (in_array($name, $switches, true)) {
 			continue;
 		}
-		$clean = crmNormalizeSetting($name, GETPOST($name, $name === 'CRM_AI_EMAIL_PROMPT' ? 'nohtml' : 'alphanohtml'));
+		$posted = ($name === 'CRM_CATEGORY_SINGLE') ? implode(',', array_map('intval', (array) GETPOST($name, 'array:int'))) : GETPOST($name, $name === 'CRM_AI_EMAIL_PROMPT' ? 'nohtml' : 'alphanohtml');
+		$clean = crmNormalizeSetting($name, $posted);
 		if ($clean === null) {
 			$refused[] = $langs->trans($label);
 		} else {
@@ -282,6 +284,24 @@ if ($tab === 'parameters') {
 			print '<td><select name="'.$name.'"><option value="draft"'.($mode === 'draft' ? ' selected' : '').'>'.$langs->trans('CrmSequenceEmailModeDraft').'</option>';
 			print '<option value="send"'.($mode === 'send' ? ' selected' : '').'>'.$langs->trans('CrmSequenceEmailModeSend').'</option></select>';
 			print crmHelp($langs->trans('CrmSequenceEmailModeHelp'), 'span', true).'</td></tr>';
+			continue;
+		}
+		if ($name === 'CRM_CATEGORY_SINGLE') {
+			// From v1.2.0: categories of third parties that are one-answer groups (a degree of interest, for example).
+			require_once __DIR__.'/../class/crmcategory.class.php';
+			$categoryModel = new CrmCategory($db);
+			$chosen = crmIdList(getDolGlobalString($name));
+			print '<td>';
+			if (!CrmCategory::enabled()) {
+				print '<span class="opacitymedium">'.$langs->trans('CrmCategoryModuleOff').'</span>';
+			} else {
+				print '<select name="'.$name.'[]" multiple size="5" class="minwidth200">';
+				foreach ($categoryModel->fetchAvailable() as $row) {
+					print '<option value="'.$row['id'].'"'.(in_array($row['id'], $chosen, true) ? ' selected' : '').'>'.dol_escape_htmltag(($row['parent_label'] !== '' ? $row['parent_label'].' >> ' : '').$row['label']).'</option>';
+				}
+				print '</select>';
+			}
+			print crmHelp($langs->trans('CrmCategorySingleHelp'), 'span', true).'</td></tr>';
 			continue;
 		}
 		if ($name === 'CRM_AI_EMAIL_PROMPT') {

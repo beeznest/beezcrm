@@ -101,6 +101,16 @@ From v1.2.0 (schema step 4) the free "description" of a deal is replaced by inte
 - The paperclip on the card opens a `<dialog>` with every file of the deal. The preview of a PDF is the magnifier icon of core's document lists (`search-plus`), which opens `note_file.php?mode=view` (inline) in an `<iframe>` inside a second `<dialog>` of the page; without JavaScript the link opens a new tab. The name of a file always downloads it. The notes are in chronological order: the older ones (oldest first) are folded above the last one behind a link (`crm-notes-toggle`), and the add form is below the list; the history of an edited note is behind another link; both are plain jQuery already loaded by Dolibarr.
 - `CrmNote::supported()` is true only when the tables exist **and** the installed schema version is 4 or more, so the descriptions never look empty between the creation of the tables and the end of the migration. Until then it is false and the card, the tools and the AI prompt keep using `description` (files are live before the module is re-enabled). The column `description` is kept but no longer written once notes exist. The AI reply prompt sends the latest three notes (1000 characters in all).
 
+## Categories of the accounts
+
+From v1.2.0, no schema. `CrmCategory` reads and writes **Dolibarr's categories of third parties** (`llx_categorie` type 2 `customer`, link table `llx_categorie_societe`, hierarchy by `fk_parent`, colour in `color`), which exist when the core Tags/Categories module is on (`CrmCategory::enabled()`); nothing is copied. Decisions:
+
+- **Level.** The third party, not the deal: core has no category type for an external module's objects, and a per-deal link table (`llx_crm_opportunity_category` pointing at `llx_categorie`) can be added later without changing the display code.
+- **Colours.** `crmCategoryColor()` accepts 3 or 6 hex digits with or without `#` and returns `#rrggbb` or '', the only value ever put in a `style` attribute (core refuses a bad colour on creation, but the column is free text). `crmAccountMarks()` underlines the account name with one band per coloured category, three at most, in a flex row, with all labels in the tooltip. Lists load the categories of all their accounts in one query (`fetchForThirdparties`).
+- **Writing.** `setForDeal()` takes a full list, keeps only categories of third parties that exist, drops the heading of a one-answer group, keeps one sub-category per group (`CRM_CATEGORY_SINGLE`), and applies the difference with core's `Categorie::add_type()` / `del_type()` (so the category triggers run). The right is the CRM's: `write` and a deal the user may see (`crmCanReadOwner`). It deliberately does **not** require the Dolibarr right `categorie->creer`, which opens every category of every third party; core's rights are only needed to manage the categories (names, colours) and `categorie->lire` to see the tags on core's own cards.
+- **Filter.** `Opportunity::listFromWhere()` takes a category id and keeps the deals whose third party is linked to it or to a descendant (`EXISTS` on `llx_categorie_societe`), the same for the list, its count, the kanban and the MCP list.
+- The deal card also shows the language of the third party (`default_lang`) as a badge: it is a field of the third party, not a category.
+
 ## Public "not interested" link
 
 From v1.2.0 (schema step 5). Every e-mail sent through `crmSendMail()` with a deal id ends with a link to `optout.php?h=<token>` (`crmOptOutFooter()`, text from `crmOptOutLinkText()`, so the language of the third party). It is added at that one function because everything goes through it: the editor, the outreach job, text written by the AI. It is not optional: if the link cannot be made while the feature is supported, the e-mail is **not sent** (`CrmErrorOptOutLink`); before the schema step has run the e-mail goes without it and a warning is logged. The editor adds the same line to the text of the mail-client and copy buttons. The AI prompts tell the model not to write such a line. The text stored on the deal as the sent e-mail is the text without the footer, so the link (a bearer secret) is not copied into the agenda.
@@ -338,6 +348,7 @@ No purge button in v1. A later action can drop only `llx_crm_*` and `CRM_*` cons
 ├── class/
 │   ├── actions_crm.class.php          # addMcpTools, e-mail collector operation, search entry, third party Prospect tab (v1.2.0)
 │   ├── crmoptout.class.php            # the "not interested" link of a deal and its effect (v1.2.0)
+│   ├── crmcategory.class.php          # core categories of third parties in the CRM (v1.2.0)
 │   ├── crmnote.class.php              # internal notes, versions and files of a deal (v1.2.0)
 │   ├── crmaccountview.class.php       # deals and CRM history of a third party (v1.2.0)
 │   ├── crmmailarchive.class.php       # e-mail to deal matching and recording

@@ -45,6 +45,7 @@ class CrmOpportunityTool extends CrmMcpTool
 				'pipeline_id' => array('type' => 'integer'),
 				'owner_id' => array('type' => 'integer', 'description' => 'Dolibarr user id. Ignored without the readall right.'),
 				'search' => array('type' => 'string'),
+				'category_id' => array('type' => 'integer', 'description' => 'Only deals whose third party is in this category (or below). From v1.2.0.'),
 				'limit' => array('type' => 'integer'),
 			)),
 			$this->definition('get_crm_opportunity', 'Get one deal, its qualification, proposals, history and agenda events.', $dealId, array('id')),
@@ -94,6 +95,10 @@ class CrmOpportunityTool extends CrmMcpTool
 				'id' => array('type' => 'integer'),
 				'propal_id' => array('type' => 'integer'),
 			), array('id', 'propal_id')),
+			$this->definition('update_crm_opportunity_categories', 'Set the categories (tags) of the third party of a deal. From v1.2.0. Only categories of third parties; a one-answer group keeps one sub-category. Replaces the whole list.', array(
+				'id' => array('type' => 'integer', 'description' => 'Opportunity id'),
+				'category_ids' => array('type' => 'array', 'items' => array('type' => 'integer')),
+			), array('id', 'category_ids')),
 			$this->definition('update_crm_qualification_answers', 'Save yes/no answers. Keys are qualification ids.', array(
 				'id' => array('type' => 'integer'),
 				'answers' => array('type' => 'object', 'description' => 'Map of qualification id to 0 or 1'),
@@ -164,7 +169,7 @@ class CrmOpportunityTool extends CrmMcpTool
 			}
 			$limit = min($limit, 500);
 			$rows = array();
-			foreach ($deal->fetchList($this->user, $this->argString($args, 'status'), $this->argInt($args, 'pipeline_id'), $this->argInt($args, 'owner_id'), $this->argString($args, 'search'), $limit) as $obj) {
+			foreach ($deal->fetchList($this->user, $this->argString($args, 'status'), $this->argInt($args, 'pipeline_id'), $this->argInt($args, 'owner_id'), $this->argString($args, 'search'), $limit, 0, 'ref', 'DESC', $this->argInt($args, 'category_id')) as $obj) {
 				$rows[] = $this->listRow($obj);
 			}
 			return $rows;
@@ -224,6 +229,19 @@ class CrmOpportunityTool extends CrmMcpTool
 				return $this->fail($deal->error !== '' ? $deal->error : 'Proposal link failed');
 			}
 			return array(array('id' => (int) $deal->id, 'propal_id' => $propalId));
+		}
+		if ($toolName === 'update_crm_opportunity_categories') {
+			require_once __DIR__.'/../crmcategory.class.php';
+			$ids = array();
+			foreach ((isset($args['category_ids']) && is_array($args['category_ids']) ? $args['category_ids'] : array()) as $categoryId) {
+				$ids[] = (int) $categoryId;
+			}
+			$categories = new CrmCategory($this->db);
+			$changes = $categories->setForDeal($this->user, $this->argInt($args, 'id'), $ids);
+			if ($changes < 0) {
+				return $this->fail($categories->error);
+			}
+			return array(array('id' => $this->argInt($args, 'id'), 'changes' => $changes));
 		}
 		if ($toolName === 'update_crm_qualification_answers') {
 			$deal = $this->loadDeal($this->argInt($args, 'id'));
@@ -312,6 +330,7 @@ class CrmOpportunityTool extends CrmMcpTool
 			'source_id' => (int) $deal->fk_source,
 			'owner_id' => (int) $deal->fk_user_resp,
 			'notes' => $this->noteRows((int) $deal->id, (string) $deal->description),
+			'categories' => $this->categoryRows((int) $deal->fk_soc),
 			'loss_reason_id' => (int) $deal->fk_loss_reason,
 			'loss_note' => (string) $deal->loss_note,
 			'score' => $qual->score($items),
@@ -321,6 +340,21 @@ class CrmOpportunityTool extends CrmMcpTool
 			'history' => $this->historyRows($deal),
 			'activities' => $events,
 		);
+	}
+
+	/**
+	 * The categories (tags) of the third party of a deal, for get_crm_opportunity.
+	 *
+	 * @return array<int,array<string,string>>
+	 */
+	private function categoryRows(int $socId): array
+	{
+		require_once __DIR__.'/../crmcategory.class.php';
+		$rows = array();
+		foreach ((new CrmCategory($this->db))->fetchForThirdparties(array($socId))[$socId] ?? array() as $category) {
+			$rows[] = array('label' => $category['label'], 'color' => $category['color']);
+		}
+		return $rows;
 	}
 
 	/**

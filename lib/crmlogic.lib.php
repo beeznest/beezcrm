@@ -571,6 +571,12 @@ function crmNormalizeSetting(string $name, string $value): ?string
 				return '';
 			}
 			return (strlen($value) <= 254 && !preg_match('/[\x00-\x20\x7F<>,;]/', $value) && filter_var($value, FILTER_VALIDATE_EMAIL) !== false) ? $value : null;
+		case 'CRM_CATEGORY_SINGLE':
+			// Ids of categories of third parties: a comma separated list of numbers, or empty.
+			if ($value === '') {
+				return '';
+			}
+			return (strlen($value) <= 255 && preg_match('/^[0-9]+(,[0-9]+)*$/D', $value)) ? implode(',', crmIdList($value)) : null;
 		case 'CRM_AI_EMAIL_PROMPT':
 			$text = trim(strip_tags($value));
 			return (mb_strlen($text, 'UTF-8') <= 4000) ? $text : null;
@@ -647,4 +653,63 @@ function crmOptOutFooter(string $body, string $url, string $text, bool $html): s
 		return substr($body, 0, $position).$paragraph.substr($body, $position);
 	}
 	return $body.$paragraph;
+}
+
+/**
+ * From v1.2.0. A category colour as Dolibarr stores it (hexadecimal, 3 or 6 digits, with or without #) turned into `#rrggbb`
+ * in lower case, or '' when it is not one: the value goes into a style attribute, so nothing else is let through.
+ */
+function crmCategoryColor(string $color): string
+{
+	$color = ltrim(trim($color), '#');
+	if (preg_match('/^[0-9a-fA-F]{3}$/D', $color)) {
+		$color = $color[0].$color[0].$color[1].$color[1].$color[2].$color[2];
+	}
+	return preg_match('/^[0-9a-fA-F]{6}$/D', $color) ? '#'.strtolower($color) : '';
+}
+
+/**
+ * From v1.2.0. A name underlined with the colours of the categories of the account: one coloured band per category that has a
+ * colour (three at most, side by side under the name), and the labels of all the categories in the tooltip. Without a coloured
+ * category the name is returned as it is.
+ *
+ * @param string                              $nameHtml Name as HTML, already escaped (it can be a link)
+ * @param array<int,array{label:string,color:string}> $categories Categories of the account
+ */
+function crmAccountMarks(string $nameHtml, array $categories): string
+{
+	$bars = '';
+	$labels = array();
+	$count = 0;
+	foreach ($categories as $category) {
+		$labels[] = (string) ($category['label'] ?? '');
+		$color = crmCategoryColor((string) ($category['color'] ?? ''));
+		if ($color !== '' && $count < 3) {
+			$bars .= '<i style="background:'.$color.'"></i>';
+			$count++;
+		}
+	}
+	if ($bars === '') {
+		return $nameHtml;
+	}
+	$title = htmlspecialchars(implode(', ', array_filter($labels, 'strlen')), ENT_QUOTES, 'UTF-8');
+	return '<span class="crm-acct" title="'.$title.'"><span class="crm-acct-name">'.$nameHtml.'</span><span class="crm-acct-bars">'.$bars.'</span></span>';
+}
+
+/**
+ * From v1.2.0. The ids of a comma separated list of category ids (the setting CRM_CATEGORY_SINGLE), without doubles, zeros or
+ * anything that is not a number.
+ *
+ * @return int[]
+ */
+function crmIdList(string $list): array
+{
+	$ids = array();
+	foreach (explode(',', $list) as $part) {
+		$part = trim($part);
+		if ($part !== '' && ctype_digit($part) && (int) $part > 0 && !in_array((int) $part, $ids, true)) {
+			$ids[] = (int) $part;
+		}
+	}
+	return $ids;
 }

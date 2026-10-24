@@ -50,6 +50,7 @@
 			field(form, 'stageid', column.getAttribute('data-stage') || '');
 			field(form, 'pipelineid', board.getAttribute('data-pipeline') || '');
 			field(form, 'userid', board.getAttribute('data-owner') || '');
+			field(form, 'catid', board.getAttribute('data-category') || '');
 			document.body.appendChild(form);
 			form.submit();
 		});

@@ -135,6 +135,14 @@ Moving is allowed to any open stage, forward or back, as long as the deal has a 
 
 The customer's reply is recognised by the same reference in the subject, so it is added to the deal when it reaches the archive mailbox. If a contact answers you by another way, ask whoever manages outreach to use **Mark replied** on the outreach so that it stops (it needs the outreach right).
 
+### Categories of the account (from v1.2.0)
+
+If your administrator has set up categories (Dolibarr's Tags/Categories), the deal card shows, in the **Account** block, the account name underlined with the **colours** of its categories (a band per coloured category, side by side, three at most), a small badge with the **language** of the account (FR, NL...), and a line **Categories** with the labels as coloured badges. The same underline is under the account name on the kanban cards and in the opportunity list.
+
+- **Choose categories**: the pencil icon next to **Categories** opens the choices. Tick the ones that apply (language, segment...). A group such as **Interest** (Hot, Warm, Cold) has radio buttons: you pick one, or **None**. Save. You can do it on the deals you own, or all deals with "Read every owner".
+- **Filter**: the list of opportunities and the kanban have a **category** drop-down next to the filters; choosing a parent category includes the ones below it.
+- The categories belong to the **account**, not to one deal: another deal of the same account shows the same tags. The names and colours of the categories are set by your administrator.
+
 ### The "Not interested" link (from v1.2.0)
 
 From v1.2.0 every e-mail sent for a deal (from the editor, by an automated outreach, or written with the AI assistant) ends with a line **"Not interested, don't contact me again soon."**, a link the prospect can follow. You do not add it and cannot remove it: the editor shows it, in a dashed box under the text ("Added at the end of the e-mail when it is sent"), but it is not part of the text you edit, so the AI suggestion and the preview do not contain it. If you write your message in your own mail program (**Open in my mail client**, **Copy text**), the line is added to the text it gets.

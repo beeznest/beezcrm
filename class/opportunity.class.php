@@ -470,7 +470,7 @@ class Opportunity extends CommonObject
 	/**
 	 * FROM and WHERE of the deal list, shared by the list and its count.
 	 */
-	private function listFromWhere(User $user, string $status, int $pipelineId, int $ownerId, string $search): string
+	private function listFromWhere(User $user, string $status, int $pipelineId, int $ownerId, string $search, int $categoryId = 0): string
 	{
 		global $conf;
 		$sql = ' FROM '.$this->db->prefix().'crm_opportunity as o';
@@ -495,15 +495,23 @@ class Opportunity extends CommonObject
 			$sql .= " AND (o.ref LIKE '".$like."' OR o.label LIKE '".$like."' OR s.nom LIKE '".$like."'";
 			$sql .= " OR sp.lastname LIKE '".$like."' OR sp.firstname LIKE '".$like."' OR sp.email LIKE '".$like."')";
 		}
+		if ($categoryId > 0) {
+			// From v1.2.0: only the deals whose third party is in this category or one below it.
+			require_once __DIR__.'/crmcategory.class.php';
+			$ids = (new CrmCategory($this->db))->withDescendants($categoryId);
+			$sql .= ' AND '.(count($ids) > 0
+				? 'EXISTS (SELECT 1 FROM '.$this->db->prefix().'categorie_societe as cs WHERE cs.fk_soc = o.fk_soc AND cs.fk_categorie IN ('.implode(',', array_map('intval', $ids)).'))'
+				: '1 = 0');
+		}
 		return $sql;
 	}
 
 	/**
 	 * How many deals the same filters select.
 	 */
-	public function countList(User $user, string $status = '', int $pipelineId = 0, int $ownerId = 0, string $search = ''): int
+	public function countList(User $user, string $status = '', int $pipelineId = 0, int $ownerId = 0, string $search = '', int $categoryId = 0): int
 	{
-		$sql = 'SELECT COUNT(o.rowid) as nb'.$this->listFromWhere($user, $status, $pipelineId, $ownerId, $search);
+		$sql = 'SELECT COUNT(o.rowid) as nb'.$this->listFromWhere($user, $status, $pipelineId, $ownerId, $search, $categoryId);
 		$resql = $this->db->query($sql);
 		if ($resql && ($obj = $this->db->fetch_object($resql))) {
 			return (int) $obj->nb;
@@ -525,7 +533,7 @@ class Opportunity extends CommonObject
 	 * @param string $order      ASC or DESC
 	 * @return array<int,object>
 	 */
-	public function fetchList(User $user, string $status = '', int $pipelineId = 0, int $ownerId = 0, string $search = '', int $limit = 0, int $offset = 0, string $sort = 'ref', string $order = 'DESC'): array
+	public function fetchList(User $user, string $status = '', int $pipelineId = 0, int $ownerId = 0, string $search = '', int $limit = 0, int $offset = 0, string $sort = 'ref', string $order = 'DESC', int $categoryId = 0): array
 	{
 		$sql = 'SELECT o.rowid, o.ref, o.label, o.amount, o.status, o.date_close_expected, o.datec, o.fk_soc, o.fk_socpeople, o.fk_stage, o.fk_pipeline, o.fk_user_resp, o.fk_source,';
 		$sql .= ' s.nom as soc_name, sp.firstname, sp.lastname, sp.email as contact_email,';
@@ -533,7 +541,7 @@ class Opportunity extends CommonObject
 		$sql .= ' u.firstname as owner_firstname, u.lastname as owner_lastname, src.label as source_label,';
 		$sql .= ' (SELECT MIN(a.datep) FROM '.$this->db->prefix().'actioncomm as a';
 		$sql .= " WHERE a.elementtype = '".$this->db->escape(CrmActivity::ELEMENT_TYPE)."' AND a.fk_element = o.rowid AND a.percent < 100) as next_date";
-		$sql .= $this->listFromWhere($user, $status, $pipelineId, $ownerId, $search);
+		$sql .= $this->listFromWhere($user, $status, $pipelineId, $ownerId, $search, $categoryId);
 		$column = self::SORT_COLUMNS[$sort] ?? 'o.ref';
 		$sql .= ' ORDER BY '.$column.' '.(strtoupper($order) === 'ASC' ? 'ASC' : 'DESC').', o.rowid DESC';
 		if ($limit > 0) {

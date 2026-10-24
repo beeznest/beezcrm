@@ -54,6 +54,7 @@ class CrmReportTool extends CrmMcpTool
 		'CRM_ARCHIVE_COPY',
 		'CRM_ARCHIVE_REQUIRE_AUTH',
 		'CRM_OPTOUT_CONFIRM',
+		'CRM_CATEGORY_SINGLE',
 	);
 
 	/**

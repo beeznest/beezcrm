@@ -34,12 +34,14 @@ require_once __DIR__.'/class/pipeline.class.php';
 require_once __DIR__.'/class/stage.class.php';
 require_once __DIR__.'/class/opportunity.class.php';
 require_once __DIR__.'/class/crmreport.class.php';
+require_once __DIR__.'/class/crmcategory.class.php';
 crmStartPage();
 
 $action = GETPOST('action', 'aZ09');
 crmRequireToken($action, array());
 $pipelineId = GETPOSTINT('pipelineid');
 $ownerId = GETPOSTINT('userid');
+$categoryId = GETPOSTINT('catid'); // From v1.2.0: category of the third party
 
 $pipelines = (new Pipeline($db))->fetchAll(true);
 if ($pipelineId <= 0 && count($pipelines) > 0) {
@@ -58,7 +60,7 @@ if ($action === 'move') {
 	} else {
 		setEventMessages($langs->trans('CrmNoRows'), null, 'errors');
 	}
-	header('Location: '.$_SERVER['PHP_SELF'].'?pipelineid='.$pipelineId.'&userid='.$ownerId);
+	header('Location: '.$_SERVER['PHP_SELF'].'?pipelineid='.$pipelineId.'&userid='.$ownerId.($categoryId > 0 ? '&catid='.$categoryId : ''));
 	exit;
 }
 
@@ -68,8 +70,12 @@ if ($pipelineId > 0) {
 }
 $deals = array();
 if ($pipelineId > 0) {
-	$deals = (new Opportunity($db))->fetchList($user, 'open', $pipelineId, $ownerId, '', 0);
+	$deals = (new Opportunity($db))->fetchList($user, 'open', $pipelineId, $ownerId, '', 0, 0, 'ref', 'DESC', $categoryId);
 }
+$categories = new CrmCategory($db);
+$accountCategories = $categories->fetchForThirdparties(array_map(function ($deal) {
+	return (int) $deal->fk_soc;
+}, $deals));
 $byStage = array();
 foreach ($deals as $deal) {
 	$byStage[(int) $deal->fk_stage][] = $deal;
@@ -90,12 +96,13 @@ if ($user->hasRight('crm', 'readall')) {
 	$form = new Form($db);
 	print $form->select_dolusers($ownerId, 'userid', 1, null, 0, '', '', (string) $conf->entity);
 }
+print ' '.crmCategorySelect('catid', $categoryId, $categories->fetchAvailable(), $langs->trans('CrmAllCategories'));
 print ' <input type="submit" class="button" value="'.$langs->trans('CrmFilter').'">';
 print '</form>';
 print crmHelp($langs->trans('CrmDragHint'));
 
 $boardUrl = dol_escape_htmltag($_SERVER['PHP_SELF']);
-print '<div id="crm-board" class="crm-board" data-token="'.dol_escape_htmltag(newToken()).'" data-url="'.$boardUrl.'" data-pipeline="'.((int) $pipelineId).'" data-owner="'.((int) $ownerId).'" data-lost-message="'.dol_escape_htmltag($langs->trans('CrmErrorLossReasonRequired')).'">';
+print '<div id="crm-board" class="crm-board" data-token="'.dol_escape_htmltag(newToken()).'" data-url="'.$boardUrl.'" data-pipeline="'.((int) $pipelineId).'" data-owner="'.((int) $ownerId).'" data-category="'.((int) $categoryId).'" data-lost-message="'.dol_escape_htmltag($langs->trans('CrmErrorLossReasonRequired')).'">';
 foreach ($stages as $stage) {
 	$cards = $byStage[(int) $stage->id] ?? array();
 	// A retired stage stays on the board only while deals are still in it.
@@ -118,7 +125,7 @@ foreach ($stages as $stage) {
 		print '<article class="crm-card'.($rotting ? ' crm-rotting' : '').'" draggable="true" data-id="'.((int) $card->rowid).'" data-stage="'.((int) $stage->id).'">';
 		print '<div><a href="'.$url.'">'.dol_escape_htmltag((string) $card->ref).'</a></div>';
 		print '<div>'.dol_escape_htmltag((string) $card->label).'</div>';
-		print '<div>'.dol_escape_htmltag((string) $card->soc_name).'</div>';
+		print '<div>'.crmAccountMarks(dol_escape_htmltag((string) $card->soc_name), $accountCategories[(int) $card->fk_soc] ?? array()).'</div>';
 		print '<div class="crm-amount">'.price((float) $card->amount).'</div>';
 		if ($rotting) {
 			print '<div>'.$langs->trans('CrmRotting').'</div>';

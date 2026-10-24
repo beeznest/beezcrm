@@ -806,6 +806,7 @@ function crmEnsureConstants(DoliDB $db): void
 		'CRM_ARCHIVE_COPY' => 'bcc',
 		'CRM_ARCHIVE_REQUIRE_AUTH' => '0',
 		'CRM_OPTOUT_CONFIRM' => '1',
+		'CRM_CATEGORY_SINGLE' => '',
 		// Read by the theme: without it the top menu icon is overridden by a generic glyph.
 		'MAIN_MODULE_CRM_ICON' => 'fa-handshake',
 	);
@@ -1265,4 +1266,37 @@ function crmAccountTimelineRows(array $rows): string
 		$html .= '</tr>';
 	}
 	return $html;
+}
+
+/**
+ * From v1.2.0. A drop-down of the categories of third parties, as "Parent >> Child", to filter a list. Empty without the
+ * Tags/Categories module or without any category.
+ *
+ * @param array<int,array{id:int,label:string,color:string,fk_parent:int,parent_label:string}> $available CrmCategory::fetchAvailable()
+ */
+function crmCategorySelect(string $name, int $selected, array $available, string $emptyLabel): string
+{
+	if (count($available) === 0) {
+		return '';
+	}
+	$path = function (array $row) use ($available): string {
+		$label = $row['label'];
+		$seen = array();
+		while ($row['fk_parent'] > 0 && isset($available[$row['fk_parent']]) && !in_array($row['fk_parent'], $seen, true)) {
+			$seen[] = $row['fk_parent'];
+			$row = $available[$row['fk_parent']];
+			$label = $row['label'].' >> '.$label;
+		}
+		return $label;
+	};
+	$options = array();
+	foreach ($available as $row) {
+		$options[(int) $row['id']] = $path($row);
+	}
+	asort($options);
+	$html = '<select name="'.dol_escape_htmltag($name).'" class="minwidth150"><option value="0">'.dol_escape_htmltag($emptyLabel).'</option>';
+	foreach ($options as $id => $label) {
+		$html .= '<option value="'.$id.'"'.($id === $selected ? ' selected' : '').'>'.dol_escape_htmltag($label).'</option>';
+	}
+	return $html.'</select>';
 }
