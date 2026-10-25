@@ -183,15 +183,60 @@ function crmNormalizeSubject(string $subject): string
 }
 
 /**
- * Subject with the deal reference appended when it is not already in it.
+ * From v1.2.0. The short marker of a deal reference, put between square brackets in the subject of a message written in a mail
+ * client: "OPP2026-0001" becomes "O2026-0001", which tells the recipient nothing about the deal. A reference that does not start
+ * with OPP is kept.
+ */
+function crmDealMarker(string $ref): string
+{
+	return (strncmp($ref, 'OPP', 3) === 0 && strlen($ref) > 3) ? 'O'.substr($ref, 3) : $ref;
+}
+
+/**
+ * Add the short marker of the deal to a subject, once: "Offer" becomes "Offer [O2026-0001]". A subject that already carries the
+ * reference ("[OPP2026-0001]", as before 1.2.0) or the marker is returned as it is.
  */
 function crmSubjectWithRef(string $subject, string $ref): string
 {
 	$subject = trim($subject);
-	if ($ref === '' || strpos($subject, '['.$ref.']') !== false) {
+	if ($ref === '' || strpos($subject, '['.$ref.']') !== false || strpos($subject, '['.crmDealMarker($ref).']') !== false) {
 		return $subject;
 	}
-	return trim($subject.' ['.$ref.']');
+	return trim($subject.' ['.crmDealMarker($ref).']');
+}
+
+/**
+ * Take the reference or the marker of a deal out of a subject: a message sent by the platform carries the deal in its headers
+ * (Message-ID, X-Dolibarr-TRACKID), so its subject does not need to show it.
+ */
+function crmStripDealMarker(string $subject, string $ref): string
+{
+	if ($ref === '') {
+		return trim($subject);
+	}
+	$out = str_replace(array('['.$ref.']', '['.crmDealMarker($ref).']'), '', $subject);
+	return trim((string) preg_replace('/[ \t]{2,}/', ' ', $out));
+}
+
+/**
+ * From v1.2.0. The deal references a list of bracketed subject words can stand for: each word, and for a short marker such as
+ * "O2026-0001" the reference "OPP2026-0001" it was made from.
+ *
+ * @param string[] $words Words found between square brackets
+ * @return string[]
+ */
+function crmExpandDealMarkers(array $words): array
+{
+	$refs = array();
+	foreach ($words as $word) {
+		if (!in_array($word, $refs, true)) {
+			$refs[] = $word;
+		}
+		if (preg_match('/^O([0-9]{4}-[0-9]+)$/D', $word, $reg) && !in_array('OPP'.$reg[1], $refs, true)) {
+			$refs[] = 'OPP'.$reg[1];
+		}
+	}
+	return $refs;
 }
 
 /**

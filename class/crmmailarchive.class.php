@@ -23,7 +23,7 @@ require_once __DIR__.'/sequence.class.php';
  * 1. a Message-ID, In-Reply-To or References entry carries the deal tracking id the module puts on what it sends;
  * 2. or one of those ids is the Message-ID of a message already recorded on a deal, which covers a person
  *    who answers a customer answer from their own mail client and quotes the exchange;
- * 3. or the subject carries the reference of a deal in square brackets, "[OPP2026-0001]". The module puts it in the
+ * 3. or the subject carries the marker of a deal in square brackets, "[O2026-0001]" ("[OPP2026-0001]" before 1.2.0). The module puts it in the
  *    subject of the e-mails it suggests, so a message written in a mail client from such a suggestion, and the
  *    customer's answer to it, are recognised even when the mail client drops the threading headers.
  * Anything else is ignored: the mailbox is not a general inbox.
@@ -106,7 +106,7 @@ class CrmMailArchive
 	{
 		global $conf;
 		$quoted = array();
-		foreach (crmDealRefsInSubject($subject) as $ref) {
+		foreach (crmExpandDealMarkers(crmDealRefsInSubject($subject)) as $ref) {
 			$quoted[] = "'".$this->db->escape($ref)."'";
 		}
 		if (count($quoted) === 0) {

@@ -378,6 +378,24 @@ class CrmActivity
 	}
 
 	/**
+	 * From v1.2.0. Every message of the exchange with the customer on a deal, oldest first, for the message history of the card:
+	 * the done e-mail events (AC_EMAIL sent, AC_EMAIL_IN received), whether the module sent them (from the editor, an outreach, a
+	 * reminder of a step) or the e-mail collector found them in the archive mailbox.
+	 *
+	 * @return array<int,object> Rows with rowid, datep, code, label, email_subject, email_from, email_to, email_tocc, note
+	 */
+	public function fetchMessages(int $opportunityId): array
+	{
+		$sql = 'SELECT a.id as rowid, a.datep, a.code, a.label, a.email_subject, a.email_from, a.email_to, a.email_tocc, a.note';
+		$sql .= ' FROM '.$this->db->prefix().'actioncomm as a';
+		$sql .= " WHERE a.elementtype = '".$this->db->escape(self::ELEMENT_TYPE)."'";
+		$sql .= ' AND a.fk_element = '.((int) $opportunityId);
+		$sql .= " AND a.code IN ('AC_EMAIL', 'AC_EMAIL_IN') AND a.percent >= 100";
+		$sql .= ' ORDER BY a.datep ASC, a.id ASC';
+		return $this->fetchRows($sql);
+	}
+
+	/**
 	 * The e-mails already exchanged on a deal, oldest first: done events coded AC_EMAIL (sent) or AC_EMAIL_IN
 	 * (received). Only the most recent ones are returned.
 	 *

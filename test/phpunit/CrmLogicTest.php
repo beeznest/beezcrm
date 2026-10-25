@@ -156,8 +156,9 @@ class CrmLogicTest extends TestCase
 		$this->assertSame(array('OPP2026-0001'), crmDealRefsInSubject('Re: Offer [OPP2026-0001]'));
 		$this->assertSame(array('OPP2026-0001', 'ABC-12'), crmDealRefsInSubject('[OPP2026-0001] Fwd: [ABC-12] [OPP2026-0001]'));
 		$this->assertSame(array(), crmDealRefsInSubject('Offer (OPP2026-0001) [x]'));
-		$this->assertSame('Offer [OPP2026-0001]', crmSubjectWithRef('Offer', 'OPP2026-0001'));
+		$this->assertSame('Offer [O2026-0001]', crmSubjectWithRef('Offer', 'OPP2026-0001'));
 		$this->assertSame('Offer [OPP2026-0001]', crmSubjectWithRef('Offer [OPP2026-0001]', 'OPP2026-0001'));
+		$this->assertSame('Offer [O2026-0001]', crmSubjectWithRef('Offer [O2026-0001]', 'OPP2026-0001'));
 		$this->assertSame('Offer', crmSubjectWithRef('Offer', ''));
 	}
 
@@ -498,5 +499,19 @@ class CrmLogicTest extends TestCase
 		$evil = crmOptOutFooter('x', 'https://a.example/?h="><script>', '<b>t</b>', true);
 		$this->assertStringNotContainsString('<script>', $evil);
 		$this->assertStringNotContainsString('<b>t</b>', $evil);
+	}
+
+	public function testDealMarker(): void
+	{
+		$this->assertSame('O2026-0001', crmDealMarker('OPP2026-0001'));
+		$this->assertSame('ABC-12', crmDealMarker('ABC-12'));
+		$this->assertSame('OPP', crmDealMarker('OPP'));
+		$this->assertSame('Offer', crmStripDealMarker('Offer [O2026-0001]', 'OPP2026-0001'));
+		$this->assertSame('Offer', crmStripDealMarker('Offer [OPP2026-0001]', 'OPP2026-0001'));
+		$this->assertSame('Offer for you', crmStripDealMarker('Offer [O2026-0001]  for you', 'OPP2026-0001'));
+		$this->assertSame('Offer [ABC-12]', crmStripDealMarker('Offer [ABC-12]', 'OPP2026-0001'));
+		$this->assertSame(array('O2026-0001', 'OPP2026-0001'), crmExpandDealMarkers(array('O2026-0001')));
+		$this->assertSame(array('OPP2026-0001'), crmExpandDealMarkers(array('OPP2026-0001')));
+		$this->assertSame(array('Offer', 'ABC'), crmExpandDealMarkers(array('Offer', 'ABC')));
 	}
 }

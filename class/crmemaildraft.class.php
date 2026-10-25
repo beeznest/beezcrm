@@ -136,6 +136,12 @@ class CrmEmailDraft
 			$this->error = 'CrmErrorSubjectRequired';
 			return -1;
 		}
+		// The deal is in the headers of a message sent from here (Message-ID, X-Dolibarr-TRACKID): the subject does not show it.
+		$subject = crmStripDealMarker($subject, (string) $this->deal->ref);
+		if ($subject === '') {
+			$this->error = 'CrmErrorSubjectRequired';
+			return -1;
+		}
 		$result = crmSendMail($to, $subject, $body, (int) $this->deal->rowid, $html, $from, $copyToMe);
 		if (!$result['ok']) {
 			$this->error = $result['error'] !== '' ? $result['error'] : 'CrmErrorSendFailed';

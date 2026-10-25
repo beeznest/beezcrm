@@ -362,3 +362,25 @@ a.crm-preview {
 	margin-right: 3px;
 	background: #bbb;
 }
+
+/* From v1.2.0: message history of a deal. */
+.crm-msg {
+	border: 1px solid rgba(128, 128, 128, 0.3);
+	border-left-width: 4px;
+	border-radius: 4px;
+	padding: 6px 10px;
+	margin: 0 0 8px 0;
+}
+.crm-msg-out {
+	border-left-color: var(--colortextlink, #4a6fa5);
+}
+.crm-msg-in {
+	border-left-color: #2e8b57;
+	background: rgba(46, 139, 87, 0.06);
+}
+.crm-msg-body {
+	margin-top: 6px;
+	padding-top: 6px;
+	border-top: 1px dashed rgba(128, 128, 128, 0.35);
+	line-height: 1.45;
+}

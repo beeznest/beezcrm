@@ -1005,6 +1005,45 @@ print '<tr class="liste_titre"><td>'.$langs->trans('CrmDate').'</td><td>'.$langs
 print crmAccountTimelineRows((new CrmAccountView($db))->fetchDealHistory($user, (int) $object->id), false);
 print '</table>';
 
+// From v1.2.0: the messages of the deal, whoever sent them. They are agenda events (sent by the module, or found in the archive
+// mailbox by the e-mail collector); the text is read here, without the agenda rights.
+$messages = (new CrmActivity($db))->fetchMessages((int) $object->id);
+print '<a id="crm-messages"></a><h2>'.$langs->trans('CrmMessageHistory').(count($messages) > 0 ? ' <span class="opacitymedium">('.count($messages).')</span> <a href="#" id="crm-msg-all" class="small" data-more="'.dol_escape_htmltag($langs->trans('CrmMessagesShowAll')).'" data-less="'.dol_escape_htmltag($langs->trans('CrmMessagesHideAll')).'">'.dol_escape_htmltag($langs->trans('CrmMessagesShowAll')).'</a>' : '').'</h2>';
+if (count($messages) === 0) {
+	print crmHelp($langs->trans('CrmMessageHistoryEmpty'));
+}
+foreach ($messages as $message) {
+	$received = ((string) $message->code === 'AC_EMAIL_IN');
+	$text = crmLooksLikeHtml((string) $message->note) ? crmHtmlToText((string) $message->note) : (string) $message->note;
+	$subject = ((string) $message->email_subject !== '') ? (string) $message->email_subject : (string) $message->label;
+	$people = ((string) $message->email_from !== '' ? dol_escape_htmltag($langs->trans('CrmMessageFrom')).' '.dol_escape_htmltag((string) $message->email_from) : '').((string) $message->email_to !== '' ? ' '.dol_escape_htmltag($langs->trans('CrmMessageTo')).' '.dol_escape_htmltag((string) $message->email_to) : '').((string) $message->email_tocc !== '' ? ' Cc '.dol_escape_htmltag((string) $message->email_tocc) : '');
+	print '<div class="crm-msg '.($received ? 'crm-msg-in' : 'crm-msg-out').'" id="crm-msg-'.((int) $message->rowid).'">';
+	print '<div class="crm-msg-head"><span class="badge badge-secondary">'.dol_escape_htmltag($langs->trans($received ? 'CrmEmailReceived' : 'CrmEmailSent')).'</span> ';
+	print '<span class="opacitymedium">'.dol_print_date($db->jdate($message->datep), 'dayhour').'</span> <strong>'.dol_escape_htmltag($subject).'</strong> ';
+	print '<a href="#" class="crm-msg-toggle" data-target="crm-msg-body-'.((int) $message->rowid).'">'.dol_escape_htmltag($langs->trans('CrmMessageRead')).'</a>';
+	if ($people !== '') {
+		print '<div class="opacitymedium small">'.trim($people).'</div>';
+	}
+	print '</div><div class="crm-msg-body" id="crm-msg-body-'.((int) $message->rowid).'" style="display:none">'.($text !== '' ? dol_nl2br(dol_escape_htmltag($text, 0, 1)) : '<span class="opacitymedium">'.dol_escape_htmltag($langs->trans('CrmNoRows')).'</span>').'</div>';
+	print '</div>';
+}
+if (count($messages) > 0) {
+	print '<script nonce="'.dol_escape_htmltag(getNonce()).'">
+	jQuery(function () {
+		jQuery(".crm-msg-toggle").on("click", function (event) {
+			event.preventDefault();
+			jQuery("#" + jQuery(this).data("target")).toggle();
+		});
+		jQuery("#crm-msg-all").on("click", function (event) {
+			event.preventDefault();
+			var open = !jQuery(this).data("open");
+			jQuery(this).data("open", open).text(open ? jQuery(this).data("less") : jQuery(this).data("more"));
+			jQuery(".crm-msg-body").toggle(open);
+		});
+	});
+	</script>';
+}
+
 // The e-mails that sequences made for this deal, and on what ground: which sequence, which step, which day.
 $sequenceMails = (new Sequence($db))->fetchLogForOpportunity((int) $object->id);
 if (count($sequenceMails) > 0) {
