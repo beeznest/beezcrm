@@ -59,6 +59,7 @@ class CrmOpportunityTool extends CrmMcpTool
 				'amount' => array('type' => 'number'),
 				'expected_close' => array('type' => 'string', 'description' => 'YYYY-MM-DD or unix time'),
 				'source_id' => array('type' => 'integer'),
+				'internal_ref' => array('type' => 'string', 'description' => 'Number of the task in another system (from v1.2.0)'),
 				'description' => array('type' => 'string', 'description' => 'First internal note of the deal (from v1.2.0; a description before)'),
 			), array('label', 'pipeline_id')),
 			$this->definition('update_crm_opportunity', 'Update deal fields. The stage is changed by change_crm_opportunity_stage.', array(
@@ -70,6 +71,7 @@ class CrmOpportunityTool extends CrmMcpTool
 				'amount' => array('type' => 'number'),
 				'expected_close' => array('type' => 'string'),
 				'source_id' => array('type' => 'integer'),
+				'internal_ref' => array('type' => 'string', 'description' => 'Number of the task in another system (from v1.2.0). Empty clears it.'),
 			), array('id')),
 			$this->definition('change_crm_opportunity_stage', 'Move a deal to a stage of the same pipeline. An open move needs a future next step when that rule is on.', array(
 				'id' => array('type' => 'integer'),
@@ -330,6 +332,8 @@ class CrmOpportunityTool extends CrmMcpTool
 			'source_id' => (int) $deal->fk_source,
 			'owner_id' => (int) $deal->fk_user_resp,
 			'notes' => $this->noteRows((int) $deal->id, (string) $deal->description),
+			'internal_ref' => (string) $deal->ref_internal,
+			'internal_ref_url' => crmInternalRefUrl(getDolGlobalString('CRM_INTERNAL_REF_URL'), (string) $deal->ref_internal),
 			'categories' => $this->categoryRows((int) $deal->fk_soc),
 			'loss_reason_id' => (int) $deal->fk_loss_reason,
 			'loss_note' => (string) $deal->loss_note,
@@ -412,6 +416,7 @@ class CrmOpportunityTool extends CrmMcpTool
 		$deal->amount = isset($args['amount']) ? (float) $args['amount'] : 0.0;
 		$deal->date_close_expected = $this->argDate($args, 'expected_close');
 		$deal->fk_source = $this->argInt($args, 'source_id');
+		$deal->ref_internal = crmCleanInternalRef($this->argString($args, 'internal_ref'));
 		require_once __DIR__.'/../crmnote.class.php';
 		$notesOn = CrmNote::supported($this->db);
 		if (!$notesOn) {
@@ -461,6 +466,9 @@ class CrmOpportunityTool extends CrmMcpTool
 		}
 		if (isset($args['source_id'])) {
 			$deal->fk_source = $this->argInt($args, 'source_id');
+		}
+		if (isset($args['internal_ref'])) {
+			$deal->ref_internal = crmCleanInternalRef($this->argString($args, 'internal_ref'));
 		}
 		if ($deal->update($this->user) <= 0) {
 			return $this->fail($deal->error !== '' ? $deal->error : 'Update failed');

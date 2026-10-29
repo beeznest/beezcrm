@@ -138,6 +138,7 @@ The settings that are only on or off are **on/off switches** (the same switches 
 | Default AI prompt | `CRM_AI_EMAIL_PROMPT` (empty) | A text area. The prompt offered to salespeople, who can edit it for each request. Empty uses the built-in prompt (English or French by the user's language) |
 | Archive mailbox address | `CRM_ARCHIVE_MAILBOX` (empty) | The dedicated address copied on every customer e-mail sent for a deal. Empty: no copy |
 | Copy mode for the archive mailbox | `CRM_ARCHIVE_COPY` (`bcc`) | A drop-down: **Hidden copy (Bcc)** or **Visible copy (Cc)** |
+| Base address of the internal references | `CRM_INTERNAL_REF_URL` (empty) | From v1.2.0. An http or https address, for example `https://tracker.example.com/browse/`. The **Internal reference** of a deal (the number of its task in another system) is shown as a link made of this address followed by the reference (URL-encoded), opened in a new tab with `rel="noopener noreferrer"`. Empty: the reference is plain text. Other schemes (`javascript:`, `data:`...), blanks, quotes and angle brackets are refused |
 | Ask the prospect to confirm the "not interested" link | `CRM_OPTOUT_CONFIRM` (1) | From v1.2.0. On: the public page shows a button and records the request only when it is pressed. Off: opening the link records it at once. See [The public "not interested" link](#the-public-not-interested-link) |
 
 Under the table a note reminds you that outreach stay off until enabled and that dry-run is on for outreach and reminders, and a longer help text explains the e-mail history setup.
@@ -496,6 +497,7 @@ The 49 tools by the CRM right they need (a user without it does not see the tool
 | `CRM_ARCHIVE_COPY` | `bcc` | `bcc` or `cc` |
 | `CRM_ARCHIVE_REQUIRE_AUTH` | 0 | Keep a collected message only if its server reports a passed SPF/DKIM/DMARC check |
 | `CRM_OPTOUT_CONFIRM` | 1 | From v1.2.0. The public "not interested" page asks for a confirmation before it records the request |
+| `CRM_INTERNAL_REF_URL` | empty | From v1.2.0. Base address that prefixes the internal reference of a deal to make it a link; http or https only |
 | `CRM_CATEGORY_SINGLE` | empty | From v1.2.0. Ids of the categories of third parties whose sub-categories exclude each other (a degree of interest), set in CRM → Setup → Parameters |
 | `CRM_OPTOUT_SECRET` | created if needed | From v1.2.0. Secret of the "not interested" links, created only when `conf.php` has no `$dolibarr_main_instance_unique_id` (which is used first). Never change or delete it: every link already sent would stop working |
 | `SEARCHFORM_POSITION_CRM` | 42 | Position of "CRM opportunities" in the general search box (optional, set in Other setup) |

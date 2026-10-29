@@ -63,6 +63,7 @@ CREATE TABLE llx_crm_opportunity (
 	fk_source integer DEFAULT NULL,
 	fk_user_resp integer NOT NULL,
 	description text,
+	ref_internal varchar(128) DEFAULT NULL,
 	status varchar(16) DEFAULT 'open' NOT NULL,
 	date_close datetime DEFAULT NULL,
 	fk_loss_reason integer DEFAULT NULL,

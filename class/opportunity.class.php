@@ -51,6 +51,8 @@ class Opportunity extends CommonObject
 	public $fk_user_resp;
 	/** @var string */
 	public $description;
+	/** @var string From v1.2.0: number of the task in another system */
+	public $ref_internal = '';
 	/** @var string open|won|lost */
 	public $status;
 	/** @var int */
@@ -130,6 +132,7 @@ class Opportunity extends CommonObject
 		$this->fk_source = (int) $obj->fk_source;
 		$this->fk_user_resp = (int) $obj->fk_user_resp;
 		$this->description = (string) $obj->description;
+		$this->ref_internal = isset($obj->ref_internal) ? (string) $obj->ref_internal : '';
 		$this->status = (string) $obj->status;
 		$this->date_close = $this->db->jdate($obj->date_close);
 		$this->fk_loss_reason = (int) $obj->fk_loss_reason;
@@ -169,7 +172,7 @@ class Opportunity extends CommonObject
 		}
 		$now = dol_now();
 		$sql = 'INSERT INTO '.$this->db->prefix().'crm_opportunity (';
-		$sql .= 'entity, ref, label, fk_soc, fk_socpeople, fk_pipeline, fk_stage, amount, date_close_expected, fk_source, fk_user_resp, description, status, datec, fk_user_creat';
+		$sql .= 'entity, ref, label, fk_soc, fk_socpeople, fk_pipeline, fk_stage, amount, date_close_expected, fk_source, fk_user_resp, description, status, datec, fk_user_creat'.(crmInternalRefSupported($this->db) ? ', ref_internal' : '');
 		$sql .= ') VALUES (';
 		$sql .= ((int) $conf->entity);
 		$sql .= ", '".$this->db->escape($this->ref)."'";
@@ -186,6 +189,10 @@ class Opportunity extends CommonObject
 		$sql .= ", 'open'";
 		$sql .= ", '".$this->db->idate($now)."'";
 		$sql .= ', '.((int) $user->id);
+		if (crmInternalRefSupported($this->db)) {
+			$ref = crmCleanInternalRef((string) $this->ref_internal);
+			$sql .= ', '.($ref !== '' ? "'".$this->db->escape($ref)."'" : 'NULL');
+		}
 		$sql .= ')';
 		if (!$this->db->query($sql)) {
 			$this->error = crmDbError($this->db);
@@ -230,6 +237,10 @@ class Opportunity extends CommonObject
 		$sql .= ', fk_source = '.($this->fk_source > 0 ? (int) $this->fk_source : 'NULL');
 		$sql .= ', fk_user_resp = '.((int) $this->fk_user_resp);
 		$sql .= ", description = '".$this->db->escape((string) $this->description)."'";
+		if (crmInternalRefSupported($this->db)) {
+			$ref = crmCleanInternalRef((string) $this->ref_internal);
+			$sql .= ', ref_internal = '.($ref !== '' ? "'".$this->db->escape($ref)."'" : 'NULL');
+		}
 		$sql .= ' WHERE rowid = '.((int) $this->id);
 		if (!$this->db->query($sql)) {
 			$this->error = crmDbError($this->db);
@@ -493,7 +504,11 @@ class Opportunity extends CommonObject
 		if ($search !== '') {
 			$like = '%'.$this->db->escape($this->db->escapeforlike($search)).'%';
 			$sql .= " AND (o.ref LIKE '".$like."' OR o.label LIKE '".$like."' OR s.nom LIKE '".$like."'";
-			$sql .= " OR sp.lastname LIKE '".$like."' OR sp.firstname LIKE '".$like."' OR sp.email LIKE '".$like."')";
+			$sql .= " OR sp.lastname LIKE '".$like."' OR sp.firstname LIKE '".$like."' OR sp.email LIKE '".$like."'";
+			if (crmInternalRefSupported($this->db)) {
+				$sql .= " OR o.ref_internal LIKE '".$like."'";
+			}
+			$sql .= ')';
 		}
 		if ($categoryId > 0) {
 			// From v1.2.0: only the deals whose third party is in this category or one below it.

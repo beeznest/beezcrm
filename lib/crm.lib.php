@@ -389,7 +389,7 @@ function crmLogViewLink(int $logId): string
  */
 function crmSchemaCurrent(): int
 {
-	return 6;
+	return 7;
 }
 
 /**
@@ -409,6 +409,7 @@ function crmSchemaSteps(): array
 		4 => array('label' => 'Internal notes: the description of a deal becomes its first note', 'run' => 'crmSchemaStep4'),
 		5 => array('label' => 'Public "not interested" link: loss reason "Not interested"', 'run' => 'crmSchemaStep5'),
 		6 => array('label' => 'Notes as agenda events: column fk_action of the notes, events for the existing notes', 'run' => 'crmSchemaStep6'),
+		7 => array('label' => 'Internal reference of a deal: column ref_internal', 'run' => 'crmSchemaStep7'),
 	);
 }
 
@@ -574,6 +575,38 @@ function crmSchemaStep6(DoliDB $db): bool
 		$notes->createEventForNote($noteId);
 	}
 	return true;
+}
+
+/**
+ * Schema version 7 (from v1.2.0): the column llx_crm_opportunity.ref_internal, the number of the deal's task in another system.
+ * Safe to run twice.
+ */
+function crmSchemaStep7(DoliDB $db): bool
+{
+	$table = $db->prefix().'crm_opportunity';
+	$resql = $db->DDLDescTable($table, 'ref_internal');
+	if ($resql && $db->fetch_object($resql)) {
+		return true;
+	}
+	if (!$db->query('ALTER TABLE '.$table.' ADD COLUMN ref_internal varchar(128) DEFAULT NULL')) {
+		dol_syslog('CRM: could not add the column ref_internal to '.$table.': '.$db->lasterror(), LOG_ERR);
+		return false;
+	}
+	return true;
+}
+
+/**
+ * True when the column ref_internal exists and schema step 7 has run: files are live before the module is enabled again, and until
+ * then the internal reference is simply not there.
+ */
+function crmInternalRefSupported(DoliDB $db): bool
+{
+	static $column = null;
+	if ($column === null) {
+		$resql = $db->DDLDescTable($db->prefix().'crm_opportunity', 'ref_internal');
+		$column = ($resql && $db->fetch_object($resql)) ? true : false;
+	}
+	return $column && crmSchemaInstalled() >= 7;
 }
 
 /**
@@ -837,6 +870,7 @@ function crmEnsureConstants(DoliDB $db): void
 		'CRM_ARCHIVE_COPY' => 'bcc',
 		'CRM_ARCHIVE_REQUIRE_AUTH' => '0',
 		'CRM_OPTOUT_CONFIRM' => '1',
+		'CRM_INTERNAL_REF_URL' => '',
 		'CRM_CATEGORY_SINGLE' => '',
 		// Read by the theme: without it the top menu icon is overridden by a generic glyph.
 		'MAIN_MODULE_CRM_ICON' => 'fa-handshake',

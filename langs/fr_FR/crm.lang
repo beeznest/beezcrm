@@ -478,3 +478,6 @@ CrmMessagesShowAll=tout afficher
 CrmMessagesHideAll=tout masquer
 CrmMessageFrom=De
 CrmMessageTo=À
+CrmInternalRef=Référence interne
+CrmInternalRefUrl=Adresse de base des références internes
+CrmInternalRefUrlHelp=La référence interne d'une affaire est le numéro de sa tâche dans un autre système. Avec une adresse de base ici (http ou https, par exemple https://tracker.example.com/browse/), la référence s'affiche sur la fiche d'affaire comme un lien formé de cette adresse suivie de la référence, ouvert dans un nouvel onglet. Vide : la référence s'affiche en texte.

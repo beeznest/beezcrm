@@ -616,6 +616,9 @@ function crmNormalizeSetting(string $name, string $value): ?string
 				return '';
 			}
 			return (strlen($value) <= 254 && !preg_match('/[\x00-\x20\x7F<>,;]/', $value) && filter_var($value, FILTER_VALIDATE_EMAIL) !== false) ? $value : null;
+		case 'CRM_INTERNAL_REF_URL':
+			// A base address that prefixes the internal reference of a deal, or empty for no link.
+			return ($value === '' || crmInternalRefBaseValid($value)) ? $value : null;
 		case 'CRM_CATEGORY_SINGLE':
 			// Ids of categories of third parties: a comma separated list of numbers, or empty.
 			if ($value === '') {
@@ -757,4 +760,36 @@ function crmIdList(string $list): array
 		}
 	}
 	return $ids;
+}
+
+/**
+ * From v1.2.0. The internal reference of a deal (the number of a task in another system): one line, no markup, at most 128
+ * characters.
+ */
+function crmCleanInternalRef(string $ref): string
+{
+	return crmSingleLine(strip_tags($ref), 128);
+}
+
+/**
+ * From v1.2.0. True for a base address that may prefix internal references: http or https, no blank, no control character, no
+ * quote or angle bracket, at most 500 characters. Nothing else (no javascript: or data: address) can become a link.
+ */
+function crmInternalRefBaseValid(string $base): bool
+{
+	return strlen($base) <= 500 && preg_match('~^https?://[^\s<>"\'\x00-\x1F\x7F]+$~Di', $base) === 1 && filter_var($base, FILTER_VALIDATE_URL) !== false;
+}
+
+/**
+ * From v1.2.0. The address of an internal reference: the base address of the setting followed by the reference (URL-encoded, so
+ * it cannot add anything to the address), or '' when there is no reference, no base or the base is not valid.
+ */
+function crmInternalRefUrl(string $base, string $ref): string
+{
+	$base = trim($base);
+	$ref = crmCleanInternalRef($ref);
+	if ($base === '' || $ref === '' || !crmInternalRefBaseValid($base)) {
+		return '';
+	}
+	return $base.rawurlencode($ref);
 }

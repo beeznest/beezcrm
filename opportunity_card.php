@@ -72,6 +72,9 @@ $fill = function (Opportunity $deal) use ($user, $notesOn): void {
 		$owner = (int) $user->id;
 	}
 	$deal->fk_user_resp = $owner;
+	if (GETPOSTISSET('refinternal')) {
+		$deal->ref_internal = crmCleanInternalRef(GETPOST('refinternal', 'nohtml'));
+	}
 	if (!$notesOn) {
 		$deal->description = GETPOST('description', 'restricthtml');
 	}
@@ -354,6 +357,9 @@ if ($action === 'create' || $action === 'edit') {
 	}
 	print '<table class="border centpercent">';
 	print '<tr><td class="titlefield">'.$langs->trans('CrmTitle').'</td><td><input class="minwidth300" name="label" value="'.dol_escape_htmltag((string) $object->label).'" required></td></tr>';
+	if (crmInternalRefSupported($db)) {
+		print '<tr><td>'.$langs->trans('CrmInternalRef').'</td><td><input class="minwidth200" name="refinternal" maxlength="128" value="'.dol_escape_htmltag((string) ($creating && GETPOSTISSET('refinternal') ? crmCleanInternalRef(GETPOST('refinternal', 'nohtml')) : $object->ref_internal)).'"></td></tr>';
+	}
 	print '<tr><td>'.$langs->trans('CrmPipeline').'</td><td><select name="pipelineid" required>';
 	foreach ($pipelines as $pipeline) {
 		$selected = ((int) $object->fk_pipeline === (int) $pipeline->id) ? ' selected' : '';
@@ -380,7 +386,7 @@ if ($creating && $user->hasRight('societe', 'creer')) {
 		jQuery("#crm-new-prospect").on("click", function (event) {
 			var form = jQuery(this).closest("form");
 			var back = ' . json_encode($backToCreate) . ';
-			jQuery.each(["label", "pipelineid", "amount", "sourceid", "userid", "description", "firstnote"], function (i, name) {
+			jQuery.each(["label", "pipelineid", "amount", "sourceid", "userid", "description", "firstnote", "refinternal"], function (i, name) {
 				var field = form.find("[name=" + name + "]");
 				if (field.length) {
 					back += "&" + name + "=" + encodeURIComponent(field.val());
@@ -497,6 +503,20 @@ print '<tr><td>'.$langs->trans('CrmPipeline').'</td><td>'.($pipelineLabel !== ''
 print '<tr><td>'.$langs->trans('CrmAmount').'</td><td>'.price((float) $object->amount).'</td></tr>';
 $expectedClose = (int) $object->date_close_expected;
 print '<tr><td>'.$langs->trans('CrmExpectedClose').'</td><td>'.($expectedClose > 0 ? dol_print_date($expectedClose, 'day') : $crmEmpty).'</td></tr>';
+if (crmInternalRefSupported($db)) {
+	// From v1.2.0: the number of the task in another system, a link when the setup gives a base address.
+	$internalRef = crmCleanInternalRef((string) $object->ref_internal);
+	$internalUrl = crmInternalRefUrl(getDolGlobalString('CRM_INTERNAL_REF_URL'), $internalRef);
+	print '<tr><td>'.$langs->trans('CrmInternalRef').'</td><td>';
+	if ($internalRef === '') {
+		print $crmEmpty;
+	} elseif ($internalUrl !== '') {
+		print '<a href="'.dol_escape_htmltag($internalUrl).'" target="_blank" rel="noopener noreferrer">'.dol_escape_htmltag($internalRef).' '.img_picto('', 'fa-external-link-alt', 'class="opacitymedium"').'</a>';
+	} else {
+		print dol_escape_htmltag($internalRef);
+	}
+	print '</td></tr>';
+}
 print '</table>';
 print '</div>';
 print '<div class="fichehalfright">';

@@ -73,6 +73,7 @@ $constants = array(
 	'CRM_ARCHIVE_REQUIRE_AUTH' => 'CrmArchiveRequireAuth',
 	'CRM_OPTOUT_CONFIRM' => 'CrmOptOutConfirm',
 	'CRM_CATEGORY_SINGLE' => 'CrmCategorySingle',
+	'CRM_INTERNAL_REF_URL' => 'CrmInternalRefUrl',
 );
 
 // Settings that are only on or off are switches, saved at once. They are stored as 1 or 0, never deleted: a deleted
@@ -115,7 +116,7 @@ if ($action === 'setconst') {
 		if (in_array($name, $switches, true)) {
 			continue;
 		}
-		$posted = ($name === 'CRM_CATEGORY_SINGLE') ? implode(',', array_map('intval', (array) GETPOST($name, 'array:int'))) : GETPOST($name, $name === 'CRM_AI_EMAIL_PROMPT' ? 'nohtml' : 'alphanohtml');
+		$posted = ($name === 'CRM_CATEGORY_SINGLE') ? implode(',', array_map('intval', (array) GETPOST($name, 'array:int'))) : GETPOST($name, in_array($name, array('CRM_AI_EMAIL_PROMPT', 'CRM_INTERNAL_REF_URL'), true) ? 'nohtml' : 'alphanohtml');
 		$clean = crmNormalizeSetting($name, $posted);
 		if ($clean === null) {
 			$refused[] = $langs->trans($label);
@@ -348,6 +349,11 @@ if ($tab === 'parameters') {
 		if ($name === 'CRM_AI_MAX_PER_HOUR') {
 			print '<td><input type="number" min="1" max="1000" class="width75" name="'.$name.'" value="'.dol_escape_htmltag(getDolGlobalString($name, '30')).'">';
 			print crmHelp($langs->trans('CrmAiMaxPerHourHelp'), 'span', true).'</td></tr>';
+			continue;
+		}
+		if ($name === 'CRM_INTERNAL_REF_URL') {
+			print '<td><input class="minwidth400" type="url" name="'.$name.'" maxlength="500" placeholder="https://tracker.example.com/browse/" value="'.dol_escape_htmltag(getDolGlobalString($name)).'">';
+			print crmHelp($langs->trans('CrmInternalRefUrlHelp'), 'span', true).'</td></tr>';
 			continue;
 		}
 		print '<td><input class="minwidth300" name="'.$name.'" value="'.dol_escape_htmltag(getDolGlobalString($name)).'"></td></tr>';

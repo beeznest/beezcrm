@@ -514,4 +514,30 @@ class CrmLogicTest extends TestCase
 		$this->assertSame(array('OPP2026-0001'), crmExpandDealMarkers(array('OPP2026-0001')));
 		$this->assertSame(array('Offer', 'ABC'), crmExpandDealMarkers(array('Offer', 'ABC')));
 	}
+
+	public function testInternalRef(): void
+	{
+		$this->assertSame('PROJ-123', crmCleanInternalRef("  PROJ-123 \n"));
+		$this->assertSame('PROJ-1', crmCleanInternalRef('<b>PROJ-1</b>'));
+		$this->assertSame(128, strlen(crmCleanInternalRef(str_repeat('a', 300))));
+		$this->assertTrue(crmInternalRefBaseValid('https://tracker.example.com/browse/'));
+		$this->assertTrue(crmInternalRefBaseValid('http://tracker.example.com/tasks?id='));
+		$this->assertFalse(crmInternalRefBaseValid('javascript:alert(1)//'));
+		$this->assertFalse(crmInternalRefBaseValid('data:text/html,x'));
+		$this->assertFalse(crmInternalRefBaseValid('ftp://example.com/'));
+		$this->assertFalse(crmInternalRefBaseValid('https://exa mple.com/'));
+		$this->assertFalse(crmInternalRefBaseValid('https://example.com/"onmouseover="x'));
+		$this->assertFalse(crmInternalRefBaseValid('https://example.com/<script>'));
+		$this->assertFalse(crmInternalRefBaseValid('//example.com/'));
+		$this->assertFalse(crmInternalRefBaseValid(''));
+		$this->assertSame('https://t.example.com/browse/PROJ-123', crmInternalRefUrl('https://t.example.com/browse/', 'PROJ-123'));
+		$this->assertSame('https://t.example.com/?id=A%2FB%20C%26x', crmInternalRefUrl('https://t.example.com/?id=', 'A/B C&x'));
+		$this->assertSame('', crmInternalRefUrl('', 'PROJ-1'));
+		$this->assertSame('', crmInternalRefUrl('https://t.example.com/', ''));
+		$this->assertSame('', crmInternalRefUrl('javascript:alert(1)//', 'PROJ-1'));
+		$this->assertSame('https://t.example.com/', crmNormalizeSetting('CRM_INTERNAL_REF_URL', ' https://t.example.com/ '));
+		$this->assertSame('', crmNormalizeSetting('CRM_INTERNAL_REF_URL', ''));
+		$this->assertNull(crmNormalizeSetting('CRM_INTERNAL_REF_URL', 'javascript:alert(1)'));
+		$this->assertNull(crmNormalizeSetting('CRM_INTERNAL_REF_URL', 'https://t.example.com/ x'));
+	}
 }

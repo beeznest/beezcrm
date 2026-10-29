@@ -478,3 +478,6 @@ CrmMessagesShowAll=show all
 CrmMessagesHideAll=hide all
 CrmMessageFrom=From
 CrmMessageTo=To
+CrmInternalRef=Internal reference
+CrmInternalRefUrl=Base address of the internal references
+CrmInternalRefUrlHelp=The internal reference of a deal is the number of its task in another system. With a base address here (http or https, for example https://tracker.example.com/browse/), the reference is shown on the deal card as a link made of this address followed by the reference, opened in a new tab. Empty: the reference is shown as text.

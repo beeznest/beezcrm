@@ -60,6 +60,10 @@ Nothing shows if the CRM module is off or if you have no CRM right. You only see
    - **Description** (before v1.2.0) / **First note** (from v1.2.0): what you know so far, in a few lines: who asked, about what, how urgent. From v1.2.0 it becomes the first of the deal's internal notes, see below.
 4. Save. The deal starts in the first stage, usually **New**.
 
+### Internal reference (from v1.2.0)
+
+The deal has an optional field **Internal reference**, on the form where you create or edit it and on the card: the number of the task that follows this deal in another system (a ticket or project tracker, for example `PROJ-123`). It is free text, one line, up to 128 characters. If your administrator has set the **base address of the internal references**, the reference is a **link** (with a small arrow) that opens the task in a new tab; otherwise it is plain text. The search of the opportunity list also finds a deal by its internal reference.
+
 ### Internal notes (from v1.2.0)
 
 From v1.2.0 the "Description" of a deal is replaced by **Internal notes**: a list of notes that only your team sees (nothing is sent to the customer). On the deal card, the section **Internal notes** shows:
