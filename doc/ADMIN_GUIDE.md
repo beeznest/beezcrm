@@ -358,6 +358,8 @@ The e-mail editor (Write / send, on a planned e-mail) can send **plain text** or
 
 ## Message history
 
+A planned e-mail only marked as done is told apart by having **no e-mail subject** (`llx_actioncomm.email_subject`, which the module and the collector always fill when they record a message): it is shown as **Draft closed**, not as sent.
+
 A line of an e-mail in the History of the deal, the Next step list, Activities or the CRM history of the Prospect tab links to the message here (`#crm-msg-<event id>`, opened by a small script of the card). MCP: `list_crm_opportunity_messages` returns the same messages with their text.
 
 **From v1.2.0.** The deal card has a section **Message history**: every e-mail of the deal, oldest first, with its direction (sent or received), date, subject, addresses (from, to, Cc) and its **text**, which opens with **read** (or **show all**). It lists the messages sent by the platform (the editor, the automated outreach in send mode, the owner's steps), the **answers** of the prospect and the **copies** that the e-mail collector finds in the archive mailbox (see [E-mail history](#e-mail-history)). They are the done agenda events of the deal (`AC_EMAIL`, `AC_EMAIL_IN`), so they are also in the agenda of Dolibarr; the section reads them with the CRM's right on the deal, not the agenda's, and shows an HTML message as text. Attachments are not stored. Drafts and the messages that an outreach only simulated are not in the list (the outreach journal lists those).

@@ -384,3 +384,7 @@ a.crm-preview {
 	border-top: 1px dashed rgba(128, 128, 128, 0.35);
 	line-height: 1.45;
 }
+.crm-msg-draft {
+	border-left-color: #d9a400;
+	background: rgba(217, 164, 0, 0.06);
+}

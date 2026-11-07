@@ -1038,8 +1038,9 @@ foreach ($messages as $message) {
 	$text = crmLooksLikeHtml((string) $message->note) ? crmHtmlToText((string) $message->note) : (string) $message->note;
 	$subject = ((string) $message->email_subject !== '') ? (string) $message->email_subject : (string) $message->label;
 	$people = ((string) $message->email_from !== '' ? dol_escape_htmltag($langs->trans('CrmMessageFrom')).' '.dol_escape_htmltag((string) $message->email_from) : '').((string) $message->email_to !== '' ? ' '.dol_escape_htmltag($langs->trans('CrmMessageTo')).' '.dol_escape_htmltag((string) $message->email_to) : '').((string) $message->email_tocc !== '' ? ' Cc '.dol_escape_htmltag((string) $message->email_tocc) : '');
-	print '<div class="crm-msg '.($received ? 'crm-msg-in' : 'crm-msg-out').'" id="crm-msg-'.((int) $message->rowid).'">';
-	print '<div class="crm-msg-head"><span class="badge badge-secondary">'.dol_escape_htmltag($langs->trans($received ? 'CrmEmailReceived' : 'CrmEmailSent')).'</span> ';
+	$closedDraft = !empty($message->closed_draft);
+	print '<div class="crm-msg '.($received ? 'crm-msg-in' : ($closedDraft ? 'crm-msg-draft' : 'crm-msg-out')).'" id="crm-msg-'.((int) $message->rowid).'">';
+	print '<div class="crm-msg-head"><span class="badge '.($closedDraft ? 'badge-warning' : 'badge-secondary').'">'.dol_escape_htmltag($langs->trans($closedDraft ? 'CrmDraftClosed' : ($received ? 'CrmEmailReceived' : 'CrmEmailSent'))).'</span> ';
 	print '<span class="opacitymedium">'.dol_print_date($db->jdate($message->datep), 'dayhour').'</span> <strong>'.dol_escape_htmltag($subject).'</strong> ';
 	print '<a href="#" class="crm-msg-toggle" data-target="crm-msg-body-'.((int) $message->rowid).'">'.dol_escape_htmltag($langs->trans('CrmMessageRead')).'</a>';
 	if ($people !== '') {

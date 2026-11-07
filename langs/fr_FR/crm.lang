@@ -487,3 +487,4 @@ CrmConfirmDeleteSequenceRunning=Attention : %s inscriptions sont encore en cours
 CrmConfirmDeleteEnrol=Supprimer cette inscription et les lignes de son journal ? C'est irréversible.
 CrmErrorSequenceDeleteRights=Seul un utilisateur qui peut configurer le CRM peut supprimer une approche ou une inscription.
 CrmRecordDeleted=Supprimé.
+CrmDraftClosed=Brouillon clôturé

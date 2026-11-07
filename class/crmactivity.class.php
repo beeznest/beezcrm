@@ -382,11 +382,15 @@ class CrmActivity
 	 * the done e-mail events (AC_EMAIL sent, AC_EMAIL_IN received), whether the module sent them (from the editor, an outreach, a
 	 * reminder of a step) or the e-mail collector found them in the archive mailbox.
 	 *
-	 * @return array<int,object> Rows with rowid, datep, code, label, email_subject, email_from, email_to, email_tocc, note
+	 * A planned e-mail that was only marked as done (never sent from here, nor found in a mailbox) has no e-mail subject: it is
+	 * flagged `closed_draft`, the message events written by the module and the collector always have one.
+	 *
+	 * @return array<int,object> Rows with rowid, datep, code, label, email_subject, email_from, email_to, email_tocc, note, closed_draft
 	 */
 	public function fetchMessages(int $opportunityId): array
 	{
-		$sql = 'SELECT a.id as rowid, a.datep, a.code, a.label, a.email_subject, a.email_from, a.email_to, a.email_tocc, a.note';
+		$sql = 'SELECT a.id as rowid, a.datep, a.code, a.label, a.email_subject, a.email_from, a.email_to, a.email_tocc, a.note,';
+		$sql .= " CASE WHEN a.code = 'AC_EMAIL' AND (a.email_subject IS NULL OR a.email_subject = '') THEN 1 ELSE 0 END as closed_draft";
 		$sql .= ' FROM '.$this->db->prefix().'actioncomm as a';
 		$sql .= " WHERE a.elementtype = '".$this->db->escape(self::ELEMENT_TYPE)."'";
 		$sql .= ' AND a.fk_element = '.((int) $opportunityId);

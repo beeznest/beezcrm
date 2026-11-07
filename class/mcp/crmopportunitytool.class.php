@@ -50,7 +50,7 @@ class CrmOpportunityTool extends CrmMcpTool
 			)),
 			$this->definition('get_crm_opportunity', 'Get one deal, its qualification, proposals, history and agenda events.', $dealId, array('id')),
 			$this->definition('list_crm_stage_history', 'Stage moves of one deal.', $dealId, array('id')),
-			$this->definition('list_crm_opportunity_messages', 'The e-mails of one deal, oldest first, with their text: sent from the platform, sent by an outreach, or found in the archive mailbox (from v1.2.0).', $dealId, array('id')),
+			$this->definition('list_crm_opportunity_messages', 'The e-mails of one deal, oldest first, with their text: sent from the platform, sent by an outreach, or found in the archive mailbox (from v1.2.0). A direction "closed_draft" is a planned e-mail only marked as done, never sent.', $dealId, array('id')),
 			$this->definition('create_crm_opportunity', 'Create a deal in the first open stage. Owner is a numeric user id.', array(
 				'label' => array('type' => 'string'),
 				'pipeline_id' => array('type' => 'integer'),
@@ -201,7 +201,7 @@ class CrmOpportunityTool extends CrmMcpTool
 			foreach ((new CrmActivity($this->db))->fetchMessages((int) $deal->id) as $message) {
 				$rows[] = array(
 					'id' => (int) $message->rowid,
-					'direction' => ((string) $message->code === 'AC_EMAIL_IN') ? 'received' : 'sent',
+					'direction' => !empty($message->closed_draft) ? 'closed_draft' : (((string) $message->code === 'AC_EMAIL_IN') ? 'received' : 'sent'),
 					'date' => (string) $message->datep,
 					'subject' => ((string) $message->email_subject !== '') ? (string) $message->email_subject : (string) $message->label,
 					'from' => (string) $message->email_from,

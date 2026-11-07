@@ -65,7 +65,7 @@ class CrmAccountView
 		$dealWhere .= ' AND o.entity = '.((int) $conf->entity).crmOwnerSql($user, 'o');
 		$notes = CrmNote::eventsSupported($this->db);
 		$sql = "SELECT 'stage' as kind, h.datec as dt, h.rowid as id, o.rowid as deal_id, o.ref as deal_ref,";
-		$sql .= ' sf.label as label_from, st.label as label_to, NULL as event_label, NULL as event_code, NULL as event_note, 0 as is_note, h.fk_user as fk_user';
+		$sql .= ' sf.label as label_from, st.label as label_to, NULL as event_label, NULL as event_code, NULL as event_note, 0 as is_note, 0 as closed_draft, h.fk_user as fk_user';
 		$sql .= ' FROM '.$prefix.'crm_stage_history as h';
 		$sql .= ' INNER JOIN '.$prefix.'crm_opportunity as o ON o.rowid = h.fk_opportunity';
 		$sql .= ' LEFT JOIN '.$prefix.'crm_stage as sf ON sf.rowid = h.fk_stage_from';
@@ -75,6 +75,7 @@ class CrmAccountView
 		$sql .= " SELECT 'event' as kind, a.datep as dt, a.id as id, o.rowid as deal_id, o.ref as deal_ref,";
 		$sql .= ' NULL as label_from, NULL as label_to, a.label as event_label, a.code as event_code,';
 		$sql .= $notes ? ' CASE WHEN n.rowid IS NOT NULL THEN a.note ELSE NULL END as event_note, CASE WHEN n.rowid IS NOT NULL THEN 1 ELSE 0 END as is_note,' : ' NULL as event_note, 0 as is_note,';
+		$sql .= " CASE WHEN a.code = 'AC_EMAIL' AND (a.email_subject IS NULL OR a.email_subject = '') THEN 1 ELSE 0 END as closed_draft,";
 		$sql .= ' a.fk_user_action as fk_user';
 		$sql .= ' FROM '.$prefix.'actioncomm as a';
 		$sql .= ' INNER JOIN '.$prefix.'crm_opportunity as o ON o.rowid = a.fk_element';

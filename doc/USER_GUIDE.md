@@ -143,6 +143,8 @@ The customer's reply is recognised by the same reference in the subject, so it i
 
 ### The messages of the deal (from v1.2.0)
 
+**Draft closed.** A planned e-mail that you only marked as done with the check icon, without sending it from the tool, is shown with a yellow badge **Draft closed** (not "E-mail sent") and no addresses: nothing left the server. A message sent from **Send from here**, by an outreach, or read in the archive mailbox keeps its "E-mail sent" or "E-mail received" badge.
+
 **From the history to the text.** In the **History** of the deal, in the **Next step** list (also for a past e-mail that was only marked as done), in **Activities** and in the **CRM history** of the account, the line of an e-mail is a link: it takes you to the message in the **Message history** below, already opened. You do not need an agenda right.
 
 

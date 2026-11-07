@@ -14,7 +14,9 @@ require_once __DIR__.'/../../class/pipeline.class.php';
 require_once __DIR__.'/../../class/opportunity.class.php';
 require_once __DIR__.'/../../class/crmactivity.class.php';
 require_once __DIR__.'/../../class/crmmailarchive.class.php';
+require_once __DIR__.'/../../class/crmaccountview.class.php';
 
+global $langs;
 /** @var DoliDB $db */
 /** @var Conf $conf */
 /** @var User $user */
@@ -56,9 +58,27 @@ crmCliCheck('the short marker alone finds the deal (no address involved)', $arch
 crmCliCheck('a marker of no deal is ignored', $archive->findDeal(array(), 'Re: x [O1999-9999]') === 0);
 
 $messages = $activity->fetchMessages($dealId);
-crmCliCheck('the message history lists the sent and the received messages, not the draft', count($messages) === 4 && !in_array($draft, array_map(function ($m) {
+crmCliCheck('the message history lists the sent and the received messages, not a draft still planned', count($messages) === 4 && !in_array($draft, array_map(function ($m) {
 	return (int) $m->rowid;
 }, $messages), true));
+crmCliCheck('none of them is flagged as a closed draft', array_sum(array_map(function ($m) {
+	return (int) $m->closed_draft;
+}, $messages)) === 0);
+// A draft only marked as done is not a message that was sent.
+crmCliCheck('a draft is marked as done', $activity->complete($user, $draft, $dealId) > 0);
+$messages = $activity->fetchMessages($dealId);
+$closed = array_values(array_filter($messages, function ($m) use ($draft) {
+	return (int) $m->rowid === $draft;
+}));
+crmCliCheck('a closed draft is listed, flagged as a closed draft, with its text', count($closed) === 1 && (int) $closed[0]->closed_draft === 1 && $closed[0]->note === 'not sent');
+crmCliCheck('the sent and received messages are not flagged', count(array_filter($messages, function ($m) {
+	return (int) $m->closed_draft === 0;
+})) === 4);
+$rows = (new CrmAccountView($db))->fetchDealHistory($user, $dealId);
+$closedRows = array_values(array_filter($rows, function ($r) use ($draft) {
+	return $r->kind === 'event' && (int) $r->id === $draft;
+}));
+crmCliCheck('the history labels it a closed draft, not an e-mail', count($closedRows) === 1 && (int) $closedRows[0]->closed_draft === 1 && strpos(crmAccountTimelineRows($closedRows, false), $langs->trans('CrmDraftClosed')) !== false);
 crmCliCheck('oldest first, with the direction', $messages[0]->code === 'AC_EMAIL' && $messages[1]->code === 'AC_EMAIL_IN' && $messages[3]->code === 'AC_EMAIL_IN');
 crmCliCheck('each message has its subject, addresses and text', $messages[0]->email_subject === 'Hello from the platform' && $messages[0]->email_to === 'zmsg.contact@example.com' && $messages[0]->note === "First message\nline two" && strpos((string) $messages[1]->email_from, 'zmsg.contact@example.com') !== false);
 crmCliCheck('the text of an HTML message can be read as text', crmHtmlToText((string) $messages[1]->note) === 'Thank you' || strpos(crmHtmlToText((string) $messages[1]->note), 'Thank you') !== false);

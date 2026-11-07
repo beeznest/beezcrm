@@ -487,3 +487,4 @@ CrmConfirmDeleteSequenceRunning=Warning: %s enrolments are still running, they s
 CrmConfirmDeleteEnrol=Delete this enrolment and its journal lines? This cannot be undone.
 CrmErrorSequenceDeleteRights=Only a user who may configure the CRM can delete an outreach or an enrolment.
 CrmRecordDeleted=Deleted.
+CrmDraftClosed=Draft closed

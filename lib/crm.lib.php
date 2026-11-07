@@ -1321,6 +1321,10 @@ function crmAccountTimelineRows(array $rows, bool $withDeal = true): string
 			$what = $langs->trans('CrmStage').': '.trim(crmStageLabel((string) $row->label_from).' → '.crmStageLabel((string) $row->label_to), ' →');
 		} else {
 			$kind = isset($kinds[(string) $row->event_code]) ? $langs->trans($kinds[(string) $row->event_code]).': ' : '';
+			if (!empty($row->closed_draft)) {
+				// A planned e-mail only marked as done: not a message that was sent.
+				$kind = $langs->trans('CrmDraftClosed').': ';
+			}
 			$what = $kind.(string) $row->event_label;
 			$isMail = in_array((string) $row->event_code, array('AC_EMAIL', 'AC_EMAIL_IN'), true);
 			if (!empty($row->is_note)) {
