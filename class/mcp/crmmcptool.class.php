@@ -138,6 +138,27 @@ abstract class CrmMcpTool extends McpTool
 	}
 
 	/**
+	 * From v1.2.0. True when an administrator allowed the MCP tools that delete CRM records (setting CRM_MCP_ALLOW_DELETE, off by
+	 * default, neither readable nor writable through MCP). A tool that deletes a record outright (a whole outreach, for now) is only
+	 * listed in getDefinitions() when this is true, and refuses in execute() when it is not: use deleteAllowed() for every such
+	 * tool, so one switch covers them all.
+	 */
+	protected function deleteAllowed(): bool
+	{
+		return getDolGlobalInt('CRM_MCP_ALLOW_DELETE') === 1;
+	}
+
+	/**
+	 * The refusal a gated delete tool returns while the setting is off.
+	 *
+	 * @return array{error:string}
+	 */
+	protected function deleteNotAllowed(): array
+	{
+		return $this->fail('Deleting records through MCP is switched off: an administrator has to allow it in CRM → Setup → Parameters');
+	}
+
+	/**
 	 * @return array{error:string}
 	 */
 	protected function fail(string $message): array
