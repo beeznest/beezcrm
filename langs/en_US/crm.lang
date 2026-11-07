@@ -488,3 +488,6 @@ CrmConfirmDeleteEnrol=Delete this enrolment and its journal lines? This cannot b
 CrmErrorSequenceDeleteRights=Only a user who may configure the CRM can delete an outreach or an enrolment.
 CrmRecordDeleted=Deleted.
 CrmDraftClosed=Draft closed
+CrmMcpDeleteOutreach=Allow the MCP tool that deletes an outreach
+CrmMcpDeleteOutreachHelp=Off by default. When on, the MCP tool delete_crm_sequence is offered to AI assistants and other MCP clients: it deletes an automated outreach completely, with its steps, enrolments and journal, for a user who may configure the CRM. This setting can only be changed here, never through MCP. Turn it off again after cleaning your tests.
+CrmConfirmMcpDeleteOutreachOn=Allow MCP clients to delete automated outreach completely (steps, enrolments and journal)? Leave it off unless you are cleaning tests.

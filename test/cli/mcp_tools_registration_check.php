@@ -17,6 +17,15 @@ require_once __DIR__.'/crm_cli_bootstrap.inc.php';
 require_once DOL_DOCUMENT_ROOT.'/ai/class/mcp.class.php';
 
 print 'Dolibarr '.DOL_VERSION."\n";
+// The tool that deletes an outreach completely is only offered when an administrator allowed it in the setup.
+$conf->global->CRM_MCP_DELETE_OUTREACH = '0';
+$switchedOff = new McpHandler($db, $user, $conf, McpHandler::CTX_MCP_SERVER);
+if ((new ReflectionMethod($switchedOff, 'loadTools'))->isPublic()) {
+	$switchedOff->loadTools();
+}
+$offNames = array_map(static fn($definition) => (string) ($definition['name'] ?? ''), $switchedOff->getToolsSchemaUnfiltered());
+crmCliCheck('delete_crm_sequence is not offered by default', !in_array('delete_crm_sequence', $offNames, true));
+$conf->global->CRM_MCP_DELETE_OUTREACH = '1';
 $handler = new McpHandler($db, $user, $conf, McpHandler::CTX_MCP_SERVER);
 // Newer cores load the tools when asked, older ones in the constructor.
 if ((new ReflectionMethod($handler, 'loadTools'))->isPublic()) {

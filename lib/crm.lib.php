@@ -871,6 +871,7 @@ function crmEnsureConstants(DoliDB $db): void
 		'CRM_ARCHIVE_REQUIRE_AUTH' => '0',
 		'CRM_OPTOUT_CONFIRM' => '1',
 		'CRM_INTERNAL_REF_URL' => '',
+		'CRM_MCP_DELETE_OUTREACH' => '0',
 		'CRM_CATEGORY_SINGLE' => '',
 		// Read by the theme: without it the top menu icon is overridden by a generic glyph.
 		'MAIN_MODULE_CRM_ICON' => 'fa-handshake',

@@ -74,11 +74,12 @@ $constants = array(
 	'CRM_OPTOUT_CONFIRM' => 'CrmOptOutConfirm',
 	'CRM_CATEGORY_SINGLE' => 'CrmCategorySingle',
 	'CRM_INTERNAL_REF_URL' => 'CrmInternalRefUrl',
+	'CRM_MCP_DELETE_OUTREACH' => 'CrmMcpDeleteOutreach',
 );
 
 // Settings that are only on or off are switches, saved at once. They are stored as 1 or 0, never deleted: a deleted
 // constant would be recreated with its default the next time the module is enabled.
-$switches = array('CRM_SEQUENCES_ON', 'CRM_DRY_RUN', 'CRM_REMINDERS_ON', 'CRM_REMINDER_DRY_RUN', 'CRM_REQUIRE_NEXT_STEP', 'CRM_REPLY_MOVES_DEAL', 'CRM_AI_EMAIL_ASSIST', 'CRM_ARCHIVE_REQUIRE_AUTH', 'CRM_OPTOUT_CONFIRM');
+$switches = array('CRM_SEQUENCES_ON', 'CRM_DRY_RUN', 'CRM_REMINDERS_ON', 'CRM_REMINDER_DRY_RUN', 'CRM_REQUIRE_NEXT_STEP', 'CRM_REPLY_MOVES_DEAL', 'CRM_AI_EMAIL_ASSIST', 'CRM_ARCHIVE_REQUIRE_AUTH', 'CRM_OPTOUT_CONFIRM', 'CRM_MCP_DELETE_OUTREACH');
 $switchName = '';
 $switchValue = 0;
 if ($action === 'toggle') {
@@ -314,7 +315,7 @@ if ($tab === 'parameters') {
 			// A switch that is on until someone turns it off shows as on before the module has been enabled again to create it.
 			$on = getDolGlobalInt($name, in_array($name, array('CRM_REPLY_MOVES_DEAL', 'CRM_OPTOUT_CONFIRM'), true) ? 1 : 0) !== 0;
 			// A confirmation before the two switches that have a consequence outside the module.
-			$confirmOn = ($name === 'CRM_AI_EMAIL_ASSIST') ? $langs->trans('CrmConfirmAiOn') : '';
+			$confirmOn = ($name === 'CRM_AI_EMAIL_ASSIST') ? $langs->trans('CrmConfirmAiOn') : (($name === 'CRM_MCP_DELETE_OUTREACH') ? $langs->trans('CrmConfirmMcpDeleteOutreachOn') : '');
 			$confirmOff = ($name === 'CRM_DRY_RUN') ? $langs->trans('CrmConfirmDryRunOff') : (($name === 'CRM_REMINDER_DRY_RUN') ? $langs->trans('CrmConfirmReminderDryRunOff') : '');
 			print '<td><a class="crm-toggle'.($on ? ' crm-toggle-on' : '').'" data-name="'.$name.'" data-value="'.($on ? 0 : 1).'"';
 			print ' data-confirm-on="'.dol_escape_htmltag($confirmOn).'" data-confirm-off="'.dol_escape_htmltag($confirmOff).'"';
@@ -331,6 +332,9 @@ if ($tab === 'parameters') {
 			}
 			if ($name === 'CRM_OPTOUT_CONFIRM') {
 				print crmHelp($langs->trans('CrmOptOutConfirmHelp'), 'span', true);
+			}
+			if ($name === 'CRM_MCP_DELETE_OUTREACH') {
+				print crmHelp($langs->trans('CrmMcpDeleteOutreachHelp'), 'span', true);
 			}
 			print '</td></tr>';
 			continue;
