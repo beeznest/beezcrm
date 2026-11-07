@@ -138,10 +138,32 @@ abstract class CrmMcpTool extends McpTool
 	}
 
 	/**
+	 * The tools of the class, without the delete tools while deleting through MCP is not allowed (setting CRM_MCP_ALLOW_DELETE).
+	 * Each tool class lists its tools in crmDefinitions(), delete tools included; every tool whose name starts with `delete_` is
+	 * held back here, so a new delete tool is gated just by being named so.
+	 *
+	 * @return list<array<string,mixed>>
+	 */
+	public function getDefinitions(): array
+	{
+		$definitions = $this->crmDefinitions();
+		if ($this->deleteAllowed()) {
+			return $definitions;
+		}
+		return array_values(array_filter($definitions, static function (array $definition): bool {
+			return strncmp((string) ($definition['name'] ?? ''), 'delete_', 7) !== 0;
+		}));
+	}
+
+	/**
+	 * @return list<array<string,mixed>>
+	 */
+	abstract protected function crmDefinitions(): array;
+
+	/**
 	 * From v1.2.0. True when an administrator allowed the MCP tools that delete CRM records (setting CRM_MCP_ALLOW_DELETE, off by
-	 * default, neither readable nor writable through MCP). A tool that deletes a record outright (a whole outreach, for now) is only
-	 * listed in getDefinitions() when this is true, and refuses in execute() when it is not: use deleteAllowed() for every such
-	 * tool, so one switch covers them all.
+	 * default, neither readable nor writable through MCP). Every tool named `delete_*` is only listed (getDefinitions()) when this is
+	 * true and refuses (denyMissingRights()) when it is not, so one switch covers them all, the present ones and the future ones.
 	 */
 	protected function deleteAllowed(): bool
 	{
@@ -175,6 +197,10 @@ abstract class CrmMcpTool extends McpTool
 	 */
 	protected function denyMissingRights(string $toolName): ?array
 	{
+		// Every tool starts with this check: a delete tool is refused whatever its rights, while the setting is off.
+		if (strncmp($toolName, 'delete_', 7) === 0 && !$this->deleteAllowed()) {
+			return $this->deleteNotAllowed();
+		}
 		$declared = $this->getRequiredRights($toolName);
 		if (!is_array($declared)) {
 			return $this->fail('Permission denied');

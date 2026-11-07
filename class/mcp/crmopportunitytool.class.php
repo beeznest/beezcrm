@@ -36,7 +36,7 @@ class CrmOpportunityTool extends CrmMcpTool
 	/**
 	 * @return list<array<string,mixed>>
 	 */
-	public function getDefinitions(): array
+	protected function crmDefinitions(): array
 	{
 		$dealId = array('id' => array('type' => 'integer', 'description' => 'Opportunity id'));
 		return array(

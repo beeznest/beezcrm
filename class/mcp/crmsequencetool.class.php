@@ -36,18 +36,13 @@ class CrmSequenceTool extends CrmMcpTool
 	/**
 	 * @return list<array<string,mixed>>
 	 */
-	public function getDefinitions(): array
+	protected function crmDefinitions(): array
 	{
-		$definitions = $this->baseDefinitions();
-		// From v1.2.0. Deleting an outreach completely is not offered unless an administrator switched it on in CRM → Setup → Parameters
-		// ("Allow MCP tools that delete CRM records", off by default): the setting is not readable or writable by MCP, so a
-		// person has to turn it on on purpose.
-		if ($this->deleteAllowed()) {
-			$definitions[] = $this->definition('delete_crm_sequence', 'Delete an automated outreach completely: its steps, enrolments and journal (cleaning of tests). Needs the right to configure the CRM. Agenda events stay.', array(
+		return array_merge($this->baseDefinitions(), array(
+			$this->definition('delete_crm_sequence', 'Delete an automated outreach completely: its steps, enrolments and journal (cleaning of tests). Needs the right to configure the CRM. Agenda events stay.', array(
 				'id' => array('type' => 'integer', 'description' => 'Outreach id'),
-			), array('id'));
-		}
-		return $definitions;
+			), array('id')),
+		));
 	}
 
 	/**
@@ -169,9 +164,6 @@ class CrmSequenceTool extends CrmMcpTool
 		$denied = $this->denyMissingRights($toolName);
 		if ($denied !== null) {
 			return $denied;
-		}
-		if ($toolName === 'delete_crm_sequence' && !$this->deleteAllowed()) {
-			return $this->deleteNotAllowed();
 		}
 		require_once __DIR__.'/../sequence.class.php';
 		$sequence = new Sequence($this->db);

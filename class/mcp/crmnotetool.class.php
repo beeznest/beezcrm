@@ -38,7 +38,7 @@ class CrmNoteTool extends CrmMcpTool
 	/**
 	 * @return list<array<string,mixed>>
 	 */
-	public function getDefinitions(): array
+	protected function crmDefinitions(): array
 	{
 		$file = array(
 			'type' => 'object',

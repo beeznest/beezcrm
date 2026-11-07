@@ -36,7 +36,7 @@ class CrmActivityTool extends CrmMcpTool
 	/**
 	 * @return list<array<string,mixed>>
 	 */
-	public function getDefinitions(): array
+	protected function crmDefinitions(): array
 	{
 		return array(
 			$this->definition('list_crm_activities', 'List CRM agenda events. scope is overdue, today, planned or done. Pass id to list one deal.', array(

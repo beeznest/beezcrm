@@ -61,7 +61,7 @@ class CrmReportTool extends CrmMcpTool
 	/**
 	 * @return list<array<string,mixed>>
 	 */
-	public function getDefinitions(): array
+	protected function crmDefinitions(): array
 	{
 		$range = array(
 			'from' => array('type' => 'string', 'description' => 'Inclusive start, YYYY-MM-DD. Defaults to 1 January.'),

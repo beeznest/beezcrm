@@ -24,7 +24,7 @@ if ((new ReflectionMethod($switchedOff, 'loadTools'))->isPublic()) {
 	$switchedOff->loadTools();
 }
 $offNames = array_map(static fn($definition) => (string) ($definition['name'] ?? ''), $switchedOff->getToolsSchemaUnfiltered());
-crmCliCheck('delete_crm_sequence is not offered by default', !in_array('delete_crm_sequence', $offNames, true));
+crmCliCheck('no CRM delete_ tool is offered by default', count(array_filter($offNames, static fn($name) => strncmp($name, 'delete_', 7) === 0 && strpos($name, '_crm_') !== false)) === 0);
 $conf->global->CRM_MCP_ALLOW_DELETE = '1';
 $handler = new McpHandler($db, $user, $conf, McpHandler::CTX_MCP_SERVER);
 // Newer cores load the tools when asked, older ones in the constructor.

@@ -36,7 +36,7 @@ class CrmDictionaryTool extends CrmMcpTool
 	/**
 	 * @return list<array<string,mixed>>
 	 */
-	public function getDefinitions(): array
+	protected function crmDefinitions(): array
 	{
 		$id = array('id' => array('type' => 'integer'));
 		$pipeline = array('pipeline_id' => array('type' => 'integer', 'description' => 'Pipeline id'));
