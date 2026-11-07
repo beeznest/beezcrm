@@ -93,7 +93,12 @@ foreach ($rows as $row) {
 	print '<tr class="oddeven">';
 	print '<td>'.dol_print_date($db->jdate($row->datep), 'dayhour').'</td>';
 	print '<td><a href="'.$url.'">'.dol_escape_htmltag((string) $row->ref).'</a></td>';
-	print '<td>'.dol_escape_htmltag((string) $row->label).'</td>';
+	if (in_array((string) $row->event_code, array('AC_EMAIL', 'AC_EMAIL_IN'), true) && (int) $row->percent >= 100) {
+		// A past e-mail: its text is in the message history of the deal.
+		print '<td><a href="'.$url.'#crm-msg-'.((int) $row->rowid).'">'.dol_escape_htmltag((string) $row->label).'</a></td>';
+	} else {
+		print '<td>'.dol_escape_htmltag((string) $row->label).'</td>';
+	}
 	print '<td>'.dol_escape_htmltag((string) $row->soc_name).'</td><td>';
 	if (CrmActivity::isPlannedEmail((string) $row->event_code, (int) $row->percent)) {
 		print crmIconLink(dol_buildpath('/crm/email_compose.php', 1).'?id='.(int) $row->rowid, 'fa-envelope', $langs->trans('CrmWriteSend'));

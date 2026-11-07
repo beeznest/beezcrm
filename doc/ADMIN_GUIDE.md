@@ -358,7 +358,17 @@ The e-mail editor (Write / send, on a planned e-mail) can send **plain text** or
 
 ## Message history
 
+A line of an e-mail in the History of the deal, the Next step list, Activities or the CRM history of the Prospect tab links to the message here (`#crm-msg-<event id>`, opened by a small script of the card). MCP: `list_crm_opportunity_messages` returns the same messages with their text.
+
 **From v1.2.0.** The deal card has a section **Message history**: every e-mail of the deal, oldest first, with its direction (sent or received), date, subject, addresses (from, to, Cc) and its **text**, which opens with **read** (or **show all**). It lists the messages sent by the platform (the editor, the automated outreach in send mode, the owner's steps), the **answers** of the prospect and the **copies** that the e-mail collector finds in the archive mailbox (see [E-mail history](#e-mail-history)). They are the done agenda events of the deal (`AC_EMAIL`, `AC_EMAIL_IN`), so they are also in the agenda of Dolibarr; the section reads them with the CRM's right on the deal, not the agenda's, and shows an HTML message as text. Attachments are not stored. Drafts and the messages that an outreach only simulated are not in the list (the outreach journal lists those).
+
+## Deleting an automated outreach
+
+**From v1.2.0.** Outreach are normally stopped or turned off, never deleted, so that the journal stays. For the cleaning of tests, the right **Configure CRM** (`setup`) allows a **complete deletion** (nobody else, not even with "Manage automated outreach"):
+
+- **The whole outreach**: button *Delete the outreach completely* on its card; after a confirmation that counts the steps, enrolments (and how many are running) and journal lines, it deletes the journal lines, the enrolments, the steps and the outreach itself in one transaction. MCP tool `delete_crm_sequence`.
+- **One enrolment**: the trash icon on its line of the enrolment list deletes it with its journal lines (clean a test on one deal).
+- **What stays**: the deals, and every agenda event the outreach made on them (planned e-mail drafts, e-mails sent, tasks): events are never deleted by the module. Delete a leftover draft from the deal (Next step) if you need to. The action is logged (`CRM outreach <id> deleted completely by user <id>`).
 
 ## Internal notes and files
 
@@ -441,13 +451,13 @@ The 49 tools by the CRM right they need (a user without it does not see the tool
 
 | Right | Tools |
 | --- | --- |
-| Read own deals (`read`) | `list_crm_opportunities`, `get_crm_opportunity`, `list_crm_opportunity_notes`, `list_crm_opportunity_files`, `list_crm_note_versions`, `list_crm_activities`, `list_crm_sequences`, `get_crm_sequence`, `list_crm_pipelines`, `list_crm_stages`, `list_crm_sources`, `list_crm_loss_reasons`, `list_crm_qualifications`, `list_crm_stage_history` |
+| Read own deals (`read`) | `list_crm_opportunities`, `list_crm_opportunity_messages`, `get_crm_opportunity`, `list_crm_opportunity_notes`, `list_crm_opportunity_files`, `list_crm_note_versions`, `list_crm_activities`, `list_crm_sequences`, `get_crm_sequence`, `list_crm_pipelines`, `list_crm_stages`, `list_crm_sources`, `list_crm_loss_reasons`, `list_crm_qualifications`, `list_crm_stage_history` |
 | Read CRM reports (`report`) | `get_crm_dashboard`, `get_crm_forecast`, `get_crm_conversion`, `get_crm_win_rate`, `get_crm_cycle_time`, `get_crm_loss_reasons`, `get_crm_by_owner`, `get_crm_by_source` |
 | Create and update deals (`write`) | `update_crm_opportunity_categories`, `add_crm_opportunity_note`, `update_crm_note`, `add_crm_note_file`, `delete_crm_note_file`, `create_crm_opportunity`, `update_crm_opportunity`, `change_crm_opportunity_stage`, `change_crm_opportunity_to_won`, `change_crm_opportunity_to_lost`, `add_crm_proposal_link`, `remove_crm_proposal_link`, `update_crm_qualification_answers` |
 | Delete deals (`delete`) | `delete_crm_opportunity` |
 | Create and complete next steps (`activity`) | `create_crm_activity`, `change_crm_activity_to_done`, `update_crm_activity`, `delete_crm_activity` |
 | Manage automated outreach (`sequence`) | `create_crm_sequence`, `update_crm_sequence`, `add_crm_sequence_step`, `update_crm_sequence_step`, `delete_crm_sequence_step`, `add_crm_sequence_enrolment`, `change_crm_sequence_enrolment_to_stopped`, `update_crm_opportunity_replied`, `send_crm_due_sequence_steps` |
-| Configure CRM (`setup`) | `get_crm_settings`, `send_crm_owner_reminders`, `create_or_update_crm_pipeline`, `create_or_update_crm_stage`, `delete_crm_stage`, `create_or_update_crm_source`, `create_or_update_crm_loss_reason`, `create_or_update_crm_qualification` |
+| Configure CRM (`setup`) | `delete_crm_sequence`, `get_crm_settings`, `send_crm_owner_reminders`, `create_or_update_crm_pipeline`, `create_or_update_crm_stage`, `delete_crm_stage`, `create_or_update_crm_source`, `create_or_update_crm_loss_reason`, `create_or_update_crm_qualification` |
 
 `send_crm_due_sequence_steps` and `send_crm_owner_reminders` run the scheduled jobs: they send real e-mail unless the dry-run settings (`CRM_DRY_RUN`, `CRM_REMINDER_DRY_RUN`) are on. `delete_crm_opportunity` deletes the deal for good. Allow the tools that change data in steps, not all at once, and only for a user whose rights you chose on purpose.
 

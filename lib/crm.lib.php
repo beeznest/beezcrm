@@ -1316,11 +1316,13 @@ function crmAccountTimelineRows(array $rows, bool $withDeal = true): string
 		return '<tr class="oddeven"><td colspan="'.($withDeal ? 4 : 3).'"><span class="opacitymedium">'.$langs->trans('CrmNoRows').'</span></td></tr>';
 	}
 	foreach ($rows as $row) {
+		$isMail = false;
 		if ($row->kind === 'stage') {
 			$what = $langs->trans('CrmStage').': '.trim(crmStageLabel((string) $row->label_from).' → '.crmStageLabel((string) $row->label_to), ' →');
 		} else {
 			$kind = isset($kinds[(string) $row->event_code]) ? $langs->trans($kinds[(string) $row->event_code]).': ' : '';
 			$what = $kind.(string) $row->event_label;
+			$isMail = in_array((string) $row->event_code, array('AC_EMAIL', 'AC_EMAIL_IN'), true);
 			if (!empty($row->is_note)) {
 				// An internal note: its label ("CRM note added") and the beginning of its text.
 				$what = (string) $row->event_label.' : '.dol_trunc((string) preg_replace('/\s+/', ' ', trim((string) $row->event_note)), 200);
@@ -1332,7 +1334,12 @@ function crmAccountTimelineRows(array $rows, bool $withDeal = true): string
 		if ($withDeal) {
 			$html .= '<td><a href="'.dol_escape_htmltag(dol_buildpath('/crm/opportunity_card.php', 1).'?id='.((int) $row->deal_id)).'">'.dol_escape_htmltag((string) $row->deal_ref).'</a></td>';
 		}
-		$html .= '<td>'.dol_escape_htmltag($what).'</td>';
+		if (isset($isMail) && $isMail && $row->kind === 'event') {
+			// A message of the deal: the line leads to its text in the message history of the deal card.
+			$html .= '<td><a href="'.dol_escape_htmltag(dol_buildpath('/crm/opportunity_card.php', 1).'?id='.((int) $row->deal_id).'#crm-msg-'.((int) $row->id)).'">'.dol_escape_htmltag($what).'</a></td>';
+		} else {
+			$html .= '<td>'.dol_escape_htmltag($what).'</td>';
+		}
 		$html .= '<td>'.dol_escape_htmltag($who).'</td>';
 		$html .= '</tr>';
 	}

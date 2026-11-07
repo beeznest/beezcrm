@@ -50,6 +50,7 @@ class CrmOpportunityTool extends CrmMcpTool
 			)),
 			$this->definition('get_crm_opportunity', 'Get one deal, its qualification, proposals, history and agenda events.', $dealId, array('id')),
 			$this->definition('list_crm_stage_history', 'Stage moves of one deal.', $dealId, array('id')),
+			$this->definition('list_crm_opportunity_messages', 'The e-mails of one deal, oldest first, with their text: sent from the platform, sent by an outreach, or found in the archive mailbox (from v1.2.0).', $dealId, array('id')),
 			$this->definition('create_crm_opportunity', 'Create a deal in the first open stage. Owner is a numeric user id.', array(
 				'label' => array('type' => 'string'),
 				'pipeline_id' => array('type' => 'integer'),
@@ -116,7 +117,7 @@ class CrmOpportunityTool extends CrmMcpTool
 		if ($toolName === 'delete_crm_opportunity') {
 			return array(array('crm', 'delete'));
 		}
-		$reads = array('list_crm_opportunities', 'get_crm_opportunity', 'list_crm_stage_history');
+		$reads = array('list_crm_opportunities', 'get_crm_opportunity', 'list_crm_stage_history', 'list_crm_opportunity_messages');
 		if (in_array($toolName, $reads, true)) {
 			return array(array('crm', 'read'));
 		}
@@ -128,7 +129,7 @@ class CrmOpportunityTool extends CrmMcpTool
 	 */
 	public function writeConfirmationPreview(string $toolName, array $args)
 	{
-		$reads = array('list_crm_opportunities', 'get_crm_opportunity', 'list_crm_stage_history');
+		$reads = array('list_crm_opportunities', 'get_crm_opportunity', 'list_crm_stage_history', 'list_crm_opportunity_messages');
 		if (in_array($toolName, $reads, true)) {
 			return self::NO_WRITE;
 		}
@@ -189,6 +190,27 @@ class CrmOpportunityTool extends CrmMcpTool
 				return $this->fail('Deal not found');
 			}
 			return $this->historyRows($deal);
+		}
+		if ($toolName === 'list_crm_opportunity_messages') {
+			$deal = $this->loadDeal($this->argInt($args, 'id'));
+			if ($deal === null) {
+				return $this->fail('Deal not found');
+			}
+			require_once __DIR__.'/../crmactivity.class.php';
+			$rows = array();
+			foreach ((new CrmActivity($this->db))->fetchMessages((int) $deal->id) as $message) {
+				$rows[] = array(
+					'id' => (int) $message->rowid,
+					'direction' => ((string) $message->code === 'AC_EMAIL_IN') ? 'received' : 'sent',
+					'date' => (string) $message->datep,
+					'subject' => ((string) $message->email_subject !== '') ? (string) $message->email_subject : (string) $message->label,
+					'from' => (string) $message->email_from,
+					'to' => (string) $message->email_to,
+					'cc' => (string) $message->email_tocc,
+					'text' => crmLooksLikeHtml((string) $message->note) ? crmHtmlToText((string) $message->note) : (string) $message->note,
+				);
+			}
+			return $rows;
 		}
 		if ($toolName === 'create_crm_opportunity') {
 			return $this->createDeal($args);

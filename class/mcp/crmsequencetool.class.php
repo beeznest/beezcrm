@@ -76,6 +76,9 @@ class CrmSequenceTool extends CrmMcpTool
 				'body' => array('type' => 'string', 'description' => 'Plain text or HTML. Placeholders: __DEAL__ __REF__ __AMOUNT__ __CONTACT__ __CUSTOMER__'),
 				'send_mode' => array('type' => 'string', 'enum' => array('', 'draft', 'send'), 'description' => 'E-mail steps only. Empty follows the global setting.'),
 			), array('id', 'step_id')),
+			$this->definition('delete_crm_sequence', 'Delete an automated outreach completely: its steps, enrolments and journal (cleaning of tests). Needs the right to configure the CRM. Agenda events stay.', array(
+				'id' => array('type' => 'integer', 'description' => 'Outreach id'),
+			), array('id')),
 			$this->definition('delete_crm_sequence_step', 'Delete one step.', array(
 				'id' => array('type' => 'integer'),
 				'step_id' => array('type' => 'integer'),
@@ -101,6 +104,9 @@ class CrmSequenceTool extends CrmMcpTool
 		if ($toolName === 'list_crm_sequences' || $toolName === 'get_crm_sequence') {
 			return array(array('crm', 'read'));
 		}
+		if ($toolName === 'delete_crm_sequence') {
+			return array(array('crm', 'setup'));
+		}
 		if ($toolName === 'update_crm_opportunity_replied') {
 			// It moves the deal to another stage: a write on deals, as well as the outreach right.
 			return array(array('crm', 'sequence'), array('crm', 'write'));
@@ -121,6 +127,9 @@ class CrmSequenceTool extends CrmMcpTool
 		}
 		if ($toolName === 'update_crm_sequence') {
 			return 'Update CRM sequence '.$this->argInt($args, 'id').'.';
+		}
+		if ($toolName === 'delete_crm_sequence') {
+			return 'DELETE CRM sequence '.$this->argInt($args, 'id').' completely: its steps, enrolments and journal. This cannot be undone.';
 		}
 		if ($toolName === 'update_crm_sequence_step') {
 			return 'Update step '.$this->argInt($args, 'step_id').' of CRM sequence '.$this->argInt($args, 'id').'.';
@@ -229,6 +238,16 @@ class CrmSequenceTool extends CrmMcpTool
 				return $this->fail(crmErrorText($sequence->error !== '' ? $sequence->error : 'Error'));
 			}
 			return array(array('step_id' => (int) $current->rowid, 'sequence_id' => (int) $sequence->id));
+		}
+		if ($toolName === 'delete_crm_sequence') {
+			$victim = new Sequence($this->db);
+			if ($victim->fetch($this->argInt($args, 'id')) <= 0) {
+				return $this->fail('Outreach not found');
+			}
+			if ($victim->deleteCompletely($this->user) <= 0) {
+				return $this->fail($victim->error);
+			}
+			return array(array('id' => $this->argInt($args, 'id'), 'deleted' => 1));
 		}
 		if ($toolName === 'delete_crm_sequence_step') {
 			if ($sequence->deleteStep($this->argInt($args, 'step_id')) <= 0) {

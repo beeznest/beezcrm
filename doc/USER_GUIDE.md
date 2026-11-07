@@ -143,6 +143,9 @@ The customer's reply is recognised by the same reference in the subject, so it i
 
 ### The messages of the deal (from v1.2.0)
 
+**From the history to the text.** In the **History** of the deal, in the **Next step** list (also for a past e-mail that was only marked as done), in **Activities** and in the **CRM history** of the account, the line of an e-mail is a link: it takes you to the message in the **Message history** below, already opened. You do not need an agenda right.
+
+
 The section **Message history** of the deal card lists **every e-mail** of the deal, oldest first: what you sent from **Send from here**, what an automated outreach sent, what you sent from your own mail program with the archive address in copy, and the **answers** of the prospect. Each line has a badge (sent or received), the date, the subject and the addresses; **read** opens the text, **show all** opens them all. You do not need an agenda right to read them. The messages written in a mail program appear once the e-mail collector has read the archive mailbox (a few minutes), and only if they are tied to the deal: by the contact's address, or by the marker `[O…]` of the subject.
 
 ### Categories of the account (from v1.2.0)
@@ -173,6 +176,10 @@ Only an open deal changes: if the deal was already won or lost, nothing happens.
 **Lost.** Open the deal card, choose **Lost** in the Stage section, **pick the loss reason** (price, no budget, competitor, timing, no decision, no answer...) and add a note if useful. Be truthful: the reasons are summed up in a report, and that is how the company learns whether it loses on price or on slow follow-up. A reason like "no answer" is allowed; an invented one hides the problem.
 
 Do not leave a dead deal open "just in case". If the prospect may come back later, close it as lost with the right reason and open a new deal when they do.
+
+### Deleting an outreach (administrators, from v1.2.0)
+
+For the cleaning of tests: someone with the right **Configure CRM** sees **Delete the outreach completely** on the card of an automated outreach. After a confirmation (it counts the steps, enrolments and journal lines, and warns if some enrolments are still running) the outreach, its steps, its enrolments and its journal are deleted for good. The deals and the agenda events the outreach made (drafts, e-mails sent) stay. A trash icon on a line of the enrolment list deletes only that enrolment and its journal lines.
 
 ## Reports
 

@@ -280,6 +280,88 @@ class Sequence
 	}
 
 	/**
+	 * From v1.2.0. What an administrator deletes with an outreach, for the confirmation: its steps, its enrolments and the lines of
+	 * its journal.
+	 *
+	 * @return array{steps:int,enrolments:int,running:int,journal:int}
+	 */
+	public function countContent(): array
+	{
+		$prefix = $this->db->prefix();
+		$id = (int) $this->id;
+		$one = function (string $sql): int {
+			$resql = $this->db->query($sql);
+			return ($resql && ($obj = $this->db->fetch_object($resql))) ? (int) $obj->nb : 0;
+		};
+		return array(
+			'steps' => $one('SELECT COUNT(*) as nb FROM '.$prefix.'crm_sequence_step WHERE fk_sequence = '.$id),
+			'enrolments' => $one('SELECT COUNT(*) as nb FROM '.$prefix.'crm_sequence_enrol WHERE fk_sequence = '.$id),
+			'running' => $one('SELECT COUNT(*) as nb FROM '.$prefix."crm_sequence_enrol WHERE fk_sequence = ".$id." AND status = 'running'"),
+			'journal' => $one('SELECT COUNT(*) as nb FROM '.$prefix.'crm_sequence_log WHERE fk_enrol IN (SELECT rowid FROM '.$prefix.'crm_sequence_enrol WHERE fk_sequence = '.$id.')'),
+		);
+	}
+
+	/**
+	 * From v1.2.0. Delete an outreach completely, for the cleaning of tests: its journal, its enrolments, its steps and itself. Only
+	 * a user who may configure the CRM can. The agenda events that the outreach made on the deals (drafts, e-mails sent, tasks) are
+	 * agenda events and stay, like every event of the module.
+	 *
+	 * @return int 1 if deleted, -1 with a language key in ->error
+	 */
+	public function deleteCompletely(User $user): int
+	{
+		global $conf;
+		if ($this->id <= 0 || !$user->hasRight('crm', 'setup')) {
+			$this->error = 'CrmErrorSequenceDeleteRights';
+			return -1;
+		}
+		$prefix = $this->db->prefix();
+		$id = (int) $this->id;
+		$this->db->begin();
+		$ok = $this->db->query('DELETE FROM '.$prefix.'crm_sequence_log WHERE fk_enrol IN (SELECT rowid FROM '.$prefix.'crm_sequence_enrol WHERE fk_sequence = '.$id.')');
+		$ok = $ok && $this->db->query('DELETE FROM '.$prefix.'crm_sequence_enrol WHERE fk_sequence = '.$id);
+		$ok = $ok && $this->db->query('DELETE FROM '.$prefix.'crm_sequence_step WHERE fk_sequence = '.$id);
+		$ok = $ok && $this->db->query('DELETE FROM '.$prefix.'crm_sequence WHERE rowid = '.$id.' AND entity = '.((int) $conf->entity));
+		if (!$ok) {
+			$this->db->rollback();
+			$this->error = crmDbError($this->db);
+			return -1;
+		}
+		$this->db->commit();
+		dol_syslog('CRM outreach '.$id.' deleted completely by user '.((int) $user->id), LOG_INFO);
+		return 1;
+	}
+
+	/**
+	 * From v1.2.0. Delete one enrolment of this outreach with its journal lines (cleaning of a test on a deal). Only a user who may
+	 * configure the CRM can.
+	 *
+	 * @return int 1 if deleted, -1 with a language key in ->error
+	 */
+	public function deleteEnrolment(User $user, int $enrolId): int
+	{
+		if (!$user->hasRight('crm', 'setup')) {
+			$this->error = 'CrmErrorSequenceDeleteRights';
+			return -1;
+		}
+		if (!$this->enrolmentVisible($user, $enrolId, (int) $this->id)) {
+			$this->error = 'CrmErrorEnrolmentNotFound';
+			return -1;
+		}
+		$prefix = $this->db->prefix();
+		$this->db->begin();
+		$ok = $this->db->query('DELETE FROM '.$prefix.'crm_sequence_log WHERE fk_enrol = '.((int) $enrolId));
+		$ok = $ok && $this->db->query('DELETE FROM '.$prefix.'crm_sequence_enrol WHERE rowid = '.((int) $enrolId).' AND fk_sequence = '.((int) $this->id));
+		if (!$ok) {
+			$this->db->rollback();
+			$this->error = crmDbError($this->db);
+			return -1;
+		}
+		$this->db->commit();
+		return 1;
+	}
+
+	/**
 	 * Every enrolment of one deal, newest first, with the outreach and the step it waits for.
 	 *
 	 * @return array<int,object>

@@ -54,7 +54,7 @@ if (defined('McpTool::NO_WRITE')) {
 			}
 		}
 	}
-	crmCliCheck('a tool that writes starts with a write verb and a read tool does not'.($misnamed ? ' ('.implode(', ', $misnamed).')' : ''), count($misnamed) === 0 && $writes === 34);
+	crmCliCheck('a tool that writes starts with a write verb and a read tool does not'.($misnamed ? ' ('.implode(', ', $misnamed).')' : ''), count($misnamed) === 0 && $writes === 35);
 } else {
 	print "SKIP names against the write verbs: this core has no write confirmation API (run it on a 25 core too)\n";
 }

@@ -42,7 +42,7 @@ crmStartPage();
 
 $id = GETPOSTINT('id');
 $action = GETPOST('action', 'aZ09');
-crmRequireToken($action, array('askdelstep', 'editstep'));
+crmRequireToken($action, array('askdelstep', 'editstep', 'askdelsequence', 'askdelenrol'));
 $sequence = new Sequence($db);
 if ($sequence->fetch($id) <= 0) {
 	accessforbidden();
@@ -148,6 +148,28 @@ if ($action === 'confirm_delstep' && GETPOST('confirm', 'alpha') === 'yes') {
 	exit;
 }
 
+if ($action === 'confirm_delsequence' && GETPOST('confirm', 'alpha') === 'yes') {
+	// From v1.2.0: an administrator deletes an outreach completely (cleaning of tests).
+	if ($sequence->deleteCompletely($user) <= 0) {
+		setEventMessages(crmErrorText($sequence->error), null, 'errors');
+		header('Location: '.$back);
+	} else {
+		setEventMessages($langs->trans('CrmRecordDeleted'), null);
+		header('Location: '.dol_buildpath('/crm/sequence_list.php', 1));
+	}
+	exit;
+}
+
+if ($action === 'confirm_delenrol' && GETPOST('confirm', 'alpha') === 'yes') {
+	if ($sequence->deleteEnrolment($user, GETPOSTINT('enrolid')) <= 0) {
+		setEventMessages(crmErrorText($sequence->error), null, 'errors');
+	} else {
+		setEventMessages($langs->trans('CrmRecordDeleted'), null);
+	}
+	header('Location: '.$back);
+	exit;
+}
+
 if ($action === 'enrol') {
 	crmRequireRight('sequence');
 	require_once __DIR__.'/class/opportunity.class.php';
@@ -186,6 +208,21 @@ $log = $sequence->fetchLog($user);
 llxHeader('', $sequence->ref, '', '', 0, 0, array('/crm/js/crm_format_editor.js'), array('/crm/css/crm.css'));
 print load_fiche_titre(dol_escape_htmltag($sequence->ref.' — '.$sequence->label), '', 'fa-handshake');
 $form = new Form($db);
+if ($user->hasRight('crm', 'setup')) {
+	// From v1.2.0: for the cleaning of tests, the whole outreach with its steps, enrolments and journal.
+	print '<div class="tabsAction"><a class="butActionDelete" href="'.$back.'&action=askdelsequence&token='.newToken().'">'.$langs->trans('CrmDeleteSequenceAll').'</a></div>';
+}
+if ($action === 'askdelsequence' && $user->hasRight('crm', 'setup')) {
+	$content = $sequence->countContent();
+	$question = $langs->trans('CrmConfirmDeleteSequence', dol_escape_htmltag($sequence->ref), $content['steps'], $content['enrolments'], $content['journal']);
+	if ($content['running'] > 0) {
+		$question .= ' '.$langs->trans('CrmConfirmDeleteSequenceRunning', $content['running']);
+	}
+	print $form->formconfirm($back, $langs->trans('CrmDeleteSequenceAll'), $question, 'confirm_delsequence', '', 0, 1);
+}
+if ($action === 'askdelenrol' && $user->hasRight('crm', 'setup') && $sequence->enrolmentVisible($user, GETPOSTINT('enrolid'), (int) $sequence->id)) {
+	print $form->formconfirm($back.'&enrolid='.GETPOSTINT('enrolid'), $langs->trans('Delete'), $langs->trans('CrmConfirmDeleteEnrol'), 'confirm_delenrol', '', 0, 1);
+}
 if ($action === 'askdelstep' && $user->hasRight('crm', 'sequence') && $sequence->fetchStep(GETPOSTINT('stepid')) !== null) {
 	$waiting = $sequence->countWaitingOnStep(GETPOSTINT('stepid'));
 	$question = $langs->trans('CrmConfirmDeleteStep').($waiting > 0 ? ' '.$langs->trans('CrmConfirmDeleteStepWaiting', $waiting) : '');
@@ -367,7 +404,10 @@ foreach ($enrolments as $enrol) {
 	print '<td>'.dol_escape_htmltag((string) $enrol->stop_reason).'</td><td>';
 	if ($user->hasRight('crm', 'sequence') && (string) $enrol->status === 'running') {
 		print '<a href="'.$back.'&action=stop&enrolid='.(int) $enrol->rowid.'&token='.newToken().'">'.$langs->trans('CrmStop').'</a> ';
-		print '<a href="'.$back.'&action=replied&enrolid='.(int) $enrol->rowid.'&token='.newToken().'">'.$langs->trans('CrmMarkReplied').'</a>';
+		print '<a href="'.$back.'&action=replied&enrolid='.(int) $enrol->rowid.'&token='.newToken().'">'.$langs->trans('CrmMarkReplied').'</a> ';
+	}
+	if ($user->hasRight('crm', 'setup')) {
+		print crmIconLink($back.'&action=askdelenrol&enrolid='.(int) $enrol->rowid.'&token='.newToken(), 'delete', $langs->trans('Delete'));
 	}
 	print '</td></tr>';
 }

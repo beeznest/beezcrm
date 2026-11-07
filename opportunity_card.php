@@ -852,8 +852,9 @@ foreach ($events as $event) {
 	$composeUrl = dol_buildpath('/crm/email_compose.php', 1).'?id='.(int) $event->rowid;
 	if ($isDraftEmail) {
 		print '<td><a href="'.$composeUrl.'">'.dol_escape_htmltag((string) $event->label).'</a></td>';
-	} elseif (in_array((string) $event->event_code, array('AC_EMAIL', 'AC_EMAIL_IN'), true) && $user->hasRight('agenda', 'myactions', 'read')) {
-		print '<td><a href="'.DOL_URL_ROOT.'/comm/action/card.php?id='.((int) $event->rowid).'">'.dol_escape_htmltag((string) $event->label).'</a></td>';
+	} elseif (in_array((string) $event->event_code, array('AC_EMAIL', 'AC_EMAIL_IN'), true)) {
+		// A past e-mail, even one only marked as done: its text is in the message history below (no agenda right needed).
+		print '<td><a href="#crm-msg-'.((int) $event->rowid).'">'.dol_escape_htmltag((string) $event->label).'</a></td>';
 	} else {
 		print '<td>'.dol_escape_htmltag((string) $event->label).'</td>';
 	}
@@ -1054,6 +1055,17 @@ if (count($messages) > 0) {
 			event.preventDefault();
 			jQuery("#" + jQuery(this).data("target")).toggle();
 		});
+		// A link to a message (from the history, the next steps or the agenda list) opens its text.
+		var openMessage = function () {
+			var match = /^#crm-msg-(\d+)$/.exec(window.location.hash);
+			if (match) {
+				jQuery("#crm-msg-body-" + match[1]).show();
+				var box = document.getElementById("crm-msg-" + match[1]);
+				if (box) { box.scrollIntoView(); }
+			}
+		};
+		openMessage();
+		window.addEventListener("hashchange", openMessage);
 		jQuery("#crm-msg-all").on("click", function (event) {
 			event.preventDefault();
 			var open = !jQuery(this).data("open");
