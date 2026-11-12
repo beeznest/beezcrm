@@ -75,6 +75,7 @@ $constants = array(
 	'CRM_CATEGORY_SINGLE' => 'CrmCategorySingle',
 	'CRM_INTERNAL_REF_URL' => 'CrmInternalRefUrl',
 	'CRM_MCP_ALLOW_DELETE' => 'CrmMcpAllowDelete',
+	'CRM_DEFAULT_TIMEZONE' => 'CrmDefaultTimezone',
 );
 
 // Settings that are only on or off are switches, saved at once. They are stored as 1 or 0, never deleted: a deleted
@@ -281,9 +282,9 @@ if ($tab === 'parameters') {
 	print '<table class="noborder centpercent">';
 	foreach ($constants as $name => $label) {
 		print '<tr class="oddeven"><td>'.$langs->trans($label);
-		if ($name === 'CRM_CATEGORY_SINGLE' || $name === 'CRM_INTERNAL_REF_URL') {
+		if ($name === 'CRM_CATEGORY_SINGLE' || $name === 'CRM_INTERNAL_REF_URL' || $name === 'CRM_DEFAULT_TIMEZONE') {
 			// A short line under the name, always visible (the longer explanation is behind the "?").
-			print crmHelp($langs->trans($name === 'CRM_INTERNAL_REF_URL' ? 'CrmInternalRefUrlHint' : 'CrmCategorySingleHint'), 'div');
+			print crmHelp($langs->trans($name === 'CRM_INTERNAL_REF_URL' ? 'CrmInternalRefUrlHint' : ($name === 'CRM_DEFAULT_TIMEZONE' ? 'CrmDefaultTimezoneHint' : 'CrmCategorySingleHint')), 'div');
 		}
 		print '</td>';
 		if ($name === 'CRM_SEQUENCE_EMAIL_MODE') {
@@ -375,6 +376,14 @@ if ($tab === 'parameters') {
 		if ($name === 'CRM_AI_MAX_PER_HOUR') {
 			print '<td><input type="number" min="1" max="1000" class="width75" name="'.$name.'" value="'.dol_escape_htmltag(getDolGlobalString($name, '30')).'">';
 			print crmHelp($langs->trans('CrmAiMaxPerHourHelp'), 'span', true).'</td></tr>';
+			continue;
+		}
+		if ($name === 'CRM_DEFAULT_TIMEZONE') {
+			print '<td><input class="minwidth200" name="'.$name.'" list="crm-timezones" maxlength="64" placeholder="Europe/Brussels" value="'.dol_escape_htmltag(getDolGlobalString($name)).'"><datalist id="crm-timezones">';
+			foreach (DateTimeZone::listIdentifiers() as $zoneName) {
+				print '<option value="'.dol_escape_htmltag($zoneName).'">';
+			}
+			print '</datalist>'.crmHelp($langs->trans('CrmDefaultTimezoneHelp'), 'span', true).'</td></tr>';
 			continue;
 		}
 		if ($name === 'CRM_INTERNAL_REF_URL') {

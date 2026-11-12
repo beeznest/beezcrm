@@ -900,6 +900,7 @@ function crmEnsureConstants(DoliDB $db): void
 		'CRM_OPTOUT_CONFIRM' => '1',
 		'CRM_INTERNAL_REF_URL' => '',
 		'CRM_MCP_ALLOW_DELETE' => '0',
+		'CRM_DEFAULT_TIMEZONE' => '',
 		'CRM_CATEGORY_SINGLE' => '',
 		// Read by the theme: without it the top menu icon is overridden by a generic glyph.
 		'MAIN_MODULE_CRM_ICON' => 'fa-handshake',
@@ -1427,12 +1428,13 @@ function crmMailFileSupported(DoliDB $db): bool
 
 /**
  * From v1.2.0. Dolibarr shows and reads times in the time zone of the browser (setting MAIN_TZUSERINPUTKEY = tzuserrel), which it
- * takes from the login form into the session (`dol_tz_string`). A session that has none (a login that did not send it, a session
- * opened before the setting) falls back to UTC, so the hour proposed for a next step was the UTC one. When the session has no zone,
- * the one the browser reported in the cookie `crm_tz` (see crmTimezoneScript()) is put in the session, after checking that it is
- * the name of a real time zone: it only changes how times are shown to that user.
+ * takes from the login form into the session (`dol_tz_string`). A session that has none, or has UTC because the browser did not
+ * say (some browsers and privacy extensions report UTC), shows the UTC hour: the hour proposed for a next step was the UTC one.
+ * When the session has no real zone, the CRM looks for one in this order, each checked as the name of a real time zone: the zone
+ * the browser reported in the cookie `crm_tz` (see crmTimezoneScript()), unless it is UTC, then the setting CRM_DEFAULT_TIMEZONE of
+ * the administrator. It only changes how times are shown to that user.
  *
- * @return bool True when the session now has a time zone
+ * @return bool True when the session now has a time zone other than UTC
  */
 function crmEnsureSessionTimezone(): bool
 {
@@ -1441,15 +1443,22 @@ function crmEnsureSessionTimezone(): bool
 	if (!isset($_SESSION) || !is_array($_SESSION)) {
 		return true;
 	}
-	if (!empty($_SESSION['dol_tz_string'])) {
+	if (!empty($_SESSION['dol_tz_string']) && $_SESSION['dol_tz_string'] !== 'UTC') {
 		return true;
 	}
+	$known = DateTimeZone::listIdentifiers();
 	$cookie = isset($_COOKIE['crm_tz']) && is_string($_COOKIE['crm_tz']) ? $_COOKIE['crm_tz'] : '';
-	if ($cookie !== '' && strlen($cookie) <= 64 && in_array($cookie, DateTimeZone::listIdentifiers(), true)) {
+	if ($cookie !== '' && $cookie !== 'UTC' && strlen($cookie) <= 64 && in_array($cookie, $known, true)) {
 		$_SESSION['dol_tz_string'] = $cookie;
 		return true;
 	}
-	$crmTimezoneMissing = true;
+	$default = getDolGlobalString('CRM_DEFAULT_TIMEZONE');
+	if ($default !== '' && in_array($default, $known, true)) {
+		$_SESSION['dol_tz_string'] = $default;
+		return true;
+	}
+	// Nothing known yet: the page asks the browser (unless the session already says UTC for a browser that says UTC too).
+	$crmTimezoneMissing = empty($_SESSION['dol_tz_string']) || $cookie === '';
 	return false;
 }
 

@@ -616,6 +616,9 @@ function crmNormalizeSetting(string $name, string $value): ?string
 				return '';
 			}
 			return (strlen($value) <= 254 && !preg_match('/[\x00-\x20\x7F<>,;]/', $value) && filter_var($value, FILTER_VALIDATE_EMAIL) !== false) ? $value : null;
+		case 'CRM_DEFAULT_TIMEZONE':
+			// The name of a time zone (Europe/Brussels), or empty for none.
+			return ($value === '' || (strlen($value) <= 64 && in_array($value, DateTimeZone::listIdentifiers(), true))) ? $value : null;
 		case 'CRM_INTERNAL_REF_URL':
 			// A base address that prefixes the internal reference of a deal, or empty for no link.
 			return ($value === '' || crmInternalRefBaseValid($value)) ? $value : null;

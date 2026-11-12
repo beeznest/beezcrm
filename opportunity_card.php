@@ -814,6 +814,8 @@ if ($user->hasRight('crm', 'activity')) {
 	print '<input name="actlabel" class="minwidth200" required placeholder="'.dol_escape_htmltag($langs->trans('CrmTitle')).'"> ';
 	// Tomorrow at about the same time, to the nearest 5 minutes; date, hour and minute in one Dolibarr component, minutes by 5.
 	print $form->selectDate((int) (round((dol_now() + 86400) / 300) * 300), 'actdate', 1, 1, 0, '', 1, 0, 0, '', '', '', '', 5);
+	// The zone the times are shown in, so a wrong hour can be explained (UTC means the browser gave no zone).
+	print ' <span class="opacitymedium small">'.dol_escape_htmltag($langs->transnoentities('CrmTimezoneInUse', (getDolGlobalString('MAIN_TZUSERINPUTKEY') === 'tzuserrel' ? (!empty($_SESSION['dol_tz_string']) ? (string) $_SESSION['dol_tz_string'] : 'UTC') : date_default_timezone_get()))).'</span>';
 	print ' <input type="submit" class="button" value="'.$langs->trans('Create').'">';
 	print '</form>';
 }
