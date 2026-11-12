@@ -59,6 +59,11 @@ $_SESSION = array();
 $_COOKIE = array();
 crmCliCheck('no cookie: the session stays without a zone and the page will ask the browser', crmEnsureSessionTimezone() === false && $GLOBALS['crmTimezoneMissing'] === true);
 
+// A page of the CRM shows and reads times in the zone of the session whatever the global setting of Dolibarr.
+$conf->tzuserinputkey = 'tzserver';
+crmStartPage();
+crmCliCheck('crmStartPage() makes the times follow the zone of the session, even without MAIN_TZUSERINPUTKEY', $conf->tzuserinputkey === 'tzuserrel');
+
 if ($session === null) {
 	unset($_SESSION);
 } else {

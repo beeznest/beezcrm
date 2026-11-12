@@ -142,6 +142,12 @@ function crmStartPage(): void
 {
 	crmLoadLangs();
 	crmEnsureSessionTimezone();
+	// The pages of the CRM show and read times in the zone of the user (the session's), whatever the global Dolibarr setting
+	// MAIN_TZUSERINPUTKEY: without it Dolibarr uses the zone of the server, UTC on many servers. In memory, for this request only.
+	global $conf;
+	if (is_object($conf)) {
+		$conf->tzuserinputkey = 'tzuserrel';
+	}
 	if (!isModEnabled('crm')) {
 		accessforbidden();
 	}
