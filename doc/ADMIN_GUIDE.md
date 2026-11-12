@@ -109,7 +109,7 @@ Users → Permissions, family CRM. A user can see and do only what the rights al
 | Manage automated outreach | Create outreach and steps, enrol deals, stop, mark replied |
 | Read CRM reports | The Reports page |
 | Configure CRM | The Setup screen, and the MCP tools that change settings |
-| Voir les affaires où une action m'est assignée / Read the deals that have a step assigned to me (`assigned`) | **From v1.2.0.** The outside agent: open Home, Activities and the deal card for the deals that have a step of theirs not done, read only |
+| Read the deals that have a step assigned to me (`assigned`) | **From v1.2.0.** The outside agent: open Home, Activities and the deal card for the deals that have a step of theirs not done, read only |
 | Add and edit own notes on the deals I can see (`note`) | **From v1.2.0.** Add notes (and files to them) and edit their own notes, on the deals they can see |
 | Create steps for myself or the deal owner, change and complete my own steps (`mystep`) | **From v1.2.0.** Create a step assigned to themselves or to the owner of the deal; reschedule and complete the steps assigned to them |
 
