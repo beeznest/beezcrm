@@ -506,3 +506,6 @@ CrmDefaultTimezoneHint=Used when the browser does not give its time zone (e.g. E
 CrmDefaultTimezoneHelp=Dolibarr shows times in the time zone of each user's browser. A browser that reports UTC (some privacy settings do) or none shows UTC times, for example the hour proposed for a next step. Name here a time zone (for example Europe/Brussels) to use in that case. A user whose browser gives a real zone other than UTC keeps it. Empty: no default.
 CrmTimezoneInUse=Times shown in the zone: %s
 CrmTimezoneSetDefault=Set the default time zone
+CrmTimezoneBrowser=browser says
+CrmTimezoneCookie=cookie received by the server:
+CrmTimezoneNone=none
