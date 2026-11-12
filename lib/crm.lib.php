@@ -103,6 +103,7 @@ function crmHelp(string $html, string $tag = 'p', bool $break = false): string
 function crmHelpToggle(): void
 {
 	global $crmHelpCount, $langs;
+	crmTimezoneScript();
 	if ((int) $crmHelpCount <= 0) {
 		return;
 	}
@@ -140,6 +141,7 @@ function crmIconLink(string $url, string $picto, string $label): string
 function crmStartPage(): void
 {
 	crmLoadLangs();
+	crmEnsureSessionTimezone();
 	if (!isModEnabled('crm')) {
 		accessforbidden();
 	}
@@ -1421,4 +1423,49 @@ function crmMailFileSupported(DoliDB $db): bool
 		$table = ($resql && $db->fetch_object($resql)) ? true : false;
 	}
 	return $table && crmSchemaInstalled() >= 8;
+}
+
+/**
+ * From v1.2.0. Dolibarr shows and reads times in the time zone of the browser (setting MAIN_TZUSERINPUTKEY = tzuserrel), which it
+ * takes from the login form into the session (`dol_tz_string`). A session that has none (a login that did not send it, a session
+ * opened before the setting) falls back to UTC, so the hour proposed for a next step was the UTC one. When the session has no zone,
+ * the one the browser reported in the cookie `crm_tz` (see crmTimezoneScript()) is put in the session, after checking that it is
+ * the name of a real time zone: it only changes how times are shown to that user.
+ *
+ * @return bool True when the session now has a time zone
+ */
+function crmEnsureSessionTimezone(): bool
+{
+	global $crmTimezoneMissing;
+	$crmTimezoneMissing = false;
+	if (!isset($_SESSION) || !is_array($_SESSION)) {
+		return true;
+	}
+	if (!empty($_SESSION['dol_tz_string'])) {
+		return true;
+	}
+	$cookie = isset($_COOKIE['crm_tz']) && is_string($_COOKIE['crm_tz']) ? $_COOKIE['crm_tz'] : '';
+	if ($cookie !== '' && strlen($cookie) <= 64 && in_array($cookie, DateTimeZone::listIdentifiers(), true)) {
+		$_SESSION['dol_tz_string'] = $cookie;
+		return true;
+	}
+	$crmTimezoneMissing = true;
+	return false;
+}
+
+/**
+ * From v1.2.0. Tell the server the time zone of the browser, in a cookie read by crmEnsureSessionTimezone(); when the session had
+ * none, the page is reloaded once so that it shows local times at once.
+ */
+function crmTimezoneScript(): void
+{
+	global $crmTimezoneMissing;
+	print '<script nonce="'.dol_escape_htmltag(getNonce()).'">(function () { try {';
+	print 'var tz = Intl.DateTimeFormat().resolvedOptions().timeZone; if (!tz) { return; }';
+	print 'var match = document.cookie.match(/(?:^|; )crm_tz=([^;]*)/);';
+	print 'if (!match || decodeURIComponent(match[1]) !== tz) {';
+	print 'document.cookie = "crm_tz=" + encodeURIComponent(tz) + "; path=/; max-age=31536000; SameSite=Lax" + (location.protocol === "https:" ? "; Secure" : "");';
+	print 'if ('.(!empty($crmTimezoneMissing) ? 'true' : 'false').' && !sessionStorage.getItem("crm_tz_reload")) { sessionStorage.setItem("crm_tz_reload", "1"); location.reload(); }';
+	print '}';
+	print '} catch (e) {} }());</script>';
 }

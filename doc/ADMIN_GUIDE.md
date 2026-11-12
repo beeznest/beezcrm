@@ -61,6 +61,10 @@ The module works only if these global Dolibarr settings are in place. Go through
 - `SEARCHFORM_POSITION_CRM`: position of the "CRM opportunities" entry in the general search box (default 42). `DEFAULT_SEARCH_INTO_MODULE=crmopportunity` puts that entry first.
 - Types of agenda events (Home → Setup → Dictionaries): see [Maintenance](#maintenance).
 
+### Time zone (from v1.2.0)
+
+Dolibarr stores dates in the time zone of the server (UTC on many servers) and shows them in that zone unless the constant `MAIN_TZUSERINPUTKEY` is set to `tzuserrel` (Home → Setup → Other setup): each user then sees and enters times in the zone of their browser, with no change to what is stored (do **not** change `MAIN_SERVER_TZ` on a base that has data: it re-reads every stored date in the new zone). Set it if your salespeople are not in the zone of the server. Dolibarr takes the browser's zone from the login form into the session; a session that has none falls back to UTC, which showed the UTC hour in the next-step form. The CRM pages therefore give the session the zone of the browser when it has none (a cookie `crm_tz`, accepted only if it is the name of a real time zone, and one automatic reload of the page), so the CRM does not depend on that. The hourly jobs of the module (reminders, outreach) use the zone of the server.
+
 ## Install
 
 The module root is the directory that contains `core/modules/modCrm.class.php`. Dolibarr finds external modules in `htdocs/custom`, so install it there, preferably as a symbolic link to wherever the module lives:
