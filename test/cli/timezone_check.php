@@ -14,6 +14,8 @@ require_once __DIR__.'/crm_cli_bootstrap.inc.php';
 $session = isset($_SESSION) ? $_SESSION : null;
 $cookie = isset($_COOKIE) ? $_COOKIE : array();
 
+// The setting of the instance must not play a part in the first checks.
+$conf->global->CRM_DEFAULT_TIMEZONE = '';
 $_SESSION = array('dol_tz_string' => 'Europe/Paris');
 $_COOKIE = array('crm_tz' => 'Asia/Tokyo');
 crmCliCheck('a session that has a time zone keeps it', crmEnsureSessionTimezone() === true && $_SESSION['dol_tz_string'] === 'Europe/Paris');
