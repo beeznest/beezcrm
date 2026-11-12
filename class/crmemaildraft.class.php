@@ -142,7 +142,9 @@ class CrmEmailDraft
 			$this->error = 'CrmErrorSubjectRequired';
 			return -1;
 		}
-		$result = crmSendMail($to, $subject, $body, (int) $this->deal->rowid, $html, $from, $copyToMe);
+		require_once __DIR__.'/crmmailfile.class.php';
+		$attachments = (new CrmMailFile($this->db))->forSend((int) $this->event->id);
+		$result = crmSendMail($to, $subject, $body, (int) $this->deal->rowid, $html, $from, $copyToMe, $attachments);
 		if (!$result['ok']) {
 			$this->error = $result['error'] !== '' ? $result['error'] : 'CrmErrorSendFailed';
 			return -1;
@@ -188,10 +190,14 @@ class CrmEmailDraft
 		if (!$this->event) {
 			return -1;
 		}
+		$eventId = (int) $this->event->id;
 		if ($this->event->delete($user) < 0) {
 			$this->error = (string) $this->event->error;
 			return -1;
 		}
+		// What is still attached to this event (a draft discarded, not one replaced by its sent message) goes with it.
+		require_once __DIR__.'/crmmailfile.class.php';
+		(new CrmMailFile($this->db))->deleteForAction($eventId);
 		return 1;
 	}
 
@@ -217,6 +223,9 @@ class CrmEmailDraft
 			$this->error = $failure;
 			return -1;
 		}
+		// The attached files follow the message, which has a new event: they stay on disk for the message history.
+		require_once __DIR__.'/crmmailfile.class.php';
+		(new CrmMailFile($this->db))->repoint((int) $this->event->id, (int) $id);
 		return $this->discard($user);
 	}
 }

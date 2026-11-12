@@ -242,3 +242,20 @@ CREATE TABLE llx_crm_optout (
 	UNIQUE KEY uk_crm_optout_token (token_hash),
 	UNIQUE KEY uk_crm_optout_opportunity (fk_opportunity)
 ) ENGINE=innodb;
+
+-- From v1.2.0. Files attached to an e-mail written in the e-mail editor: kept on disk so the message history can show them.
+-- fk_action is the agenda event of the message (the planned draft, then the done e-mail that replaces it).
+CREATE TABLE llx_crm_mail_file (
+	rowid integer AUTO_INCREMENT PRIMARY KEY,
+	entity integer DEFAULT 1 NOT NULL,
+	fk_opportunity integer NOT NULL,
+	fk_action integer NOT NULL,
+	fk_user integer NOT NULL,
+	datec datetime NOT NULL,
+	filename varchar(255) NOT NULL,
+	stored varchar(255) NOT NULL,
+	filesize integer DEFAULT 0 NOT NULL,
+	mimetype varchar(100) DEFAULT NULL,
+	KEY idx_crm_mail_file_action (fk_action),
+	KEY idx_crm_mail_file_opportunity (fk_opportunity)
+) ENGINE=innodb;

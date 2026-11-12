@@ -389,7 +389,7 @@ function crmLogViewLink(int $logId): string
  */
 function crmSchemaCurrent(): int
 {
-	return 7;
+	return 8;
 }
 
 /**
@@ -410,6 +410,7 @@ function crmSchemaSteps(): array
 		5 => array('label' => 'Public "not interested" link: loss reason "Not interested"', 'run' => 'crmSchemaStep5'),
 		6 => array('label' => 'Notes as agenda events: column fk_action of the notes, events for the existing notes', 'run' => 'crmSchemaStep6'),
 		7 => array('label' => 'Internal reference of a deal: column ref_internal', 'run' => 'crmSchemaStep7'),
+		8 => array('label' => 'Files attached to the e-mails of the editor: table crm_mail_file', 'run' => 'crmSchemaStep8'),
 	);
 }
 
@@ -590,6 +591,20 @@ function crmSchemaStep7(DoliDB $db): bool
 	}
 	if (!$db->query('ALTER TABLE '.$table.' ADD COLUMN ref_internal varchar(128) DEFAULT NULL')) {
 		dol_syslog('CRM: could not add the column ref_internal to '.$table.': '.$db->lasterror(), LOG_ERR);
+		return false;
+	}
+	return true;
+}
+
+/**
+ * Schema version 8 (from v1.2.0): the table llx_crm_mail_file (files attached to the e-mails of the editor) comes from sql/llx_crm.sql,
+ * which Dolibarr runs before this step; the step checks it exists. Safe to run twice.
+ */
+function crmSchemaStep8(DoliDB $db): bool
+{
+	$resql = $db->DDLDescTable($db->prefix().'crm_mail_file', 'stored');
+	if (!($resql && $db->fetch_object($resql))) {
+		dol_syslog('CRM: the table '.$db->prefix().'crm_mail_file does not exist, enable the module again', LOG_ERR);
 		return false;
 	}
 	return true;
@@ -785,7 +800,7 @@ function crmOptOutLinkText(int $dealId): string
  * @param string $copyToMe Address that gets a hidden copy (Bcc) of this message, in addition to the archive mailbox; empty for none
  * @return array{ok:bool,error:string,msgid:string,from:string}
  */
-function crmSendMail(string $to, string $subject, string $body, int $dealId = 0, bool $html = false, string $from = '', string $copyToMe = ''): array
+function crmSendMail(string $to, string $subject, string $body, int $dealId = 0, bool $html = false, string $from = '', string $copyToMe = '', array $attachments = array()): array
 {
 	global $conf;
 	require_once DOL_DOCUMENT_ROOT.'/core/class/CMailFile.class.php';
@@ -828,7 +843,18 @@ function crmSendMail(string $to, string $subject, string $body, int $dealId = 0,
 	if ($html) {
 		$conf->global->MAIN_MAIL_USE_MULTI_PART = 1;
 	}
-	$mail = new CMailFile($subject, $to, $from, $body, array(), array(), array(), $cc, $bcc, 0, $html ? 1 : 0, '', '', $trackId);
+	// From v1.2.0: files attached in the editor (path on disk, mime type, name shown to the recipient).
+	$filePaths = array();
+	$fileMimes = array();
+	$fileNames = array();
+	foreach ($attachments as $attachment) {
+		if (is_array($attachment) && isset($attachment['path']) && is_file((string) $attachment['path'])) {
+			$filePaths[] = (string) $attachment['path'];
+			$fileMimes[] = (string) ($attachment['mime'] ?? 'application/octet-stream');
+			$fileNames[] = (string) ($attachment['name'] ?? basename((string) $attachment['path']));
+		}
+	}
+	$mail = new CMailFile($subject, $to, $from, $body, $filePaths, $fileMimes, $fileNames, $cc, $bcc, 0, $html ? 1 : 0, '', '', $trackId);
 	$sent = $mail->sendfile();
 	if ($html) {
 		if ($previousMultiPart === null) {
@@ -1382,4 +1408,17 @@ function crmCategorySelect(string $name, int $selected, array $available, string
 		$html .= '<option value="'.$id.'"'.($id === $selected ? ' selected' : '').'>'.dol_escape_htmltag($label).'</option>';
 	}
 	return $html.'</select>';
+}
+
+/**
+ * From v1.2.0. True when the table of the files attached to e-mails exists and schema step 8 has run.
+ */
+function crmMailFileSupported(DoliDB $db): bool
+{
+	static $table = null;
+	if ($table === null) {
+		$resql = $db->DDLDescTable($db->prefix().'crm_mail_file', 'stored');
+		$table = ($resql && $db->fetch_object($resql)) ? true : false;
+	}
+	return $table && crmSchemaInstalled() >= 8;
 }

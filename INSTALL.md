@@ -74,7 +74,7 @@ Leave the dry-run settings on, and the e-mail steps as drafts, until you have ch
 
 ### Folder for the files of the notes (from v1.2.0)
 
-The files attached to the notes of a deal are stored in the Dolibarr **documents directory** (the value of `$dolibarr_main_data_root` in `conf.php`), under `crm/opportunity/<deal id>/`. The module creates the `crm` folder itself on the first upload, as the user the web server runs PHP as, so it only works if that user may write in the documents directory. Those files are customer documents: grant exactly that, and nothing more.
+The files attached to the notes of a deal, and the files attached to the e-mails written in the e-mail editor (subfolder `mail/`), are stored in the Dolibarr **documents directory** (the value of `$dolibarr_main_data_root` in `conf.php`), under `crm/opportunity/<deal id>/`. The module creates the `crm` folder itself on the first upload, as the user the web server runs PHP as, so it only works if that user may write in the documents directory. Those files are customer documents: grant exactly that, and nothing more.
 
 1. **Keep the documents directory outside the web root** and never serve it. Dolibarr requires it; check that `$dolibarr_main_data_root` is not under `htdocs` or under any directory the web server publishes. The files are only ever downloaded through `custom/crm/note_file.php`, which checks the user's right on the deal. Do not add an alias or a link to the folder, and do not rely on an `.htaccess` file to protect it.
 2. **Give the folder to the web server user, and to nobody else.** Find that user (`www-data` on Debian and Ubuntu, `apache` on Red Hat and Fedora, the `user =` of the PHP-FPM pool when PHP runs under FPM), then, as root:
@@ -105,7 +105,7 @@ The CRM uses the categories of Dolibarr's own **Tags/Categories** module (Home �
 ## 6. Check the installation
 
 - The **CRM** menu is there and CRM → Home opens without error.
-- CRM → Setup → **About** shows the module version `1.2.0` and a database schema "7 / 7, up to date".
+- CRM → Setup → **About** shows the module version `1.2.0` and a database schema "8 / 8, up to date".
 - Home → Setup → Scheduled jobs lists two CRM jobs: "Owner reminders" and "CRM automated outreach".
 - From **outside your network**, `curl -i 'https://your-host/custom/crm/optout.php?h=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'` answers `404` with a short page saying the link is not valid: the public "not interested" page of the e-mails is reachable without a login. A `$dolibarr_main_url_root` that prospects cannot reach makes the link of every e-mail useless.
 - Create a test deal (CRM → Opportunities → New opportunity), plan a next step, move it between stages, add a note with a small attached file (see "Folder for the files of the notes" if it fails), then delete it.

@@ -40,6 +40,7 @@ require_once __DIR__.'/class/sequence.class.php';
 require_once __DIR__.'/class/crmnote.class.php';
 require_once __DIR__.'/class/crmcategory.class.php';
 require_once __DIR__.'/class/crmaccountview.class.php';
+require_once __DIR__.'/class/crmmailfile.class.php';
 crmStartPage();
 $notesOn = CrmNote::supported($db); // From v1.2.0: internal notes replace the description once the tables exist
 
@@ -1029,6 +1030,7 @@ print '</table>';
 // From v1.2.0: the messages of the deal, whoever sent them. They are agenda events (sent by the module, or found in the archive
 // mailbox by the e-mail collector); the text is read here, without the agenda rights.
 $messages = (new CrmActivity($db))->fetchMessages((int) $object->id);
+$mailAttachments = (new CrmMailFile($db))->fetchForOpportunity($user, (int) $object->id);
 print '<a id="crm-messages"></a><h2>'.$langs->trans('CrmMessageHistory').(count($messages) > 0 ? ' <span class="opacitymedium">('.count($messages).')</span> <a href="#" id="crm-msg-all" class="small" data-more="'.dol_escape_htmltag($langs->trans('CrmMessagesShowAll')).'" data-less="'.dol_escape_htmltag($langs->trans('CrmMessagesHideAll')).'">'.dol_escape_htmltag($langs->trans('CrmMessagesShowAll')).'</a>' : '').'</h2>';
 if (count($messages) === 0) {
 	print crmHelp($langs->trans('CrmMessageHistoryEmpty'));
@@ -1046,7 +1048,22 @@ foreach ($messages as $message) {
 	if ($people !== '') {
 		print '<div class="opacitymedium small">'.trim($people).'</div>';
 	}
-	print '</div><div class="crm-msg-body" id="crm-msg-body-'.((int) $message->rowid).'" style="display:none">'.($text !== '' ? dol_nl2br(dol_escape_htmltag($text, 0, 1)) : '<span class="opacitymedium">'.dol_escape_htmltag($langs->trans('CrmNoRows')).'</span>').'</div>';
+	print '</div>';
+	// The files that went with the message (kept on disk when it was sent from the editor): name to download, magnifier for a PDF.
+	if (!empty($mailAttachments[(int) $message->rowid])) {
+		print '<ul class="crm-note-files">';
+		foreach ($mailAttachments[(int) $message->rowid] as $attached) {
+			$attachedUrl = dol_buildpath('/crm/mail_file.php', 1).'?id='.((int) $attached->rowid);
+			print '<li>'.img_picto('', 'fa-paperclip', 'class="pictofixedwidth"').'<a href="'.dol_escape_htmltag($attachedUrl).'">'.dol_escape_htmltag((string) $attached->filename).'</a> <span class="opacitymedium">('.dol_print_size((int) $attached->filesize, 1, 1).')</span>';
+			if (strtolower((string) pathinfo((string) $attached->filename, PATHINFO_EXTENSION)) === 'pdf') {
+				$attachedTitle = $langs->trans('Preview').' '.(string) $attached->filename;
+				print ' <a href="'.dol_escape_htmltag($attachedUrl.'&mode=view').'" class="crm-preview" target="_blank" rel="noopener" data-title="'.dol_escape_htmltag((string) $attached->filename).'" title="'.dol_escape_htmltag($attachedTitle).'">'.img_picto('', 'search-plus').'</a>';
+			}
+			print '</li>';
+		}
+		print '</ul>';
+	}
+	print '<div class="crm-msg-body" id="crm-msg-body-'.((int) $message->rowid).'" style="display:none">'.($text !== '' ? dol_nl2br(dol_escape_htmltag($text, 0, 1)) : '<span class="opacitymedium">'.dol_escape_htmltag($langs->trans('CrmNoRows')).'</span>').'</div>';
 	print '</div>';
 }
 if (count($messages) > 0) {

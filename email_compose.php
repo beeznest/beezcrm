@@ -95,6 +95,35 @@ if ($action === 'previewtext') {
 $aiAvailable = CrmAiReply::isAvailable() && $canAct;
 $aiPrompt = GETPOSTISSET('aiprompt') ? dol_substr(GETPOST('aiprompt', 'nohtml'), 0, 4000) : CrmAiReply::defaultPrompt();
 
+// From v1.2.0: files attached to the message. They are kept on the draft, sent with the e-mail by Dolibarr, and stay on disk for
+// the message history. A file that cannot be kept stops a send: a message must not leave without what the salesperson attached.
+require_once __DIR__.'/class/crmmailfile.class.php';
+$mailFiles = new CrmMailFile($db);
+$mailFilesOn = crmMailFileSupported($db);
+$attachError = '';
+if ($mailFilesOn && $canAct && $_SERVER['REQUEST_METHOD'] === 'POST' && in_array($action, array('save', 'send', 'sentmanually', 'aisuggest'), true)) {
+	foreach ((array) GETPOST('delmailfile', 'array:int') as $removeId) {
+		$mailFiles->remove($user, (int) $removeId, (int) $draft->event->id);
+	}
+	if (!empty($_FILES['mailfiles']['name']) && is_array($_FILES['mailfiles']['name'])) {
+		foreach ($_FILES['mailfiles']['name'] as $i => $uploadName) {
+			$code = (int) ($_FILES['mailfiles']['error'][$i] ?? 0);
+			if ((string) $uploadName === '' && $code === UPLOAD_ERR_NO_FILE) {
+				continue;
+			}
+			if ($mailFiles->add($user, $dealId, (int) $draft->event->id, (string) $uploadName, (string) ($_FILES['mailfiles']['tmp_name'][$i] ?? ''), $code) <= 0 && $attachError === '') {
+				$attachError = $mailFiles->error;
+			}
+		}
+	}
+	if ($attachError !== '') {
+		setEventMessages(crmErrorText($attachError), null, 'errors');
+		if ($action === 'send' || $action === 'sentmanually') {
+			$action = 'view';
+		}
+	}
+}
+
 if ($action === 'aisuggest') {
 	// Fills the text box with a proposal. Nothing is saved or sent: the salesperson reads, edits and chooses.
 	crmRequireRight('activity');
@@ -159,7 +188,7 @@ if ($draft->contactEmail() === '') {
 	print '<div class="warning">'.$langs->trans('CrmNoContactEmail').'</div>';
 }
 
-print '<form id="crm-compose" method="POST" action="'.$_SERVER['PHP_SELF'].'">';
+print '<form id="crm-compose" method="POST" enctype="multipart/form-data" action="'.$_SERVER['PHP_SELF'].'">';
 print '<input type="hidden" name="token" value="'.newToken().'">';
 print '<input type="hidden" name="id" value="'.((int) $draft->event->id).'">';
 $readonly = $canAct ? '' : ' readonly';
@@ -226,6 +255,27 @@ if ($optOutUrl !== '') {
 	print '<div class="crm-optout-preview opacitymedium"><span class="fa fa-link paddingright"></span>'.dol_escape_htmltag($langs->trans('CrmOptOutAppended')).' <em>'.dol_escape_htmltag($optOutText).'</em> <code>'.dol_escape_htmltag($optOutUrl).'</code></div>';
 }
 print '</td></tr>';
+if ($mailFilesOn) {
+	// Files sent with the message, kept on disk for the message history. Shown whether or not the draft has any yet.
+	print '<tr><td>'.$langs->trans('CrmMailAttachments').'</td><td>';
+	$fileUrl = dol_buildpath('/crm/mail_file.php', 1);
+	$current = $mailFiles->fetchForAction((int) $draft->event->id);
+	if (count($current) > 0) {
+		print '<ul class="crm-note-files">';
+		foreach ($current as $file) {
+			print '<li>'.img_picto('', 'fa-paperclip', 'class="pictofixedwidth"').'<a href="'.dol_escape_htmltag($fileUrl.'?id='.((int) $file->rowid)).'">'.dol_escape_htmltag((string) $file->filename).'</a> <span class="opacitymedium">('.dol_print_size((int) $file->filesize, 1, 1).')</span>';
+			if ($canAct) {
+				print ' <label><input type="checkbox" name="delmailfile[]" value="'.((int) $file->rowid).'"> '.dol_escape_htmltag($langs->trans('CrmMailAttachmentRemove')).'</label>';
+			}
+			print '</li>';
+		}
+		print '</ul>';
+	}
+	if ($canAct) {
+		print '<input type="file" name="mailfiles[]" multiple> <span class="opacitymedium">'.dol_escape_htmltag($langs->trans('CrmMailAttachmentsMax', dol_print_size(CrmNote::maxFileBytes(), 1, 1), CrmMailFile::MAX_FILES, dol_print_size(CrmMailFile::MAX_TOTAL, 1, 1))).'</span>';
+	}
+	print crmHelp($langs->trans('CrmMailAttachmentsHelp'), 'div').'</td></tr>';
+}
 if ($aiAvailable) {
 	print '<tr><td>'.$langs->trans('CrmAiAssistant').'</td><td>';
 	// Where the text goes and whether it is masked stay visible: that is a notice about data leaving, not an explanation.

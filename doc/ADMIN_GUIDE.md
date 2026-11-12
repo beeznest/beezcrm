@@ -359,6 +359,8 @@ The e-mail editor (Write / send, on a planned e-mail) can send **plain text** or
 
 ## Message history
 
+**Attachments (from v1.2.0).** Files attached in the e-mail editor are sent by Dolibarr's mail class (`CMailFile`) and kept in `<documents>/crm/opportunity/<deal id>/mail/<file id>_<name>`, listed in the table `llx_crm_mail_file` (schema step 8), and shown under their message by the Message history (download through `mail_file.php`, with the CRM's right on the deal; a PDF opens inline from the magnifier). Limits: Dolibarr's `MAIN_UPLOAD_DOC` per file (2 MB unset), 10 files, 20 MB per e-mail (`CrmMailFile::MAX_*`), and the PHP limits. The folder follows the same permission rules as the notes files (see INSTALL.md), is part of the backup, and is deleted with its deal. Files of messages found in the archive mailbox are not stored. Check that your mail server accepts messages of that size.
+
 A planned e-mail only marked as done is told apart by having **no e-mail subject** (`llx_actioncomm.email_subject`, which the module and the collector always fill when they record a message): it is shown as **Draft closed**, not as sent.
 
 A line of an e-mail in the History of the deal, the Next step list, Activities or the CRM history of the Prospect tab links to the message here (`#crm-msg-<event id>`, opened by a small script of the card). MCP: `list_crm_opportunity_messages` returns the same messages with their text.

@@ -141,6 +141,10 @@ Moving is allowed to any open stage, forward or back, as long as the deal has a 
 
 The customer's reply is recognised by the same reference in the subject, so it is added to the deal when it reaches the archive mailbox. If a contact answers you by another way, ask whoever manages outreach to use **Mark replied** on the outreach so that it stops (it needs the outreach right).
 
+### Attachments of an e-mail (from v1.2.0)
+
+In the e-mail editor, the row **Attachments** lets you choose one or several files (up to the size your Dolibarr allows per file, 2 MB by default; 10 files and 20 MB in all). They are saved with the draft when you press **Save draft** (nothing is sent); tick **remove** and save to take one off. When you press **Send from here**, Dolibarr sends them with the message. They stay on the server, so the **Message history** of the deal shows each message with its files: click the name to download it, the magnifier to read a PDF. If a file cannot be saved (too big, too many, a problem on the server) the message says why and **nothing is sent**, so an e-mail never leaves without what you attached. The same files are kept when you register an e-mail as sent manually, as a record of what you sent; **Open in my mail client** cannot attach them (your mail program does that), and the answers of the prospect read from the archive mailbox keep only their text.
+
 ### The messages of the deal (from v1.2.0)
 
 **Draft closed.** A planned e-mail that you only marked as done with the check icon, without sending it from the tool, is shown with a yellow badge **Draft closed** (not "E-mail sent") and no addresses: nothing left the server. A message sent from **Send from here**, by an outreach, or read in the archive mailbox keeps its "E-mail sent" or "E-mail received" badge.
