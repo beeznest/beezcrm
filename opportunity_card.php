@@ -816,6 +816,10 @@ if ($user->hasRight('crm', 'activity')) {
 	print $form->selectDate((int) (round((dol_now() + 86400) / 300) * 300), 'actdate', 1, 1, 0, '', 1, 0, 0, '', '', '', '', 5);
 	// The zone the times are shown in, so a wrong hour can be explained (UTC means the browser gave no zone).
 	print ' <span class="opacitymedium small">'.dol_escape_htmltag($langs->transnoentities('CrmTimezoneInUse', (!empty($_SESSION['dol_tz_string']) ? (string) $_SESSION['dol_tz_string'] : 'UTC'))).'</span>';
+	if ((empty($_SESSION['dol_tz_string']) || $_SESSION['dol_tz_string'] === 'UTC') && $user->hasRight('crm', 'setup')) {
+		// No real zone found: the administrator can name one for everybody.
+		print ' <a class="small" href="'.dol_buildpath('/crm/admin/setup.php', 1).'?tab=parameters">'.dol_escape_htmltag($langs->transnoentities('CrmTimezoneSetDefault')).'</a>';
+	}
 	print ' <input type="submit" class="button" value="'.$langs->trans('Create').'">';
 	print '</form>';
 }
