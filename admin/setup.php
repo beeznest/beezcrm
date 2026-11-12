@@ -280,7 +280,12 @@ if ($tab === 'parameters') {
 	print '<input type="hidden" name="tab" value="parameters">';
 	print '<table class="noborder centpercent">';
 	foreach ($constants as $name => $label) {
-		print '<tr class="oddeven"><td>'.$langs->trans($label).'</td>';
+		print '<tr class="oddeven"><td>'.$langs->trans($label);
+		if ($name === 'CRM_CATEGORY_SINGLE') {
+			// A short line under the name, always visible (the longer explanation is behind the "?").
+			print crmHelp($langs->trans('CrmCategorySingleHint'), 'div');
+		}
+		print '</td>';
 		if ($name === 'CRM_SEQUENCE_EMAIL_MODE') {
 			$mode = crmSequenceDraftMode() ? 'draft' : 'send';
 			print '<td><select name="'.$name.'"><option value="draft"'.($mode === 'draft' ? ' selected' : '').'>'.$langs->trans('CrmSequenceEmailModeDraft').'</option>';
@@ -289,7 +294,8 @@ if ($tab === 'parameters') {
 			continue;
 		}
 		if ($name === 'CRM_CATEGORY_SINGLE') {
-			// From v1.2.0: categories of third parties that are one-answer groups (a degree of interest, for example).
+			// From v1.2.0: groups of categories of third parties whose sub-categories exclude each other (a degree of interest).
+			// A list of check boxes, not a multiple <select>: Dolibarr turns a select into a widget that the mouse wheel cannot scroll.
 			require_once __DIR__.'/../class/crmcategory.class.php';
 			$categoryModel = new CrmCategory($db);
 			$chosen = crmIdList(getDolGlobalString($name));
@@ -297,11 +303,27 @@ if ($tab === 'parameters') {
 			if (!CrmCategory::enabled()) {
 				print '<span class="opacitymedium">'.$langs->trans('CrmCategoryModuleOff').'</span>';
 			} else {
-				print '<select name="'.$name.'[]" multiple size="5" class="minwidth200">';
-				foreach ($categoryModel->fetchAvailable() as $row) {
-					print '<option value="'.$row['id'].'"'.(in_array($row['id'], $chosen, true) ? ' selected' : '').'>'.dol_escape_htmltag(($row['parent_label'] !== '' ? $row['parent_label'].' >> ' : '').$row['label']).'</option>';
+				$groupCandidates = $categoryModel->fetchAvailable();
+				$hasChildren = array();
+				foreach ($groupCandidates as $candidate) {
+					if ($candidate['fk_parent'] > 0) {
+						$hasChildren[$candidate['fk_parent']] = true;
+					}
 				}
-				print '</select>';
+				print '<div class="crm-checklist">';
+				$shownGroups = 0;
+				foreach ($groupCandidates as $candidate) {
+					// Only a category that has sub-categories can be a group (and one already chosen, so it can be unticked).
+					if (empty($hasChildren[$candidate['id']]) && !in_array($candidate['id'], $chosen, true)) {
+						continue;
+					}
+					$shownGroups++;
+					print '<label><input type="checkbox" name="'.$name.'[]" value="'.$candidate['id'].'"'.(in_array($candidate['id'], $chosen, true) ? ' checked' : '').'> '.dol_escape_htmltag(($candidate['parent_label'] !== '' ? $candidate['parent_label'].' >> ' : '').$candidate['label']).'</label>';
+				}
+				if ($shownGroups === 0) {
+					print '<span class="opacitymedium">'.dol_escape_htmltag($langs->trans('CrmCategorySingleNone')).'</span>';
+				}
+				print '</div>';
 			}
 			print crmHelp($langs->trans('CrmCategorySingleHelp'), 'span', true).'</td></tr>';
 			continue;

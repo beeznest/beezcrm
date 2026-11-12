@@ -388,3 +388,18 @@ a.crm-preview {
 	border-left-color: #d9a400;
 	background: rgba(217, 164, 0, 0.06);
 }
+
+/* From v1.2.0: a list of check boxes in a setting, scrollable with the mouse wheel when it is long. */
+.crm-checklist {
+	max-height: 11em;
+	overflow-y: auto;
+	min-width: 18em;
+	padding: 4px 8px;
+	border: 1px solid rgba(128, 128, 128, 0.4);
+	border-radius: 3px;
+}
+.crm-checklist label {
+	display: block;
+	padding: 1px 0;
+	white-space: nowrap;
+}
