@@ -505,3 +505,4 @@ CrmDefaultTimezone=Fuseau horaire par défaut des utilisateurs
 CrmDefaultTimezoneHint=Utilisé quand le navigateur ne donne pas son fuseau (ex. Europe/Brussels)
 CrmDefaultTimezoneHelp=Dolibarr affiche les heures dans le fuseau du navigateur de chaque utilisateur. Un navigateur qui annonce UTC (certains réglages de confidentialité le font) ou aucun fuseau affiche des heures UTC, par exemple l'heure proposée pour une prochaine action. Indiquez ici un fuseau (par exemple Europe/Brussels) à utiliser dans ce cas. Un utilisateur dont le navigateur donne un vrai fuseau autre que UTC le garde. Vide : pas de défaut.
 CrmTimezoneInUse=Heures affichées dans le fuseau : %s
+CrmTimezoneSetDefault=Définir le fuseau par défaut
