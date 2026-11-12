@@ -281,9 +281,9 @@ if ($tab === 'parameters') {
 	print '<table class="noborder centpercent">';
 	foreach ($constants as $name => $label) {
 		print '<tr class="oddeven"><td>'.$langs->trans($label);
-		if ($name === 'CRM_CATEGORY_SINGLE') {
+		if ($name === 'CRM_CATEGORY_SINGLE' || $name === 'CRM_INTERNAL_REF_URL') {
 			// A short line under the name, always visible (the longer explanation is behind the "?").
-			print crmHelp($langs->trans('CrmCategorySingleHint'), 'div');
+			print crmHelp($langs->trans($name === 'CRM_INTERNAL_REF_URL' ? 'CrmInternalRefUrlHint' : 'CrmCategorySingleHint'), 'div');
 		}
 		print '</td>';
 		if ($name === 'CRM_SEQUENCE_EMAIL_MODE') {

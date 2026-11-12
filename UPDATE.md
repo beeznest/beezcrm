@@ -31,7 +31,7 @@ Going to **1.2.0** also runs schema step 5 (the public "not interested" link): t
 
 Going to **1.2.0** also runs schema step 6 (notes as agenda events): the column `llx_crm_note.fk_action` is added, then an agenda event "CRM note added" is made for every existing note (dated like the note, in the name of its author, on the deal and its third party). For a base with many notes the step takes a moment; a note whose event cannot be made is left without one and gets it at its next edit.
 
-Going to **1.2.0** also runs schema step 7 (internal reference of a deal): the column `llx_crm_opportunity.ref_internal` is added. It is empty for the existing deals. To make the reference a link, set the **Base address of the internal references** in CRM → Setup → Parameters.
+Going to **1.2.0** also runs schema step 7 (internal reference of a deal): the column `llx_crm_opportunity.ref_internal` is added. It is empty for the existing deals. To make the reference a link, set the **Web address of internal references (prefix)** in CRM → Setup → Parameters.
 
 Going to **1.2.0** also runs schema step 8 (attachments of the e-mails of the editor): the table `llx_crm_mail_file` is created when the module is enabled again. The attached files are kept in the documents directory of Dolibarr under `crm/opportunity/<deal id>/mail/`: they are part of the backup like the files of the notes.
 
