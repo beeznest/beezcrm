@@ -154,8 +154,23 @@ class modCrm extends DolibarrModules
 		$this->rights[$r][0] = 10480108;
 		$this->rights[$r][1] = 'CrmRightSetup';
 		$this->rights[$r][4] = 'setup';
+		// From v1.2.0: the profile of an outside agent who phones the prospects (see doc/ADMIN_GUIDE.md, "Outside agents").
+		$r++;
+		$this->rights[$r][0] = 10480109;
+		$this->rights[$r][1] = 'CrmRightAssigned';
+		$this->rights[$r][4] = 'assigned';
+		$r++;
+		$this->rights[$r][0] = 10480110;
+		$this->rights[$r][1] = 'CrmRightNote';
+		$this->rights[$r][4] = 'note';
+		$r++;
+		$this->rights[$r][0] = 10480111;
+		$this->rights[$r][1] = 'CrmRightMyStep';
+		$this->rights[$r][4] = 'mystep';
 
 		$canRead = '$user->hasRight("crm", "read") || $user->hasRight("crm", "readall")';
+		// The outside agent (right "assigned") only has the top menu, Home and Activities.
+		$canSee = $canRead.' || $user->hasRight("crm", "assigned")';
 		$this->menu = array();
 		$r = 0;
 		$this->menu[$r++] = array(
@@ -169,7 +184,7 @@ class modCrm extends DolibarrModules
 			'langs' => 'crm@crm',
 			'position' => 1000 + $r,
 			'enabled' => "isModEnabled('crm')",
-			'perms' => $canRead,
+			'perms' => $canSee,
 			'target' => '',
 			'user' => 0,
 		);
@@ -183,7 +198,7 @@ class modCrm extends DolibarrModules
 			'langs' => 'crm@crm',
 			'position' => 1000 + $r,
 			'enabled' => "isModEnabled('crm')",
-			'perms' => $canRead,
+			'perms' => $canSee,
 			'target' => '',
 			'user' => 0,
 		);
@@ -254,7 +269,7 @@ class modCrm extends DolibarrModules
 			'langs' => 'crm@crm',
 			'position' => 1000 + $r,
 			'enabled' => "isModEnabled('crm')",
-			'perms' => $canRead,
+			'perms' => $canSee,
 			'target' => '',
 			'user' => 0,
 		);

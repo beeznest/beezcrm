@@ -175,7 +175,7 @@ if ($action === 'enrol') {
 	require_once __DIR__.'/class/opportunity.class.php';
 	$deal = new Opportunity($db);
 	$dealId = GETPOSTINT('opportunityid');
-	if ($deal->fetch($dealId) <= 0 || !crmCanReadOwner($user, (int) $deal->fk_user_resp)) {
+	if ($deal->fetch($dealId) <= 0 || !crmCanReadOwner($user, (int) $deal->fk_user_resp, (int) $deal->id)) {
 		setEventMessages($langs->trans('CrmNoRows'), null, 'errors');
 	} elseif ($sequence->enrol($dealId) <= 0) {
 		setEventMessages(crmErrorText($sequence->error), null, 'errors');

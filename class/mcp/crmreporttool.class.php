@@ -57,6 +57,7 @@ class CrmReportTool extends CrmMcpTool
 		'CRM_CATEGORY_SINGLE',
 		'CRM_INTERNAL_REF_URL',
 		'CRM_DEFAULT_TIMEZONE',
+		'CRM_ASSIGN_NOTIFY',
 	);
 
 	/**

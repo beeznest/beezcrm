@@ -59,7 +59,7 @@ It sends no e-mail and changes no third party, contact, proposal or user.
 
 ## 4. Grant the rights
 
-Users → Permissions, family CRM. A salesperson needs "Read own deals", "Create and update deals" and "Create and complete next steps"; a manager adds "Read every owner", "Read CRM reports" and "Manage automated outreach"; the person who configures the module needs "Configure CRM". The full table is in [doc/ADMIN_GUIDE.md](doc/ADMIN_GUIDE.md), "Rights".
+Users → Permissions, family CRM. (From v1.2.0, an **outside agent** who phones the prospects gets only the three rights "assigned", "note" and "mystep", and nothing on Third parties: see "Outside agents" in [doc/ADMIN_GUIDE.md](doc/ADMIN_GUIDE.md).) A salesperson needs "Read own deals", "Create and update deals" and "Create and complete next steps"; a manager adds "Read every owner", "Read CRM reports" and "Manage automated outreach"; the person who configures the module needs "Configure CRM". The full table is in [doc/ADMIN_GUIDE.md](doc/ADMIN_GUIDE.md), "Rights".
 
 ## 5. First configuration
 

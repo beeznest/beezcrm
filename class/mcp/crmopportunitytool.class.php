@@ -118,6 +118,10 @@ class CrmOpportunityTool extends CrmMcpTool
 			return array(array('crm', 'delete'));
 		}
 		$reads = array('list_crm_opportunities', 'get_crm_opportunity', 'list_crm_stage_history', 'list_crm_opportunity_messages');
+		// The outside agent (right "assigned") reads one deal, its history and its messages, not the list of deals.
+		if (in_array($toolName, array('get_crm_opportunity', 'list_crm_stage_history', 'list_crm_opportunity_messages'), true)) {
+			return $this->readRights();
+		}
 		if (in_array($toolName, $reads, true)) {
 			return array(array('crm', 'read'));
 		}

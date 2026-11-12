@@ -50,7 +50,7 @@ class CrmMailFile
 		global $conf;
 		$resql = $this->db->query('SELECT rowid, fk_user_resp FROM '.$this->db->prefix().'crm_opportunity WHERE rowid = '.((int) $dealId).' AND entity = '.((int) $conf->entity));
 		$deal = $resql ? $this->db->fetch_object($resql) : null;
-		return ($deal && crmCanReadOwner($user, (int) $deal->fk_user_resp)) ? $deal : null;
+		return ($deal && crmCanReadOwner($user, (int) $deal->fk_user_resp, (int) $deal->rowid)) ? $deal : null;
 	}
 
 	/**

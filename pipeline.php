@@ -52,7 +52,7 @@ if ($action === 'move') {
 	crmRequireRight('write');
 	$deal = new Opportunity($db);
 	$id = GETPOSTINT('id');
-	if ($deal->fetch($id) > 0 && crmCanReadOwner($user, (int) $deal->fk_user_resp)) {
+	if ($deal->fetch($id) > 0 && crmCanReadOwner($user, (int) $deal->fk_user_resp, (int) $deal->id)) {
 		$result = $deal->moveToStage($user, GETPOSTINT('stageid'), GETPOSTINT('lossreasonid'), GETPOST('lossnote', 'alphanohtml'));
 		if ($result <= 0) {
 			setEventMessages(crmErrorText($deal->error), null, 'errors');

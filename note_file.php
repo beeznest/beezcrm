@@ -31,7 +31,7 @@ require_once __DIR__.'/lib/crm_bootstrap.inc.php';
  */
 
 require_once __DIR__.'/class/crmnote.class.php';
-crmStartPage();
+crmStartPage(true); // From v1.2.0: also opens for the outside agent (right "assigned")
 
 $notes = new CrmNote($db);
 $file = CrmNote::supported($db) ? $notes->fetchFile($user, GETPOSTINT('id')) : null;

@@ -138,7 +138,7 @@ function crmIconLink(string $url, string $picto, string $label): string
 /**
  * Pages call this after the bootstrap. It refuses a disabled module and a user with no read right.
  */
-function crmStartPage(): void
+function crmStartPage(bool $allowAssigned = false): void
 {
 	crmLoadLangs();
 	crmEnsureSessionTimezone();
@@ -151,13 +151,18 @@ function crmStartPage(): void
 	if (!isModEnabled('crm')) {
 		accessforbidden();
 	}
-	crmRequireRead();
+	crmRequireRead($allowAssigned);
 }
 
 /**
- * True when the user may see this owner's deals.
+ * May this user read a deal? Everybody's with "Read every owner" (readall); their own with "Read own deals" (read); and, from v1.2.0, with
+ * the right "assigned" (the outside agent), a deal that has a step not done assigned to them: pass the deal id for that rule (without
+ * it the answer is the one of the earlier versions).
+ *
+ * @param int $ownerId Owner of the deal (fk_user_resp)
+ * @param int $dealId  Deal id, 0 when unknown
  */
-function crmCanReadOwner(User $user, int $ownerId): bool
+function crmCanReadOwner(User $user, int $ownerId, int $dealId = 0): bool
 {
 	if ($user->hasRight('crm', 'readall')) {
 		return true;
@@ -165,29 +170,49 @@ function crmCanReadOwner(User $user, int $ownerId): bool
 	if ($user->hasRight('crm', 'read') && $ownerId === (int) $user->id) {
 		return true;
 	}
+	if ($dealId > 0 && $user->hasRight('crm', 'assigned')) {
+		global $db;
+		$sql = 'SELECT a.id FROM '.MAIN_DB_PREFIX."actioncomm as a WHERE a.elementtype = 'opportunity@crm' AND a.fk_element = ".((int) $dealId);
+		$sql .= ' AND a.fk_user_action = '.((int) $user->id).' AND a.percent < 100';
+		$resql = $db->query($sql.$db->plimit(1, 0));
+		return (bool) ($resql && $db->num_rows($resql) > 0);
+	}
 	return false;
 }
 
 /**
- * SQL fragment limiting deals to the caller. Empty when the caller may see every owner.
+ * The condition that keeps the deals a user may read (alias = the alias of the deal table): everybody's with readall; their own with
+ * read; and, from v1.2.0, with the right "assigned", the deals that have a step not done assigned to them.
  */
 function crmOwnerSql(User $user, string $alias = 'o'): string
 {
 	if ($user->hasRight('crm', 'readall')) {
 		return '';
 	}
-	return ' AND '.$alias.'.fk_user_resp = '.((int) $user->id);
+	$parts = array();
+	if ($user->hasRight('crm', 'read')) {
+		$parts[] = $alias.'.fk_user_resp = '.((int) $user->id);
+	}
+	if ($user->hasRight('crm', 'assigned')) {
+		$parts[] = 'EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX."actioncomm as crm_as WHERE crm_as.elementtype = 'opportunity@crm' AND crm_as.fk_element = ".$alias.'.rowid AND crm_as.fk_user_action = '.((int) $user->id).' AND crm_as.percent < 100)';
+	}
+	return count($parts) > 0 ? ' AND ('.implode(' OR ', $parts).')' : ' AND 1 = 0';
 }
 
 /**
  * Caller may open the CRM screens.
  */
-function crmRequireRead(): void
+function crmRequireRead(bool $allowAssigned = false): void
 {
 	global $user;
-	if (!$user->hasRight('crm', 'read') && !$user->hasRight('crm', 'readall')) {
-		accessforbidden();
+	if ($user->hasRight('crm', 'read') || $user->hasRight('crm', 'readall')) {
+		return;
 	}
+	// From v1.2.0, the pages an outside agent uses (Home, Activities, the deal card) also open with the right "assigned".
+	if ($allowAssigned && $user->hasRight('crm', 'assigned')) {
+		return;
+	}
+	accessforbidden();
 }
 
 /**
@@ -907,6 +932,7 @@ function crmEnsureConstants(DoliDB $db): void
 		'CRM_INTERNAL_REF_URL' => '',
 		'CRM_MCP_ALLOW_DELETE' => '0',
 		'CRM_DEFAULT_TIMEZONE' => '',
+		'CRM_ASSIGN_NOTIFY' => '1',
 		'CRM_CATEGORY_SINGLE' => '',
 		// Read by the theme: without it the top menu icon is overridden by a generic glyph.
 		'MAIN_MODULE_CRM_ICON' => 'fa-handshake',

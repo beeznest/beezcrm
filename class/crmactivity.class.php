@@ -210,6 +210,177 @@ class CrmActivity
 	}
 
 	/**
+	 * From v1.2.0. May this user change (reschedule, complete) a step assigned to $assigneeId? Whoever has the right "activity" (the
+	 * salespeople) may change any step; the outside agent (right "mystep") only the steps assigned to them.
+	 */
+	public static function mayChangeStep(User $user, int $assigneeId): bool
+	{
+		return $user->hasRight('crm', 'activity') || ($user->hasRight('crm', 'mystep') && $assigneeId === (int) $user->id);
+	}
+
+	/**
+	 * From v1.2.0. The users a step of this deal can be assigned to by this user, id => name. A user with the right "activity" can
+	 * choose among everybody who may change steps (the right "activity" or the right "mystep"); the outside agent (right "mystep"
+	 * only) can choose themselves or the owner of the deal, nobody else. The owner of the deal comes first.
+	 *
+	 * @return array<int,string>
+	 */
+	public function assignableUsers(User $user, int $dealId): array
+	{
+		global $conf;
+		$resql = $this->db->query('SELECT fk_user_resp FROM '.$this->db->prefix().'crm_opportunity WHERE rowid = '.((int) $dealId).' AND entity = '.((int) $conf->entity));
+		$deal = $resql ? $this->db->fetch_object($resql) : null;
+		if (!$deal) {
+			return array();
+		}
+		$ownerId = (int) $deal->fk_user_resp;
+		if ($user->hasRight('crm', 'activity')) {
+			$ids = $this->usersWhoMayChangeSteps();
+			if ($ownerId > 0 && !in_array($ownerId, $ids, true)) {
+				array_unshift($ids, $ownerId);
+			}
+		} elseif ($user->hasRight('crm', 'mystep')) {
+			$ids = array_values(array_unique(array_filter(array($ownerId, (int) $user->id))));
+		} else {
+			return array();
+		}
+		if (in_array($ownerId, $ids, true)) {
+			$ids = array_merge(array($ownerId), array_diff($ids, array($ownerId)));
+		}
+		$list = array();
+		foreach ($ids as $id) {
+			$name = $this->userName((int) $id);
+			if ($name !== '') {
+				$list[(int) $id] = $name;
+			}
+		}
+		return $list;
+	}
+
+	/**
+	 * Is $assigneeId one of the users this user may assign a step of the deal to?
+	 */
+	public function canAssign(User $user, int $dealId, int $assigneeId): bool
+	{
+		return $assigneeId > 0 && array_key_exists($assigneeId, $this->assignableUsers($user, $dealId));
+	}
+
+	/**
+	 * @return int[] Ids of the active users who may change steps (right activity or mystep, own or through a group), by name.
+	 */
+	private function usersWhoMayChangeSteps(): array
+	{
+		static $cache = array();
+		$key = spl_object_id($this->db);
+		if (isset($cache[$key])) {
+			return $cache[$key];
+		}
+		global $conf;
+		$ids = array();
+		$resql = $this->db->query('SELECT rowid FROM '.$this->db->prefix().'user WHERE statut = 1 AND entity IN (0, '.((int) $conf->entity).') ORDER BY lastname, firstname, login');
+		while ($resql && ($obj = $this->db->fetch_object($resql))) {
+			$candidate = new User($this->db);
+			if ($candidate->fetch((int) $obj->rowid) > 0) {
+				$candidate->loadRights();
+				if ($candidate->hasRight('crm', 'activity') || $candidate->hasRight('crm', 'mystep')) {
+					$ids[] = (int) $candidate->id;
+				}
+			}
+		}
+		$cache[$key] = $ids;
+		return $ids;
+	}
+
+	/**
+	 * Name of an active user (first and last name, else the login), or '' when there is none.
+	 */
+	private function userName(int $userId): string
+	{
+		$resql = $this->db->query('SELECT firstname, lastname, login FROM '.$this->db->prefix().'user WHERE rowid = '.((int) $userId).' AND statut = 1');
+		$obj = $resql ? $this->db->fetch_object($resql) : null;
+		if (!$obj) {
+			return '';
+		}
+		$name = trim((string) $obj->firstname.' '.(string) $obj->lastname);
+		return $name !== '' ? $name : (string) $obj->login;
+	}
+
+	/**
+	 * From v1.2.0. Create a next step for a deal the user may read, assigned to $assigneeId (the owner of the deal by default). The
+	 * rules are here, for the page and the MCP tool alike: the right "activity" or "mystep", a deal the user may read, and an
+	 * assignee they may choose (assignableUsers()). The assignee is told by e-mail (notifyAssignee()).
+	 *
+	 * @return int Event id, or -1 with a language key in ->error
+	 */
+	public function createStep(User $user, int $dealId, string $kind, string $label, int $datep, int $assigneeId = 0, int $percentage = 0, string $note = ''): int
+	{
+		global $conf;
+		if (!$user->hasRight('crm', 'activity') && !$user->hasRight('crm', 'mystep')) {
+			$this->error = 'CrmErrorStepRights';
+			return -1;
+		}
+		$resql = $this->db->query('SELECT rowid, fk_soc, fk_socpeople, fk_user_resp FROM '.$this->db->prefix().'crm_opportunity WHERE rowid = '.((int) $dealId).' AND entity = '.((int) $conf->entity));
+		$deal = $resql ? $this->db->fetch_object($resql) : null;
+		if (!$deal || !crmCanReadOwner($user, (int) $deal->fk_user_resp, (int) $deal->rowid)) {
+			$this->error = 'CrmErrorEventNotFound';
+			return -1;
+		}
+		if ($assigneeId <= 0) {
+			$assigneeId = (int) $deal->fk_user_resp;
+		}
+		if (!$this->canAssign($user, (int) $deal->rowid, $assigneeId)) {
+			$this->error = 'CrmErrorAssignee';
+			return -1;
+		}
+		$eventId = $this->create($user, (int) $deal->rowid, (int) $deal->fk_soc, (int) $deal->fk_socpeople, $assigneeId, $kind, $label, $datep, $percentage, $note);
+		if ($eventId > 0 && $percentage < 100) {
+			$this->notifyAssignee($user, $assigneeId, $eventId, (int) $deal->rowid, $label, $datep);
+		}
+		return $eventId;
+	}
+
+	/**
+	 * From v1.2.0. Tell a user by e-mail that a step has been assigned to them (not when they assigned it to themselves). It follows
+	 * the setting CRM_ASSIGN_NOTIFY (on by default) and, like the owner reminders, the reminder dry-run (CRM_REMINDER_DRY_RUN, on by
+	 * default): while it is on the e-mail is only logged. The text is in the language of the assignee. A failure never stops the step.
+	 */
+	public function notifyAssignee(User $actor, int $assigneeId, int $eventId, int $dealId, string $label, int $datep): void
+	{
+		global $conf, $langs;
+		if ($assigneeId <= 0 || $assigneeId === (int) $actor->id || !getDolGlobalInt('CRM_ASSIGN_NOTIFY', 1)) {
+			return;
+		}
+		$assignee = new User($this->db);
+		if ($assignee->fetch($assigneeId) <= 0) {
+			return;
+		}
+		$email = trim((string) $assignee->email);
+		if ($email === '' || !isValidEmail($email)) {
+			dol_syslog('CRM step '.$eventId.' assigned to user '.$assigneeId.': no e-mail address to tell them', LOG_INFO);
+			return;
+		}
+		$resql = $this->db->query('SELECT ref, label FROM '.$this->db->prefix().'crm_opportunity WHERE rowid = '.((int) $dealId));
+		$deal = $resql ? $this->db->fetch_object($resql) : null;
+		if (!$deal) {
+			return;
+		}
+		$tr = new Translate('', $conf);
+		$tr->setDefaultLang(!empty($assignee->lang) ? (string) $assignee->lang : $langs->defaultlang);
+		$tr->load('crm@crm');
+		$zone = !empty($_SESSION['dol_tz_string']) ? ' ('.$_SESSION['dol_tz_string'].')' : '';
+		$subject = crmSingleLine($tr->transnoentitiesnoconv('CrmAssignedSubject', crmSingleLine(strip_tags($label), 120)), 200);
+		$body = $tr->transnoentitiesnoconv('CrmAssignedBody', (string) $deal->ref, crmSingleLine(strip_tags((string) $deal->label), 200), crmSingleLine(strip_tags($label), 255), dol_print_date($datep, 'dayhour', 'tzuserrel').$zone, trim((string) $actor->firstname.' '.(string) $actor->lastname) ?: (string) $actor->login, dol_buildpath('/crm/opportunity_card.php', 2).'?id='.((int) $dealId));
+		if (getDolGlobalInt('CRM_REMINDER_DRY_RUN', 1)) {
+			dol_syslog('CRM step '.$eventId.' assigned to user '.$assigneeId.': e-mail simulated (reminder dry-run is on)', LOG_INFO);
+			return;
+		}
+		$result = crmSendMail($email, $subject, $body);
+		if (!$result['ok']) {
+			dol_syslog('CRM step '.$eventId.' assigned to user '.$assigneeId.': e-mail not sent: '.$result['error'], LOG_WARNING);
+		}
+	}
+
+	/**
 	 * Load an agenda event that is a CRM step the user may see: it must be linked to a deal, the deal must belong to an
 	 * owner the user may read and, when $opportunityId is given, to that deal.
 	 *
@@ -230,7 +401,7 @@ class CrmActivity
 		$sql = 'SELECT fk_user_resp FROM '.$this->db->prefix().'crm_opportunity WHERE rowid = '.$dealId.' AND entity = '.((int) $GLOBALS['conf']->entity);
 		$resql = $this->db->query($sql);
 		$deal = $resql ? $this->db->fetch_object($resql) : null;
-		if (!$deal || !crmCanReadOwner($user, (int) $deal->fk_user_resp) || ($opportunityId > 0 && $dealId !== $opportunityId)) {
+		if (!$deal || !crmCanReadOwner($user, (int) $deal->fk_user_resp, $dealId) || ($opportunityId > 0 && $dealId !== $opportunityId)) {
 			$this->error = 'CrmErrorEventNotFound';
 			return null;
 		}
@@ -250,6 +421,10 @@ class CrmActivity
 		if ($event === null) {
 			return -1;
 		}
+		if (!self::mayChangeStep($user, (int) $event->userownerid)) {
+			$this->error = 'CrmErrorStepRights';
+			return -1;
+		}
 		$event->percentage = 100;
 		if ($event->update($user) < 0) {
 			$this->error = $event->error;
@@ -267,10 +442,14 @@ class CrmActivity
 	 * @param int    $opportunityId Deal the step must belong to, 0 to skip that check
 	 * @return int 1 if OK, -1 on error with a language key in ->error
 	 */
-	public function updateStep(User $user, int $eventId, string $kind, string $label, int $datep, int $opportunityId = 0): int
+	public function updateStep(User $user, int $eventId, string $kind, string $label, int $datep, int $opportunityId = 0, int $assigneeId = 0): int
 	{
 		$event = $this->loadStep($user, $eventId, $opportunityId);
 		if ($event === null) {
+			return -1;
+		}
+		if (!self::mayChangeStep($user, (int) $event->userownerid)) {
+			$this->error = 'CrmErrorStepRights';
 			return -1;
 		}
 		if ((int) $event->percentage >= 100) {
@@ -281,8 +460,18 @@ class CrmActivity
 			$this->error = 'CrmErrorDateRequired';
 			return -1;
 		}
+		// An outside agent (no "activity" right) only moves the date of their step: title, kind and assignee stay as they are.
+		$fullEdit = $user->hasRight('crm', 'activity');
+		$previousAssignee = (int) $event->userownerid;
+		if ($fullEdit && $assigneeId > 0 && $assigneeId !== $previousAssignee) {
+			if (!$this->canAssign($user, (int) $event->fk_element, $assigneeId)) {
+				$this->error = 'CrmErrorAssignee';
+				return -1;
+			}
+			$event->userownerid = $assigneeId;
+		}
 		$isEmail = ((string) $event->code === 'AC_EMAIL');
-		if (!$isEmail) {
+		if (!$isEmail && $fullEdit) {
 			// An empty title keeps the current one.
 			$label = crmSingleLine(strip_tags($label), 255);
 			if ($label !== '') {
@@ -305,6 +494,9 @@ class CrmActivity
 			$this->error = $event->error;
 			return -1;
 		}
+		if ((int) $event->userownerid !== $previousAssignee) {
+			$this->notifyAssignee($user, (int) $event->userownerid, (int) $event->id, (int) $event->fk_element, (string) $event->label, (int) $datep);
+		}
 		return 1;
 	}
 
@@ -318,6 +510,10 @@ class CrmActivity
 	{
 		$event = $this->loadStep($user, $eventId, $opportunityId);
 		if ($event === null) {
+			return -1;
+		}
+		if (!$user->hasRight('crm', 'activity')) {
+			$this->error = 'CrmErrorStepRights';
 			return -1;
 		}
 		if ((int) $event->percentage >= 100) {
@@ -367,8 +563,10 @@ class CrmActivity
 	 */
 	public function fetchForOpportunity(int $opportunityId): array
 	{
-		$sql = 'SELECT a.id as rowid, a.label, a.datep, a.percent, a.fk_user_action, a.code as event_code, c.code, c.libelle as type_label';
+		$sql = 'SELECT a.id as rowid, a.label, a.datep, a.percent, a.fk_user_action, a.code as event_code, c.code, c.libelle as type_label,';
+		$sql .= ' ua.firstname as assignee_firstname, ua.lastname as assignee_lastname, ua.login as assignee_login';
 		$sql .= ' FROM '.$this->db->prefix().'actioncomm as a';
+		$sql .= ' LEFT JOIN '.$this->db->prefix().'user as ua ON ua.rowid = a.fk_user_action';
 		$sql .= ' LEFT JOIN '.$this->db->prefix().'c_actioncomm as c ON c.id = a.fk_action';
 		$sql .= " WHERE a.elementtype = '".$this->db->escape(self::ELEMENT_TYPE)."'";
 		$sql .= ' AND a.fk_element = '.((int) $opportunityId);
@@ -430,12 +628,17 @@ class CrmActivity
 		$sql = ' FROM '.$this->db->prefix().'actioncomm as a';
 		$sql .= ' INNER JOIN '.$this->db->prefix().'crm_opportunity as o ON o.rowid = a.fk_element';
 		$sql .= ' LEFT JOIN '.$this->db->prefix().'societe as s ON s.rowid = o.fk_soc';
+		$sql .= ' LEFT JOIN '.$this->db->prefix().'user as ua ON ua.rowid = a.fk_user_action';
 		$sql .= " WHERE a.elementtype = '".$this->db->escape(self::ELEMENT_TYPE)."'";
 		$sql .= ' AND o.entity = '.((int) $conf->entity);
 		if ($forceOwner > 0) {
 			$sql .= ' AND o.fk_user_resp = '.((int) $forceOwner);
 		} else {
 			$sql .= crmOwnerSql($user, 'o');
+		}
+		// From v1.2.0: the outside agent (right "assigned" without "read") lists only the steps assigned to them.
+		if (!$user->hasRight('crm', 'read') && !$user->hasRight('crm', 'readall') && $user->hasRight('crm', 'assigned')) {
+			$sql .= ' AND a.fk_user_action = '.((int) $user->id);
 		}
 		if ($scope === 'done') {
 			$sql .= ' AND a.percent >= 100';
@@ -475,7 +678,8 @@ class CrmActivity
 	public function fetchList(User $user, string $scope, int $forceOwner = 0, int $limit = 0, int $offset = 0, string $sort = 'date', string $order = 'ASC'): array
 	{
 		$columns = array('date' => 'a.datep', 'ref' => 'o.ref', 'label' => 'o.label', 'account' => 's.nom');
-		$sql = 'SELECT a.id as rowid, a.label, a.datep, a.percent, a.fk_user_action, a.fk_element, a.code as event_code, o.ref, o.label as deal_label, o.fk_soc, o.fk_user_resp, s.nom as soc_name';
+		$sql = 'SELECT a.id as rowid, a.label, a.datep, a.percent, a.fk_user_action, a.fk_element, a.code as event_code, o.ref, o.label as deal_label, o.fk_soc, o.fk_user_resp, s.nom as soc_name,';
+		$sql .= ' ua.firstname as assignee_firstname, ua.lastname as assignee_lastname, ua.login as assignee_login';
 		$sql .= $this->listFromWhere($user, $scope, $forceOwner);
 		$sql .= ' ORDER BY '.($columns[$sort] ?? 'a.datep').' '.(strtoupper($order) === 'DESC' ? 'DESC' : 'ASC').', a.id ASC';
 		if ($limit > 0) {

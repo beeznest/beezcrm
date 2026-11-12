@@ -35,6 +35,8 @@ Going to **1.2.0** also runs schema step 7 (internal reference of a deal): the c
 
 Going to **1.2.0** also runs schema step 8 (attachments of the e-mails of the editor): the table `llx_crm_mail_file` is created when the module is enabled again. The attached files are kept in the documents directory of Dolibarr under `crm/opportunity/<deal id>/mail/`: they are part of the backup like the files of the notes.
 
+Going to **1.2.0** adds three rights (`assigned`, `note`, `mystep`, for the outside agents) and changes the CRM menu so that those users see only Home and Activities: they come with **disabling and enabling the module again**; nobody gets them until you give them (users or groups, Users → Permissions). No schema change.
+
 ## What an update does and does not touch
 
 - It **creates** what is missing: new columns, new settings with their defaults, new rights.

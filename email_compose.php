@@ -52,7 +52,7 @@ foreach (array('aisuggest', 'save', 'send', 'sentmanually', 'discard') as $butto
 // Every action but showing the form needs the token of the session (a link with act_send=1 must not send anything).
 crmRequireToken($action);
 $draft = new CrmEmailDraft($db);
-if ($draft->fetch(GETPOSTINT('id')) <= 0 || !crmCanReadOwner($user, (int) $draft->deal->fk_user_resp)) {
+if ($draft->fetch(GETPOSTINT('id')) <= 0 || !crmCanReadOwner($user, (int) $draft->deal->fk_user_resp, (int) $draft->deal->rowid)) {
 	accessforbidden();
 }
 $dealId = (int) $draft->deal->rowid;

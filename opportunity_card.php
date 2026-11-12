@@ -41,15 +41,17 @@ require_once __DIR__.'/class/crmnote.class.php';
 require_once __DIR__.'/class/crmcategory.class.php';
 require_once __DIR__.'/class/crmaccountview.class.php';
 require_once __DIR__.'/class/crmmailfile.class.php';
-crmStartPage();
-$notesOn = CrmNote::supported($db); // From v1.2.0: internal notes replace the description once the tables exist
+crmStartPage(true); // From v1.2.0: also opens for the outside agent (right "assigned")
+$notesOn = CrmNote::supported($db);
+$mayNote = $user->hasRight('crm', 'write') || $user->hasRight('crm', 'note'); // From v1.2.0: also the outside agent
+$mayCreateStep = $user->hasRight('crm', 'activity') || $user->hasRight('crm', 'mystep'); // From v1.2.0: internal notes replace the description once the tables exist
 
 $action = GETPOST('action', 'aZ09');
 crmRequireToken($action, array('askdelactivity', 'editactivity', 'editnote', 'edittags'));
 $id = GETPOSTINT('id');
 $form = new Form($db);
 $object = new Opportunity($db);
-if ($id > 0 && $object->fetch($id) > 0 && !crmCanReadOwner($user, (int) $object->fk_user_resp)) {
+if ($id > 0 && $object->fetch($id) > 0 && !crmCanReadOwner($user, (int) $object->fk_user_resp, (int) $object->id)) {
 	accessforbidden();
 }
 if ($id > 0 && $object->id <= 0 && $action !== 'create' && $action !== 'add') {
@@ -135,7 +137,9 @@ $attachPosted = function (int $noteId) use ($db, $user): string {
 };
 
 if ($action === 'addnote' && $object->id > 0 && $notesOn) {
-	crmRequireRight('write');
+	if (!$mayNote) {
+		accessforbidden();
+	}
 	$notes = new CrmNote($db);
 	$noteId = $notes->add($user, (int) $object->id, GETPOST('note', 'nohtml'));
 	if ($noteId <= 0) {
@@ -149,7 +153,9 @@ if ($action === 'addnote' && $object->id > 0 && $notesOn) {
 }
 
 if ($action === 'savenote' && $object->id > 0 && $notesOn) {
-	crmRequireRight('write');
+	if (!$mayNote) {
+		accessforbidden();
+	}
 	$notes = new CrmNote($db);
 	$noteId = GETPOSTINT('noteid');
 	$existing = $notes->fetch($user, $noteId);
@@ -170,7 +176,9 @@ if ($action === 'savenote' && $object->id > 0 && $notesOn) {
 }
 
 if ($action === 'delnotefile' && $object->id > 0 && $notesOn) {
-	crmRequireRight('write');
+	if (!$mayNote) {
+		accessforbidden();
+	}
 	$notes = new CrmNote($db);
 	$file = $notes->fetchFile($user, GETPOSTINT('fileid'));
 	if ($file === null || (int) $file->fk_opportunity !== (int) $object->id) {
@@ -231,11 +239,14 @@ if ($action === 'qualify' && $object->id > 0) {
 }
 
 if ($action === 'addactivity' && $object->id > 0) {
-	crmRequireRight('activity');
+	if (!$mayCreateStep) {
+		accessforbidden();
+	}
 	$when = GETPOSTDATE('actdate', 'getpost');
 	$datep = is_numeric($when) ? (int) $when : 0;
 	$activity = new CrmActivity($db);
-	$result = $activity->create($user, (int) $object->id, (int) $object->fk_soc, (int) $object->fk_socpeople, (int) $object->fk_user_resp, GETPOST('kind', 'aZ09'), GETPOST('actlabel', 'alphanohtml'), $datep, 0);
+	// The assignee: the one chosen (the owner of the deal when nothing is posted). The class checks the user may choose them.
+	$result = $activity->createStep($user, (int) $object->id, GETPOST('kind', 'aZ09'), GETPOST('actlabel', 'alphanohtml'), $datep, GETPOSTINT('respid'));
 	if ($result <= 0) {
 		setEventMessages(crmErrorText($activity->error), null, 'errors');
 	} else {
@@ -246,7 +257,9 @@ if ($action === 'addactivity' && $object->id > 0) {
 }
 
 if ($action === 'complete' && $object->id > 0) {
-	crmRequireRight('activity');
+	if (!$mayCreateStep) {
+		accessforbidden();
+	}
 	$activity = new CrmActivity($db);
 	if ($activity->complete($user, GETPOSTINT('eventid'), (int) $object->id) <= 0) {
 		setEventMessages(crmErrorText($activity->error), null, 'errors');
@@ -256,10 +269,12 @@ if ($action === 'complete' && $object->id > 0) {
 }
 
 if ($action === 'updateactivity' && $object->id > 0) {
-	crmRequireRight('activity');
+	if (!$mayCreateStep) {
+		accessforbidden();
+	}
 	$when = GETPOSTDATE('actdate', 'getpost');
 	$activity = new CrmActivity($db);
-	if ($activity->updateStep($user, GETPOSTINT('eventid'), GETPOST('kind', 'aZ09'), GETPOST('actlabel', 'alphanohtml'), is_numeric($when) ? (int) $when : 0, (int) $object->id) <= 0) {
+	if ($activity->updateStep($user, GETPOSTINT('eventid'), GETPOST('kind', 'aZ09'), GETPOST('actlabel', 'alphanohtml'), is_numeric($when) ? (int) $when : 0, (int) $object->id, GETPOSTINT('respid')) <= 0) {
 		setEventMessages(crmErrorText($activity->error), null, 'errors');
 	} else {
 		setEventMessages($langs->trans('RecordSaved'), null);
@@ -530,7 +545,8 @@ if ($object->fk_soc > 0) {
 	if ($societe->fetch((int) $object->fk_soc) > 0) {
 		$tagModel = new CrmCategory($db);
 		$tagByAccount = $tagModel->fetchForThirdparties(array((int) $object->fk_soc));
-		print crmAccountMarks($societe->getNomUrl(1), $tagByAccount[(int) $object->fk_soc] ?? array());
+		// Without the right to read third parties (the outside agent) the name is text: the link would open a page they cannot see.
+		print crmAccountMarks($user->hasRight('societe', 'lire') ? $societe->getNomUrl(1) : dol_escape_htmltag((string) $societe->name), $tagByAccount[(int) $object->fk_soc] ?? array());
 		if (preg_match('/^[a-z]{2}_[A-Z]{2}$/', (string) $societe->default_lang)) {
 			print ' <span class="badge badge-secondary" title="'.dol_escape_htmltag($langs->trans('Language').': '.(string) $societe->default_lang).'">'.dol_escape_htmltag(strtoupper(substr((string) $societe->default_lang, 0, 2))).'</span>';
 		}
@@ -606,7 +622,20 @@ if ($object->fk_socpeople > 0) {
 	require_once DOL_DOCUMENT_ROOT.'/contact/class/contact.class.php';
 	$contact = new Contact($db);
 	if ($contact->fetch((int) $object->fk_socpeople) > 0) {
-		print $contact->getNomUrl(1);
+		print $user->hasRight('societe', 'lire') ? $contact->getNomUrl(1) : dol_escape_htmltag(trim((string) $contact->firstname.' '.(string) $contact->lastname));
+		// From v1.2.0: the numbers and the address, to call and to check them by phone (also for the outside agent).
+		$reach = array();
+		foreach (array('phone_pro' => 'Phone', 'phone_mobile' => 'PhoneMobile') as $field => $labelKey) {
+			if (trim((string) $contact->$field) !== '') {
+				$reach[] = dol_escape_htmltag($langs->trans($labelKey)).' <a href="tel:'.dol_escape_htmltag(preg_replace('/[^0-9+]/', '', (string) $contact->$field)).'">'.dol_escape_htmltag((string) $contact->$field).'</a>';
+			}
+		}
+		if (trim((string) $contact->email) !== '') {
+			$reach[] = dol_escape_htmltag($langs->trans('EMail')).' <a href="mailto:'.dol_escape_htmltag((string) $contact->email).'">'.dol_escape_htmltag((string) $contact->email).'</a>';
+		}
+		if (count($reach) > 0) {
+			print '<div class="small">'.implode(' &nbsp; ', $reach).'</div>';
+		}
 	} else {
 		print $crmEmpty;
 	}
@@ -738,7 +767,7 @@ if (!$notesOn) {
 	if (count($noteRows) > 0) {
 		$renderNote($noteRows[0]);
 	}
-	if ($user->hasRight('crm', 'write')) {
+	if ($mayNote) {
 		print '<form method="POST" enctype="multipart/form-data" action="'.$_SERVER['PHP_SELF'].'">';
 		print '<input type="hidden" name="token" value="'.newToken().'">';
 		print '<input type="hidden" name="action" value="addnote">';
@@ -800,7 +829,8 @@ if (!$notesOn) {
 
 // Sections, in the order a salesperson works them: next step, qualification, stage, proposals, then the history.
 print '<h2>'.$langs->trans('CrmNextStep').'</h2>';
-if ($user->hasRight('crm', 'activity')) {
+$stepModel = new CrmActivity($db);
+if ($mayCreateStep) {
 	print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'">';
 	print '<input type="hidden" name="token" value="'.newToken().'">';
 	print '<input type="hidden" name="action" value="addactivity">';
@@ -812,6 +842,13 @@ if ($user->hasRight('crm', 'activity')) {
 	}
 	print '</select> ';
 	print '<input name="actlabel" class="minwidth200" required placeholder="'.dol_escape_htmltag($langs->trans('CrmTitle')).'"> ';
+	// From v1.2.0: who does it. The owner of the deal by default; a salesperson may choose anyone who may change steps, the outside
+	// agent only themselves or the owner.
+	print dol_escape_htmltag($langs->trans('CrmResponsible')).' <select name="respid">';
+	foreach ($stepModel->assignableUsers($user, (int) $object->id) as $assigneeId => $assigneeName) {
+		print '<option value="'.((int) $assigneeId).'"'.((int) $assigneeId === (int) $object->fk_user_resp ? ' selected' : '').'>'.dol_escape_htmltag($assigneeName).'</option>';
+	}
+	print '</select> ';
 	// Tomorrow at about the same time, to the nearest 5 minutes; date, hour and minute in one Dolibarr component, minutes by 5.
 	print $form->selectDate((int) (round((dol_now() + 86400) / 300) * 300), 'actdate', 1, 1, 0, '', 1, 0, 0, '', '', '', '', 5);
 	// The zone the times are shown in, so a wrong hour can be explained (UTC means the browser gave no zone).
@@ -827,20 +864,21 @@ if ($user->hasRight('crm', 'activity')) {
 	print '</form>';
 }
 print '<table class="noborder centpercent">';
-print '<tr class="liste_titre"><td>'.$langs->trans('CrmDate').'</td><td>'.$langs->trans('CrmTitle').'</td><td>'.$langs->trans('CrmKind').'</td><td>'.$langs->trans('CrmStatus').'</td><td></td></tr>';
+print '<tr class="liste_titre"><td>'.$langs->trans('CrmDate').'</td><td>'.$langs->trans('CrmTitle').'</td><td>'.$langs->trans('CrmKind').'</td><td>'.$langs->trans('CrmResponsible').'</td><td>'.$langs->trans('CrmStatus').'</td><td></td></tr>';
 $events = (new CrmActivity($db))->fetchForOpportunity((int) $object->id);
 if (count($events) === 0) {
-	print '<tr class="oddeven"><td colspan="5">'.$langs->trans('CrmNoRows').'</td></tr>';
+	print '<tr class="oddeven"><td colspan="6">'.$langs->trans('CrmNoRows').'</td></tr>';
 }
 foreach ($events as $event) {
-	if ($action === 'editactivity' && GETPOSTINT('eventid') === (int) $event->rowid && (int) $event->percent < 100 && $user->hasRight('crm', 'activity')) {
+	$mayChange = CrmActivity::mayChangeStep($user, (int) $event->fk_user_action);
+	if ($action === 'editactivity' && GETPOSTINT('eventid') === (int) $event->rowid && (int) $event->percent < 100 && $mayChange) {
 		$editIsEmail = ((string) $event->event_code === 'AC_EMAIL');
 		$editKind = ((string) $event->code === 'AC_TEL') ? 'call' : (((string) $event->code === 'AC_RDV') ? 'meeting' : 'task');
-		print '<tr class="oddeven"><td colspan="5"><form method="POST" action="'.$_SERVER['PHP_SELF'].'">';
+		print '<tr class="oddeven"><td colspan="6"><form method="POST" action="'.$_SERVER['PHP_SELF'].'">';
 		print '<input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="action" value="updateactivity">';
 		print '<input type="hidden" name="id" value="'.((int) $object->id).'"><input type="hidden" name="eventid" value="'.((int) $event->rowid).'">';
-		if ($editIsEmail) {
-			// The subject of a planned e-mail is edited in the e-mail editor; here only the date can change.
+		if ($editIsEmail || !$user->hasRight('crm', 'activity')) {
+			// The subject of a planned e-mail is edited in the e-mail editor; the outside agent (no right "activity") only moves the date.
 			print dol_escape_htmltag((string) $event->label).' ';
 		} else {
 			print '<select name="kind">';
@@ -848,6 +886,13 @@ foreach ($events as $event) {
 				print '<option value="'.$kind.'"'.($kind === $editKind ? ' selected' : '').'>'.$langs->trans($key).'</option>';
 			}
 			print '</select> <input name="actlabel" class="minwidth200" required value="'.dol_escape_htmltag((string) $event->label).'"> ';
+		}
+		if ($user->hasRight('crm', 'activity')) {
+			print dol_escape_htmltag($langs->trans('CrmResponsible')).' <select name="respid">';
+			foreach ($stepModel->assignableUsers($user, (int) $object->id) as $assigneeId => $assigneeName) {
+				print '<option value="'.((int) $assigneeId).'"'.((int) $assigneeId === (int) $event->fk_user_action ? ' selected' : '').'>'.dol_escape_htmltag($assigneeName).'</option>';
+			}
+			print '</select> ';
 		}
 		// Minutes by 5, unless the step was saved at a minute that is not a multiple of 5: it would be changed by saving.
 		$eventTime = (int) $db->jdate($event->datep);
@@ -860,7 +905,7 @@ foreach ($events as $event) {
 	print '<td>'.dol_print_date($db->jdate($event->datep), 'dayhour').'</td>';
 	$isDraftEmail = CrmActivity::isPlannedEmail((string) $event->event_code, (int) $event->percent);
 	$composeUrl = dol_buildpath('/crm/email_compose.php', 1).'?id='.(int) $event->rowid;
-	if ($isDraftEmail) {
+	if ($isDraftEmail && $user->hasRight('crm', 'activity')) {
 		print '<td><a href="'.$composeUrl.'">'.dol_escape_htmltag((string) $event->label).'</a></td>';
 	} elseif (in_array((string) $event->event_code, array('AC_EMAIL', 'AC_EMAIL_IN'), true)) {
 		// A past e-mail, even one only marked as done: its text is in the message history below (no agenda right needed).
@@ -869,14 +914,19 @@ foreach ($events as $event) {
 		print '<td>'.dol_escape_htmltag((string) $event->label).'</td>';
 	}
 	print '<td>'.dol_escape_htmltag((string) $event->type_label).'</td>';
+	// From v1.2.0: who does the step.
+	$assigneeLabel = trim((string) $event->assignee_firstname.' '.(string) $event->assignee_lastname);
+	print '<td>'.dol_escape_htmltag($assigneeLabel !== '' ? $assigneeLabel : (string) $event->assignee_login).'</td>';
 	print '<td>'.((int) $event->percent >= 100 ? $langs->trans('CrmDone') : (int) $event->percent.'%').'</td><td>';
-	if ($isDraftEmail) {
+	if ($isDraftEmail && $user->hasRight('crm', 'activity')) {
 		print crmIconLink($composeUrl, 'fa-envelope', $langs->trans('CrmWriteSend'));
 	}
-	if ($user->hasRight('crm', 'activity') && (int) $event->percent < 100) {
+	if ($mayChange && (int) $event->percent < 100) {
 		print crmIconLink($_SERVER['PHP_SELF'].'?id='.$id.'&action=complete&eventid='.(int) $event->rowid.'&token='.newToken(), 'check', $langs->trans('CrmComplete'));
 		print crmIconLink($_SERVER['PHP_SELF'].'?id='.$id.'&action=editactivity&eventid='.(int) $event->rowid.'&token='.newToken(), 'edit', $langs->trans('Modify'));
-		print crmIconLink($_SERVER['PHP_SELF'].'?id='.$id.'&action=askdelactivity&eventid='.(int) $event->rowid.'&token='.newToken(), 'delete', $langs->trans('Delete'));
+		if ($user->hasRight('crm', 'activity')) {
+			print crmIconLink($_SERVER['PHP_SELF'].'?id='.$id.'&action=askdelactivity&eventid='.(int) $event->rowid.'&token='.newToken(), 'delete', $langs->trans('Delete'));
+		}
 	}
 	print '</td></tr>';
 }

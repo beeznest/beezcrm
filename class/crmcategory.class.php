@@ -174,7 +174,7 @@ class CrmCategory
 			return -1;
 		}
 		$deal = new Opportunity($this->db);
-		if (!$user->hasRight('crm', 'write') || $dealId <= 0 || $deal->fetch($dealId) <= 0 || !crmCanReadOwner($user, (int) $deal->fk_user_resp)) {
+		if (!$user->hasRight('crm', 'write') || $dealId <= 0 || $deal->fetch($dealId) <= 0 || !crmCanReadOwner($user, (int) $deal->fk_user_resp, (int) $deal->id)) {
 			$this->error = 'CrmErrorCategoryRights';
 			return -1;
 		}

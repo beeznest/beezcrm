@@ -94,7 +94,7 @@ class CrmNote
 		global $conf;
 		$resql = $this->db->query('SELECT rowid, fk_user_resp, status, entity FROM '.$this->db->prefix().'crm_opportunity WHERE rowid = '.((int) $dealId).' AND entity = '.((int) $conf->entity));
 		$deal = $resql ? $this->db->fetch_object($resql) : null;
-		if (!$deal || !crmCanReadOwner($user, (int) $deal->fk_user_resp)) {
+		if (!$deal || !crmCanReadOwner($user, (int) $deal->fk_user_resp, (int) $deal->rowid)) {
 			return null;
 		}
 		return $deal;
@@ -122,7 +122,10 @@ class CrmNote
 	 */
 	public function canEdit(User $user, object $note): bool
 	{
-		return $user->hasRight('crm', 'write') && ((int) $note->fk_user === (int) $user->id || $user->hasRight('crm', 'readall'));
+		// From v1.2.0 the right "note" (the outside agent) writes and edits their own notes; a user who may write deals also edits the
+		// notes of others when they read every owner's deals.
+		$own = (int) $note->fk_user === (int) $user->id;
+		return ($user->hasRight('crm', 'write') || $user->hasRight('crm', 'note')) && ($own || ($user->hasRight('crm', 'write') && $user->hasRight('crm', 'readall')));
 	}
 
 	/**
@@ -241,7 +244,7 @@ class CrmNote
 	public function add(User $user, int $dealId, string $text, ?int $datec = null): int
 	{
 		global $conf;
-		if (!$user->hasRight('crm', 'write') || $this->readableDeal($user, $dealId) === null) {
+		if ((!$user->hasRight('crm', 'write') && !$user->hasRight('crm', 'note')) || $this->readableDeal($user, $dealId) === null) {
 			$this->error = 'CrmErrorNoteRights';
 			return -1;
 		}

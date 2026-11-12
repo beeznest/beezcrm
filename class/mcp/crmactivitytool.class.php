@@ -49,6 +49,7 @@ class CrmActivityTool extends CrmMcpTool
 				'label' => array('type' => 'string'),
 				'date' => array('type' => 'string', 'description' => 'YYYY-MM-DD or unix time'),
 				'percentage' => array('type' => 'integer', 'description' => '0 for a next step, 100 for a completed step'),
+				'assignee_id' => array('type' => 'integer', 'description' => 'Dolibarr user id of who does the step (from v1.2.0). Default: the owner of the deal. An outside agent can only name themselves or the owner. The assignee is told by e-mail.'),
 			), array('id', 'kind', 'label', 'date')),
 			$this->definition('change_crm_activity_to_done', 'Mark a CRM agenda event done.', array(
 				'event_id' => array('type' => 'integer'),
@@ -58,6 +59,7 @@ class CrmActivityTool extends CrmMcpTool
 				'date' => array('type' => 'string', 'description' => 'YYYY-MM-DD or unix time'),
 				'kind' => array('type' => 'string', 'enum' => array('call', 'meeting', 'task')),
 				'label' => array('type' => 'string'),
+				'assignee_id' => array('type' => 'integer', 'description' => 'New assignee (user id), for a user who may manage steps. Ignored for an outside agent.'),
 			), array('event_id', 'date')),
 			$this->definition('delete_crm_activity', 'Delete a planned CRM step. A done step is history and cannot be deleted.', array(
 				'event_id' => array('type' => 'integer'),
@@ -71,9 +73,13 @@ class CrmActivityTool extends CrmMcpTool
 	public function getRequiredRights(string $toolName)
 	{
 		if ($toolName === 'list_crm_activities') {
-			return array(array('crm', 'read'));
+			return $this->readRights();
 		}
-		return array(array('crm', 'activity'));
+		if ($toolName === 'delete_crm_activity') {
+			return array(array('crm', 'activity'));
+		}
+		// From v1.2.0 the outside agent (right "mystep") creates steps for themselves or the owner, and changes or completes their own.
+		return $this->oneOfRights(array('activity', 'mystep'));
 	}
 
 	/**
@@ -161,7 +167,7 @@ class CrmActivityTool extends CrmMcpTool
 			}
 			// A next step is 0, a completed one 100; nothing else is meaningful here.
 			$percentage = (isset($args['percentage']) && $this->argInt($args, 'percentage') >= 100) ? 100 : 0;
-			$eventId = $activity->create($this->user, (int) $deal->id, (int) $deal->fk_soc, (int) $deal->fk_socpeople, (int) $deal->fk_user_resp, $this->argString($args, 'kind'), $this->argString($args, 'label'), $date, $percentage);
+			$eventId = $activity->createStep($this->user, (int) $deal->id, $this->argString($args, 'kind'), $this->argString($args, 'label'), $date, $this->argInt($args, 'assignee_id'), $percentage);
 			if ($eventId <= 0) {
 				return $this->fail($activity->error !== '' ? $activity->error : 'Could not create the event');
 			}
@@ -192,7 +198,7 @@ class CrmActivityTool extends CrmMcpTool
 				return $this->fail('A date is required');
 			}
 			$eventId = $this->argInt($args, 'event_id');
-			if ($activity->updateStep($this->user, $eventId, $this->argString($args, 'kind'), $this->argString($args, 'label'), $date) <= 0) {
+			if ($activity->updateStep($this->user, $eventId, $this->argString($args, 'kind'), $this->argString($args, 'label'), $date, 0, $this->argInt($args, 'assignee_id')) <= 0) {
 				return $this->fail(crmErrorText($activity->error !== '' ? $activity->error : 'Error'));
 			}
 			return array(array('event_id' => $eventId, 'updated' => 1));

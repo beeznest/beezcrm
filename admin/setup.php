@@ -76,11 +76,12 @@ $constants = array(
 	'CRM_INTERNAL_REF_URL' => 'CrmInternalRefUrl',
 	'CRM_MCP_ALLOW_DELETE' => 'CrmMcpAllowDelete',
 	'CRM_DEFAULT_TIMEZONE' => 'CrmDefaultTimezone',
+	'CRM_ASSIGN_NOTIFY' => 'CrmAssignNotify',
 );
 
 // Settings that are only on or off are switches, saved at once. They are stored as 1 or 0, never deleted: a deleted
 // constant would be recreated with its default the next time the module is enabled.
-$switches = array('CRM_SEQUENCES_ON', 'CRM_DRY_RUN', 'CRM_REMINDERS_ON', 'CRM_REMINDER_DRY_RUN', 'CRM_REQUIRE_NEXT_STEP', 'CRM_REPLY_MOVES_DEAL', 'CRM_AI_EMAIL_ASSIST', 'CRM_ARCHIVE_REQUIRE_AUTH', 'CRM_OPTOUT_CONFIRM', 'CRM_MCP_ALLOW_DELETE');
+$switches = array('CRM_SEQUENCES_ON', 'CRM_DRY_RUN', 'CRM_REMINDERS_ON', 'CRM_REMINDER_DRY_RUN', 'CRM_REQUIRE_NEXT_STEP', 'CRM_REPLY_MOVES_DEAL', 'CRM_AI_EMAIL_ASSIST', 'CRM_ARCHIVE_REQUIRE_AUTH', 'CRM_OPTOUT_CONFIRM', 'CRM_MCP_ALLOW_DELETE', 'CRM_ASSIGN_NOTIFY');
 $switchName = '';
 $switchValue = 0;
 if ($action === 'toggle') {
@@ -336,7 +337,7 @@ if ($tab === 'parameters') {
 		}
 		if (in_array($name, $switches, true)) {
 			// A switch that is on until someone turns it off shows as on before the module has been enabled again to create it.
-			$on = getDolGlobalInt($name, in_array($name, array('CRM_REPLY_MOVES_DEAL', 'CRM_OPTOUT_CONFIRM'), true) ? 1 : 0) !== 0;
+			$on = getDolGlobalInt($name, in_array($name, array('CRM_REPLY_MOVES_DEAL', 'CRM_OPTOUT_CONFIRM', 'CRM_ASSIGN_NOTIFY'), true) ? 1 : 0) !== 0;
 			// A confirmation before the two switches that have a consequence outside the module.
 			$confirmOn = ($name === 'CRM_AI_EMAIL_ASSIST') ? $langs->trans('CrmConfirmAiOn') : (($name === 'CRM_MCP_ALLOW_DELETE') ? $langs->trans('CrmConfirmMcpAllowDeleteOn') : '');
 			$confirmOff = ($name === 'CRM_DRY_RUN') ? $langs->trans('CrmConfirmDryRunOff') : (($name === 'CRM_REMINDER_DRY_RUN') ? $langs->trans('CrmConfirmReminderDryRunOff') : '');
@@ -358,6 +359,9 @@ if ($tab === 'parameters') {
 			}
 			if ($name === 'CRM_MCP_ALLOW_DELETE') {
 				print crmHelp($langs->trans('CrmMcpAllowDeleteHelp'), 'span', true);
+			}
+			if ($name === 'CRM_ASSIGN_NOTIFY') {
+				print crmHelp($langs->trans('CrmAssignNotifyHelp'), 'span', true);
 			}
 			print '</td></tr>';
 			continue;

@@ -83,7 +83,8 @@ class CrmNoteTool extends CrmMcpTool
 	 */
 	public function getRequiredRights(string $toolName)
 	{
-		return in_array($toolName, self::READS, true) ? array(array('crm', 'read')) : array(array('crm', 'write'));
+		// From v1.2.0 the outside agent (right "assigned") reads the notes of the deals they see and (right "note") writes their own.
+		return in_array($toolName, self::READS, true) ? $this->readRights() : $this->oneOfRights(array('write', 'note'));
 	}
 
 	/**

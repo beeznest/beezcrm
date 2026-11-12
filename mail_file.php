@@ -31,7 +31,7 @@ require_once __DIR__.'/lib/crm_bootstrap.inc.php';
  */
 
 require_once __DIR__.'/class/crmmailfile.class.php';
-crmStartPage();
+crmStartPage(true); // From v1.2.0: also opens for the outside agent (right "assigned")
 
 $files = new CrmMailFile($db);
 $file = $files->fetchFile($user, GETPOSTINT('id'));

@@ -31,7 +31,7 @@ require_once __DIR__.'/lib/crm_bootstrap.inc.php';
  */
 
 require_once __DIR__.'/class/crmactivity.class.php';
-crmStartPage();
+crmStartPage(true); // From v1.2.0: also opens for the outside agent (right "assigned")
 
 $scope = GETPOST('scope', 'aZ09');
 if (!in_array($scope, array('overdue', 'today', 'planned', 'done'), true)) {
@@ -40,7 +40,10 @@ if (!in_array($scope, array('overdue', 'today', 'planned', 'done'), true)) {
 $action = GETPOST('action', 'aZ09');
 crmRequireToken($action, array());
 if ($action === 'complete') {
-	crmRequireRight('activity');
+	// The class decides: a salesperson completes any step, the outside agent only the steps assigned to them.
+	if (!$user->hasRight('crm', 'activity') && !$user->hasRight('crm', 'mystep')) {
+		accessforbidden();
+	}
 	$activity = new CrmActivity($db);
 	if ($activity->complete($user, GETPOSTINT('eventid')) <= 0) {
 		setEventMessages(crmErrorText($activity->error), null, 'errors');
@@ -84,9 +87,10 @@ print_liste_field_titre($langs->trans('CrmDate'), $_SERVER['PHP_SELF'], 'date', 
 print_liste_field_titre($langs->trans('Ref'), $_SERVER['PHP_SELF'], 'ref', '', $param, '', $sortField, $sortOrder);
 print_liste_field_titre($langs->trans('CrmTitle'), $_SERVER['PHP_SELF'], 'label', '', $param, '', $sortField, $sortOrder);
 print_liste_field_titre($langs->trans('CrmAccount'), $_SERVER['PHP_SELF'], 'account', '', $param, '', $sortField, $sortOrder);
+print '<td>'.$langs->trans('CrmResponsible').'</td>';
 print '<td></td></tr>';
 if (count($rows) === 0) {
-	print '<tr class="oddeven"><td colspan="5">'.$langs->trans('CrmNoRows').'</td></tr>';
+	print '<tr class="oddeven"><td colspan="6">'.$langs->trans('CrmNoRows').'</td></tr>';
 }
 foreach ($rows as $row) {
 	$url = dol_buildpath('/crm/opportunity_card.php', 1).'?id='.(int) $row->fk_element;
@@ -99,11 +103,13 @@ foreach ($rows as $row) {
 	} else {
 		print '<td>'.dol_escape_htmltag((string) $row->label).'</td>';
 	}
-	print '<td>'.dol_escape_htmltag((string) $row->soc_name).'</td><td>';
-	if (CrmActivity::isPlannedEmail((string) $row->event_code, (int) $row->percent)) {
+	print '<td>'.dol_escape_htmltag((string) $row->soc_name).'</td>';
+	$assigneeLabel = trim((string) $row->assignee_firstname.' '.(string) $row->assignee_lastname);
+	print '<td>'.dol_escape_htmltag($assigneeLabel !== '' ? $assigneeLabel : (string) $row->assignee_login).'</td><td>';
+	if (CrmActivity::isPlannedEmail((string) $row->event_code, (int) $row->percent) && $user->hasRight('crm', 'activity')) {
 		print crmIconLink(dol_buildpath('/crm/email_compose.php', 1).'?id='.(int) $row->rowid, 'fa-envelope', $langs->trans('CrmWriteSend'));
 	}
-	if ($user->hasRight('crm', 'activity') && (int) $row->percent < 100) {
+	if (CrmActivity::mayChangeStep($user, (int) $row->fk_user_action) && (int) $row->percent < 100) {
 		print crmIconLink($_SERVER['PHP_SELF'].'?scope='.$scope.'&action=complete&eventid='.(int) $row->rowid.'&token='.newToken(), 'check', $langs->trans('CrmComplete'));
 	}
 	print '</td></tr>';

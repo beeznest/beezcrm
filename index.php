@@ -32,7 +32,43 @@ require_once __DIR__.'/lib/crm_bootstrap.inc.php';
  */
 
 require_once __DIR__.'/class/crmreport.class.php';
-crmStartPage();
+require_once __DIR__.'/class/crmactivity.class.php';
+crmStartPage(true); // From v1.2.0: also opens for the outside agent (right "assigned")
+
+// From v1.2.0: the outside agent (right "assigned" without "read") sees one thing on Home: the steps assigned to them, late ones first.
+if (!$user->hasRight('crm', 'read') && !$user->hasRight('crm', 'readall')) {
+	$steps = new CrmActivity($db);
+	llxHeader('', $langs->trans('CrmHome'), '', '', 0, 0, '', array('/crm/css/crm.css'));
+	print load_fiche_titre($langs->trans('CrmHome'), '', 'fa-handshake');
+	foreach (array('overdue' => 'CrmOverdue', 'planned' => 'CrmMySteps') as $scope => $titleKey) {
+		$rows = $steps->fetchList($user, $scope, 0, 0, 0, 'date', 'ASC');
+		print '<h2>'.dol_escape_htmltag($langs->trans($titleKey)).' ('.count($rows).')</h2>';
+		if (count($rows) === 0) {
+			print '<p class="opacitymedium">'.$langs->trans('CrmNoRows').'</p>';
+			continue;
+		}
+		print '<table class="noborder centpercent">';
+		print '<tr class="liste_titre"><td>'.$langs->trans('CrmDate').'</td><td>'.$langs->trans('Ref').'</td><td>'.$langs->trans('CrmActivity').'</td><td>'.$langs->trans('CrmAccount').'</td><td>'.$langs->trans('CrmResponsible').'</td><td></td></tr>';
+		foreach ($rows as $row) {
+			$url = dol_buildpath('/crm/opportunity_card.php', 1).'?id='.(int) $row->fk_element;
+			$assigneeLabel = trim((string) $row->assignee_firstname.' '.(string) $row->assignee_lastname);
+			print '<tr class="oddeven"><td class="nowraponall">'.dol_print_date($db->jdate($row->datep), 'dayhour').'</td>';
+			print '<td><a href="'.$url.'">'.dol_escape_htmltag((string) $row->ref).'</a></td>';
+			print '<td>'.dol_escape_htmltag((string) $row->label).'</td>';
+			print '<td>'.dol_escape_htmltag((string) $row->soc_name).'</td>';
+			print '<td>'.dol_escape_htmltag($assigneeLabel !== '' ? $assigneeLabel : (string) $row->assignee_login).'</td><td>';
+			if (CrmActivity::mayChangeStep($user, (int) $row->fk_user_action)) {
+				print crmIconLink(dol_buildpath('/crm/activity_list.php', 1).'?scope='.$scope.'&action=complete&eventid='.(int) $row->rowid.'&token='.newToken(), 'check', $langs->trans('CrmComplete'));
+			}
+			print '</td></tr>';
+		}
+		print '</table>';
+	}
+	crmHelpToggle();
+	llxFooter();
+	$db->close();
+	exit;
+}
 
 $report = new CrmReport($db);
 $hygiene = $report->hygiene($user);
@@ -76,7 +112,7 @@ if (count($hygiene['overdue']) === 0) {
 	print '<p class="opacitymedium">'.$langs->trans('CrmNoRows').'</p>';
 } else {
 	print '<table class="noborder centpercent">';
-	print '<tr class="liste_titre"><td>'.$langs->trans('Ref').'</td><td>'.$langs->trans('CrmActivity').'</td><td>'.$langs->trans('CrmDate').'</td></tr>';
+	print '<tr class="liste_titre"><td>'.$langs->trans('Ref').'</td><td>'.$langs->trans('CrmActivity').'</td><td>'.$langs->trans('CrmResponsible').'</td><td>'.$langs->trans('CrmDate').'</td></tr>';
 	foreach ($hygiene['overdue'] as $row) {
 		$url = dol_buildpath('/crm/opportunity_card.php', 1).'?id='.(int) $row->fk_element;
 		print '<tr class="oddeven">';
@@ -86,6 +122,8 @@ if (count($hygiene['overdue']) === 0) {
 			print ' '.crmIconLink(dol_buildpath('/crm/email_compose.php', 1).'?id='.(int) $row->rowid, 'fa-envelope', $langs->trans('CrmWriteSend'));
 		}
 		print '</td>';
+		$overdueAssignee = trim((string) $row->assignee_firstname.' '.(string) $row->assignee_lastname);
+		print '<td>'.dol_escape_htmltag($overdueAssignee !== '' ? $overdueAssignee : (string) $row->assignee_login).'</td>';
 		print '<td>'.dol_print_date($db->jdate($row->datep), 'dayhour').'</td>';
 		print '</tr>';
 	}

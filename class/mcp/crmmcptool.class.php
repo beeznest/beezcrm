@@ -138,6 +138,35 @@ abstract class CrmMcpTool extends McpTool
 	}
 
 	/**
+	 * From v1.2.0. The right a tool that only reads a deal declares for this caller: "read" (or readall), else "assigned" for the
+	 * outside agent. The declared right is the one the caller holds, so Dolibarr 25, which checks the declared rights before the
+	 * call, lets both profiles through; the class that does the work (visibility by deal) decides what each can see.
+	 *
+	 * @return array<int,array<int,string>>
+	 */
+	protected function readRights(): array
+	{
+		return array(array('crm', ($this->user->hasRight('crm', 'read') || $this->user->hasRight('crm', 'readall')) ? 'read' : 'assigned'));
+	}
+
+	/**
+	 * From v1.2.0. The first of these CRM rights the caller holds (the first one when none), declared as the right of a tool: "write"
+	 * or "note" to write a note, "activity" or "mystep" to handle steps.
+	 *
+	 * @param string[] $perms Rights, the preferred first
+	 * @return array<int,array<int,string>>
+	 */
+	protected function oneOfRights(array $perms): array
+	{
+		foreach ($perms as $perm) {
+			if ($this->user->hasRight('crm', $perm)) {
+				return array(array('crm', $perm));
+			}
+		}
+		return array(array('crm', $perms[0]));
+	}
+
+	/**
 	 * The tools of the class, without the delete tools while deleting through MCP is not allowed (setting CRM_MCP_ALLOW_DELETE).
 	 * Each tool class lists its tools in crmDefinitions(), delete tools included; every tool whose name starts with `delete_` is
 	 * held back here, so a new delete tool is gated just by being named so.
@@ -220,9 +249,9 @@ abstract class CrmMcpTool extends McpTool
 	/**
 	 * Empty when the caller may see this owner.
 	 */
-	protected function denyOwner(int $ownerId): string
+	protected function denyOwner(int $ownerId, int $dealId = 0): string
 	{
-		if (crmCanReadOwner($this->user, $ownerId)) {
+		if (crmCanReadOwner($this->user, $ownerId, $dealId)) {
 			return '';
 		}
 		return 'Permission denied for this owner';
@@ -238,7 +267,7 @@ abstract class CrmMcpTool extends McpTool
 		if ($id <= 0 || $deal->fetch($id) <= 0) {
 			return null;
 		}
-		if ($this->denyOwner((int) $deal->fk_user_resp) !== '') {
+		if ($this->denyOwner((int) $deal->fk_user_resp, (int) $deal->id) !== '') {
 			return null;
 		}
 		return $deal;

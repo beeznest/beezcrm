@@ -187,6 +187,16 @@ Do not leave a dead deal open "just in case". If the prospect may come back late
 
 For the cleaning of tests: someone with the right **Configure CRM** sees **Delete the outreach completely** on the card of an automated outreach. After a confirmation (it counts the steps, enrolments and journal lines, and warns if some enrolments are still running) the outreach, its steps, its enrolments and its journal are deleted for good. The deals and the agenda events the outreach made (drafts, e-mails sent) stay. A trash icon on a line of the enrolment list deletes only that enrolment and its journal lines.
 
+## Assigning next steps, and the outside agents (from v1.2.0)
+
+**Who does a step.** The form that creates a next step has a field **Assignee**: the owner of the deal by default, or any colleague who handles steps (including the outside agents). The tables of steps (the deal card, **Activities** and **Home**) have a column **Assignee**. The person you assign it to receives an e-mail when your administrator has switched the notifications on.
+
+**If you are an outside agent** (you phone the prospects for the company), the CRM shows you only **Home** and **Activities**:
+- **Home** lists **your steps to do**, the late ones first, each with its date and a check to complete it. Click the reference to open the deal.
+- On the **deal card** you read what the deal holds, the **notes** and the **messages** already exchanged, and you have the **name, phone, mobile and e-mail of the contact** to call, and to check by phone that they are right (tell the salesperson in a note when one is wrong). You cannot open the third party and you cannot change the deal itself.
+- You can **add notes** (the result of your call, what the contact said), edit **your own** notes, **complete** or **reschedule** (date and time) **your** steps, and **create a next step** for yourself or for the deal's owner (for example "call back on Thursday").
+- The deal shows on your Home while a step of yours is still to do. When you complete the last one it leaves your list: your notes stay on the deal for the salesperson.
+
 ## Reports
 
 If you have the right to read reports (CRM → Reports), you see, for a period and a pipeline you choose:

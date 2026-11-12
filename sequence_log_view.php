@@ -31,13 +31,13 @@ require_once __DIR__.'/lib/crm_bootstrap.inc.php';
  */
 
 require_once __DIR__.'/class/sequence.class.php';
-crmStartPage();
+crmStartPage(true); // From v1.2.0: also opens for the outside agent (right "assigned")
 
 $logId = GETPOSTINT('id');
 $sequence = new Sequence($db);
 $line = $sequence->fetchLogLine($logId);
 // A deal whose owner the user may not read is not shown, and neither is its mail.
-if ($line === null || !crmCanReadOwner($user, (int) $line->fk_user_resp)) {
+if ($line === null || !crmCanReadOwner($user, (int) $line->fk_user_resp, (int) $line->fk_opportunity)) {
 	accessforbidden();
 }
 // A line written before the content was kept gets it here, and keeps it from then on.

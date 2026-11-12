@@ -590,7 +590,7 @@ function crmNormalizeSetting(string $name, string $value): ?string
 {
 	$value = trim($value);
 	$switches = array('CRM_SEQUENCES_ON', 'CRM_DRY_RUN', 'CRM_REMINDERS_ON', 'CRM_REMINDER_DRY_RUN', 'CRM_REQUIRE_NEXT_STEP',
-		'CRM_REPLY_MOVES_DEAL', 'CRM_AI_EMAIL_ASSIST', 'CRM_ARCHIVE_REQUIRE_AUTH', 'CRM_OPTOUT_CONFIRM', 'CRM_MCP_ALLOW_DELETE');
+		'CRM_REPLY_MOVES_DEAL', 'CRM_AI_EMAIL_ASSIST', 'CRM_ARCHIVE_REQUIRE_AUTH', 'CRM_OPTOUT_CONFIRM', 'CRM_MCP_ALLOW_DELETE', 'CRM_ASSIGN_NOTIFY');
 	$numbers = array('CRM_ROTTING_DAYS' => array(1, 3650), 'CRM_FORECAST_MONTHS' => array(1, 36), 'CRM_MAX_EMAILS_PER_RUN' => array(1, 500),
 		'CRM_AI_TIMEOUT' => array(10, 600), 'CRM_AI_MAX_PER_HOUR' => array(1, 1000));
 	if (in_array($name, $switches, true)) {
