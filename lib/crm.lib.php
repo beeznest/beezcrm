@@ -799,16 +799,24 @@ function crmStepModeSupported(DoliDB $db): bool
 }
 
 /**
- * From v1.2.0. The text of the "not interested" link of the e-mails of a deal, in the language of its third party when it has one,
- * else in the current language.
+ * From v1.2.0. The text of the "not interested" link of the e-mails of a deal, in the language of the person it is sent to: the
+ * language of the contact of the deal, else the one of its third party, else the current language.
  */
 function crmOptOutLinkText(int $dealId): string
 {
 	global $conf, $langs, $db;
 	$lang = '';
-	$resql = $db->query('SELECT s.default_lang FROM '.$db->prefix().'crm_opportunity as o INNER JOIN '.$db->prefix().'societe as s ON s.rowid = o.fk_soc WHERE o.rowid = '.((int) $dealId));
-	if ($resql && ($obj = $db->fetch_object($resql)) && is_string($obj->default_lang) && preg_match('/^[a-z]{2}_[A-Z]{2}$/', $obj->default_lang)) {
-		$lang = $obj->default_lang;
+	$sql = 'SELECT sp.default_lang as contact_lang, s.default_lang as soc_lang FROM '.$db->prefix().'crm_opportunity as o';
+	$sql .= ' LEFT JOIN '.$db->prefix().'socpeople as sp ON sp.rowid = o.fk_socpeople';
+	$sql .= ' LEFT JOIN '.$db->prefix().'societe as s ON s.rowid = o.fk_soc WHERE o.rowid = '.((int) $dealId);
+	$resql = $db->query($sql);
+	if ($resql && ($obj = $db->fetch_object($resql))) {
+		foreach (array($obj->contact_lang, $obj->soc_lang) as $candidate) {
+			if (is_string($candidate) && preg_match('/^[a-z]{2}_[A-Z]{2}$/', $candidate)) {
+				$lang = $candidate;
+				break;
+			}
+		}
 	}
 	if ($lang !== '' && $lang !== $langs->defaultlang) {
 		$other = new Translate('', $conf);

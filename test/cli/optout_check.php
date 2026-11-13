@@ -60,6 +60,28 @@ crmCliCheck('find() knows the token and nothing else', $optOut->find($token) !==
 crmCliCheck('a wrong token records nothing', $optOut->record(str_repeat('0', 64)) === 'invalid' && $optOut->record('abc') === 'invalid');
 crmCliCheck('the text of the link is the one asked for', crmOptOutLinkText((int) $deal->id) !== '' && strpos(crmOptOutLinkText((int) $deal->id), 'contact') !== false);
 
+// The language of the link: the contact's, else the third party's, else the current one.
+$db->query('INSERT INTO '.$prefix."societe (nom, entity, default_lang, datec) VALUES ('ZOPTLANGSOC', ".$entity.", 'en_US', '".$db->idate(dol_now())."')");
+$langSoc = (int) $db->last_insert_id($prefix.'societe');
+$db->query('INSERT INTO '.$prefix."socpeople (fk_soc, entity, lastname, default_lang, datec, fk_user_creat) VALUES (".$langSoc.', '.$entity.", 'ZOPTLANG', '', '".$db->idate(dol_now())."', ".((int) $user->id).')');
+$langContact = (int) $db->last_insert_id($prefix.'socpeople');
+$langDeal = $mkDeal('ZOPTLANGDEAL');
+$db->query('UPDATE '.$prefix.'crm_opportunity SET fk_soc = '.$langSoc.', fk_socpeople = '.$langContact.' WHERE rowid = '.((int) $langDeal->id));
+$tr = function (string $code) use ($conf): string {
+	$t = new Translate('', $conf);
+	$t->setDefaultLang($code);
+	$t->load('crm@crm');
+	return $t->transnoentitiesnoconv('CrmOptOutLink');
+};
+crmCliCheck('the two languages give different texts (the check is meaningful)', $tr('fr_FR') !== $tr('en_US'));
+crmCliCheck('without a language on the contact, the language of the third party', crmOptOutLinkText((int) $langDeal->id) === $tr('en_US'));
+$db->query('UPDATE '.$prefix."socpeople SET default_lang = 'fr_FR' WHERE rowid = ".$langContact);
+crmCliCheck('with a language on the contact, the contact wins over the third party', crmOptOutLinkText((int) $langDeal->id) === $tr('fr_FR'));
+$db->query('UPDATE '.$prefix."socpeople SET default_lang = 'xx' WHERE rowid = ".$langContact);
+crmCliCheck('a language that is not a language code is ignored', crmOptOutLinkText((int) $langDeal->id) === $tr('en_US'));
+$db->query('UPDATE '.$prefix."societe SET default_lang = '' WHERE rowid = ".$langSoc);
+crmCliCheck('with no language anywhere, the current language', crmOptOutLinkText((int) $langDeal->id) === $langs->transnoentitiesnoconv('CrmOptOutLink'));
+
 // An outreach running on the deal.
 $sequence = new Sequence($db);
 $sequence->ref = 'ZOPTSEQ';
