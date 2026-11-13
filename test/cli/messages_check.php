@@ -84,12 +84,14 @@ crmCliCheck('oldest first, with the direction', $messages[0]->code === 'AC_EMAIL
 crmCliCheck('each message has its subject, addresses and text', $messages[0]->email_subject === 'Hello from the platform' && $messages[0]->email_to === 'zmsg.contact@example.com' && $messages[0]->note === "First message\nline two" && strpos((string) $messages[1]->email_from, 'zmsg.contact@example.com') !== false);
 crmCliCheck('the text of an HTML message can be read as text', crmHtmlToText((string) $messages[1]->note) === 'Thank you' || strpos(crmHtmlToText((string) $messages[1]->note), 'Thank you') !== false);
 
-// A draft has no deal marker in its title; the copy of a message written in a mail client has one and still replaces the draft.
-$draftB = $activity->create($user, $dealId, $socId, $contactId, (int) $user->id, 'email', 'Offer follow-up '.'['.$marker.']', dol_now() + 5400, 0, 'planned text');
+// Nothing adds a deal marker to the title of a draft, and nothing takes one out (what the user types stays); a copy of a message sent
+// from a mail client that carries the marker still replaces a draft that has none.
+$draftB = $activity->create($user, $dealId, $socId, $contactId, (int) $user->id, 'email', 'Offer follow-up', dol_now() + 5400, 0, 'planned text');
 $cd = new CrmEmailDraft($db);
 $cd->fetch($draftB);
-crmCliCheck('the subject of a draft does not show the marker (one saved by an earlier version is cleaned)', $cd->subject() === 'Offer follow-up');
-crmCliCheck('saving a draft keeps no marker in its title, even when it is typed', $cd->save($user, 'Offer follow-up v2 ['.$ref.']', 'planned text 2') === 1 && $db->fetch_object($db->query('SELECT label FROM '.$prefix.'actioncomm WHERE id = '.$draftB))->label === 'Offer follow-up v2');
+crmCliCheck('the subject of a draft is its title, with no marker added', $cd->subject() === 'Offer follow-up');
+crmCliCheck('saving a draft keeps the title as typed, a typed marker included', $cd->save($user, 'Offer follow-up v2 ['.$marker.']', 'planned text 2') === 1 && $db->fetch_object($db->query('SELECT label FROM '.$prefix.'actioncomm WHERE id = '.$draftB))->label === 'Offer follow-up v2 ['.$marker.']');
+$cd->save($user, 'Offer follow-up v2', 'planned text 2');
 $before = (int) $db->fetch_object($db->query('SELECT COUNT(*) as nb FROM '.$prefix."actioncomm WHERE elementtype = 'opportunity@crm' AND fk_element = ".$dealId." AND code = 'AC_EMAIL'"))->nb;
 $rp = $archive->record($user, array('msgid' => 'zmsgmailto1@mail.example', 'from' => 'crm@example.com', 'to' => 'zmsg.contact@example.com', 'subject' => 'Offer follow-up v2 ['.$marker.']', 'body' => 'Sent from a mail client', 'date' => dol_now()));
 $after = (int) $db->fetch_object($db->query('SELECT COUNT(*) as nb FROM '.$prefix."actioncomm WHERE elementtype = 'opportunity@crm' AND fk_element = ".$dealId." AND code = 'AC_EMAIL'"))->nb;

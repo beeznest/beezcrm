@@ -308,6 +308,8 @@ if ($canAct) {
 	}
 	print crmHelp($helpItems, 'ul');
 	print crmHelp($langs->trans('CrmOptOutComposeNote'));
+	// The marker is never added by the CRM: it is only told to the person who writes in a mail program.
+	print crmHelp($langs->trans('CrmMarkerHint', '['.crmDealMarker((string) $draft->deal->ref).']'));
 }
 print '</form>';
 print '<p><a href="'.$dealUrl.'">'.$langs->trans('CrmBackToDeal').'</a></p>';
@@ -413,10 +415,7 @@ $js = <<<'JS'
 				var query = [];
 				if (cfg.cc) { query.push("cc=" + encodeURIComponent(cfg.cc)); }
 				if (cfg.bcc) { query.push("bcc=" + encodeURIComponent(cfg.bcc)); }
-				// The deal marker goes in the subject of this link only: a message written in a mail client has no header that names the deal.
-				var mailSubject = field("crm-subject").value;
-				if (cfg.marker && mailSubject.indexOf("[" + cfg.marker + "]") < 0) { mailSubject = mailSubject + " [" + cfg.marker + "]"; }
-				query.push("subject=" + encodeURIComponent(mailSubject));
+				query.push("subject=" + encodeURIComponent(field("crm-subject").value));
 				var tail = cfg.optOutUrl ? "\n\n--\n" + cfg.optOutText + "\n" + cfg.optOutUrl + "\n" : "";
 				query.push("body=" + encodeURIComponent((plain.value + tail).replace(/\r?\n/g, "\r\n")));
 				window.location.href = "mailto:" + encodeURIComponent(field("crm-to").value) + "?" + query.join("&");
@@ -455,7 +454,6 @@ $config = array(
 	'id' => (int) $draft->event->id,
 	'url' => $_SERVER['PHP_SELF'],
 	'readonly' => !$canAct,
-	'marker' => crmDealMarker((string) $draft->deal->ref),
 	'optOutUrl' => $optOutUrl,
 	'optOutText' => $optOutText,
 	'cc' => $mailtoCc,
