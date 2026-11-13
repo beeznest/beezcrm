@@ -2,9 +2,9 @@
 
 The version of the module is the `$this->version` property of `core/modules/modCrm.class.php`. This file is shown by Dolibarr on the help page of the module (Home → Setup → Modules, help icon of the CRM line). Newest version first. A change a user or an administrator can notice goes here, in the same change.
 
-## 1.2.0 (unreleased)
+## 1.2.0 (2026-11-13)
 
-This version improves the salesperson's workflow and connects the CRM deals to the prospects and customers (third parties, "tiers") of Dolibarr. Date it when it is released.
+This version improves the salesperson's workflow and connects the CRM deals to the prospects and customers (third parties, "tiers") of Dolibarr.
 
 Documentation rule for this version: whatever changes an interface or the data is added to `doc/USER_GUIDE.md`, `doc/ADMIN_GUIDE.md` and `doc/STRUCTURE_ANALYSIS.md` marked **From v1.2.0**, so the guides do not read as if it had always been there. Each change is listed below in the same change that builds it.
 

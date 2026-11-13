@@ -14,7 +14,7 @@ Guidance for AI agents working on the **CRM** external module for Dolibarr. Read
 | Instance URL | http://my.dolibarr.net — module pages live under `/custom/crm/` (e.g. `/custom/crm/index.php`) |
 | Admin login | `admin` on the dev instance. The password is not written in the repository: ask the maintainer, and never copy credentials into code, docs or commits |
 | DB | MariaDB/MySQL, database `dolibarr`, prefix `llx_`, entity 1. Credentials are in `/var/www/dolibarr/htdocs/conf/conf.php` (do not echo them). `root` without password is refused |
-| Module state | Enabled on the instance (CRM top menu shows). `doc/STRUCTURE_ANALYSIS.md` still says "not enabled": that line is stale |
+| Module state | Enabled on the instance (CRM top menu shows). |
 
 `conf.php` sets `$dolibarr_main_document_root_alt='/var/www/dolibarr/htdocs/custom'` and `$dolibarr_main_url_root_alt='/custom'`, which is why the module is served from `/custom/crm/`. `$dolibarr_main_prod='0'` (dev mode, errors visible).
 
