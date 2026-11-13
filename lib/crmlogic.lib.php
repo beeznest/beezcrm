@@ -175,7 +175,9 @@ function crmDealRefsInSubject(string $subject): array
  */
 function crmNormalizeSubject(string $subject): string
 {
-	$subject = trim($subject);
+	// A deal marker ("[O2026-0001]", "[OPP2026-0001]") is not part of what the subject says: a draft has none, the copy of a message
+	// written in a mail client has one, and they must still match.
+	$subject = trim((string) preg_replace('/\s*\[(?:OPP|O)[0-9]{4}-[0-9]+\]/i', '', $subject));
 	while (preg_match('/^(re|fw|fwd|tr|aw|wg)\s*:\s*/i', $subject, $reg)) {
 		$subject = substr($subject, strlen($reg[0]));
 	}

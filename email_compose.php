@@ -165,7 +165,7 @@ if ($action !== '' && $action !== 'view') {
 	}
 	if ($result > 0) {
 		// The sender used is remembered for this user: the next e-mail starts from it.
-		if (($action === 'send' || $action === 'sentmanually') && $senderCode !== '' && ($user->conf->CRM_MAIL_FROM_CHOICE ?? '') !== $senderCode) {
+		if (($action === 'save' || $action === 'send' || $action === 'sentmanually') && $senderCode !== '' && ($user->conf->CRM_MAIL_FROM_CHOICE ?? '') !== $senderCode) {
 			require_once DOL_DOCUMENT_ROOT.'/core/lib/functions2.lib.php'; // dol_set_user_param(), not loaded on every request
 			dol_set_user_param($db, $conf, $user, array('CRM_MAIL_FROM_CHOICE' => $senderCode));
 		}
@@ -413,7 +413,10 @@ $js = <<<'JS'
 				var query = [];
 				if (cfg.cc) { query.push("cc=" + encodeURIComponent(cfg.cc)); }
 				if (cfg.bcc) { query.push("bcc=" + encodeURIComponent(cfg.bcc)); }
-				query.push("subject=" + encodeURIComponent(field("crm-subject").value));
+				// The deal marker goes in the subject of this link only: a message written in a mail client has no header that names the deal.
+				var mailSubject = field("crm-subject").value;
+				if (cfg.marker && mailSubject.indexOf("[" + cfg.marker + "]") < 0) { mailSubject = mailSubject + " [" + cfg.marker + "]"; }
+				query.push("subject=" + encodeURIComponent(mailSubject));
 				var tail = cfg.optOutUrl ? "\n\n--\n" + cfg.optOutText + "\n" + cfg.optOutUrl + "\n" : "";
 				query.push("body=" + encodeURIComponent((plain.value + tail).replace(/\r?\n/g, "\r\n")));
 				window.location.href = "mailto:" + encodeURIComponent(field("crm-to").value) + "?" + query.join("&");
@@ -452,6 +455,7 @@ $config = array(
 	'id' => (int) $draft->event->id,
 	'url' => $_SERVER['PHP_SELF'],
 	'readonly' => !$canAct,
+	'marker' => crmDealMarker((string) $draft->deal->ref),
 	'optOutUrl' => $optOutUrl,
 	'optOutText' => $optOutText,
 	'cc' => $mailtoCc,

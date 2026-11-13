@@ -867,7 +867,7 @@ class Sequence
 			// Nothing leaves the server. The step becomes a planned e-mail on the deal for the salesperson to review
 			// and send from email_compose.php, or from a mail client. Dry-run does not apply: it only guards sending.
 			$activity = new CrmActivity($this->db);
-			$draftId = $activity->create($user, (int) $enrol->fk_opportunity, (int) $enrol->fk_soc, (int) $enrol->fk_socpeople, (int) $enrol->fk_user_resp, 'email', crmSubjectWithRef($subject, (string) $enrol->ref), dol_now(), 0, $body);
+			$draftId = $activity->create($user, (int) $enrol->fk_opportunity, (int) $enrol->fk_soc, (int) $enrol->fk_socpeople, (int) $enrol->fk_user_resp, 'email', $subject, dol_now(), 0, $body);
 			if ($draftId <= 0) {
 				$status = 'error';
 				$error = $activity->error;

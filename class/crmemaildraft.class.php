@@ -86,7 +86,9 @@ class CrmEmailDraft
 		if (!$this->event || !$this->deal) {
 			return '';
 		}
-		return crmSubjectWithRef((string) $this->event->label, (string) $this->deal->ref);
+		// A draft has no marker of the deal in its title (the headers of what is sent carry it); one saved by an earlier version is
+		// taken out. The marker is added only to the subject of the "Open in my mail client" link, which has no such headers.
+		return crmStripDealMarker((string) $this->event->label, (string) $this->deal->ref);
 	}
 
 	/**
@@ -99,7 +101,7 @@ class CrmEmailDraft
 		if (!$this->event || !$this->deal) {
 			return -1;
 		}
-		$subject = trim($subject);
+		$subject = crmStripDealMarker(trim($subject), (string) $this->deal->ref);
 		if ($subject === '') {
 			$this->error = 'CrmErrorSubjectRequired';
 			return -1;

@@ -169,7 +169,10 @@ class CrmLogicTest extends TestCase
 	 */
 	public function testNormalizeSubject()
 	{
-		$this->assertSame('offer [opp2026-0001]', crmNormalizeSubject('RE:  Fwd: Offer   [OPP2026-0001]'));
+		$this->assertSame('offer', crmNormalizeSubject('RE:  Fwd: Offer   [OPP2026-0001]'));
+		$this->assertSame('offer', crmNormalizeSubject('Re: Offer [O2026-0001]'));
+		$this->assertSame('offer [abc-12]', crmNormalizeSubject('Offer [ABC-12]'));
+		$this->assertSame(crmNormalizeSubject('Offer'), crmNormalizeSubject('Offer [O2026-0001]'));
 		$this->assertSame(crmNormalizeSubject('Offer'), crmNormalizeSubject('re: OFFER'));
 		$this->assertSame('reply to me', crmNormalizeSubject('Reply to me'));
 	}
