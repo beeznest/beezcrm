@@ -183,7 +183,7 @@ class CrmOptOut
 		(new Sequence($this->db))->stopOnOptOut((int) $deal->id);
 		$this->markUsed((int) $row->rowid);
 		$this->db->commit();
-		dol_syslog('CRM opt-out recorded for deal '.((int) $deal->id), LOG_INFO);
+		dol_syslog('CRM opt-out recorded for deal '.((int) $deal->id).' (link '.crmOptOutTokenTail($token).')', LOG_INFO);
 		return 'recorded';
 	}
 

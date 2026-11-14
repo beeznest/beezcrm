@@ -373,7 +373,86 @@ The e-mail editor (Write / send, on a planned e-mail) can send **plain text** or
 - The page shows **no data** of the deal or of the prospect, starts **no session**, sets **no cookie**, loads no script and no external file, and is sent with `Cache-Control: no-store`, `Referrer-Policy: no-referrer`, `X-Robots-Tag: noindex`, `X-Frame-Options: DENY` and a strict `Content-Security-Policy`.
 - By default (`CRM_OPTOUT_CONFIRM` on) opening the link **changes nothing**: it shows a button, and only the POST of that button records the request. Mail security scanners and link previews open every link of a message; without this step they would close your deals by themselves. Turn it off only if you accept that.
 - The link is the same in all the e-mails of a deal, and whoever holds it can use it, as with any unsubscribe link: do not publish a prospect's e-mail. A link can be used only on an **open** deal, once (the page then answers "already recorded").
-- What an attacker can do with a link is limited to closing that one deal as Lost. There is no rate limit in the module: if you want one, set it in your web server or firewall for `optout.php`.
+- What an attacker can do with a link is limited to closing that one deal as Lost.
+- The e-mail link itself carries `rel="noreferrer noopener"` and `referrerpolicy="no-referrer"` in an HTML message, so the mail program does not tell the page where the click came from; the page then sends `Referrer-Policy: no-referrer` too.
+
+**Rate limit of the module (from v1.2.0).** `optout.php` counts the requests of each remote address (`REMOTE_ADDR`) in small files under `<documents>/crm/optout_limit/` (no table, no session; the file is named after a hash of the address, which is not stored). Over the limit the page answers **429 Too Many Requests** with `Retry-After`, nothing is counted while it refuses, and the window empties by itself. The defaults are **120 requests and 10 unknown or malformed links per 10 minutes** and per address: a prospect needs two requests (the page, then the button), so it never meets the limit, while guessing links is made hopeless. They can be changed with Dolibarr constants (Home → Setup → Other setup, or the database): `CRM_OPTOUT_RATE_WINDOW` (seconds, 600), `CRM_OPTOUT_RATE_ALL` (120) and `CRM_OPTOUT_RATE_FAILS` (10); **0 turns a limit off**. If the folder cannot be written by the web server the limit is skipped and a warning goes to the Dolibarr log: the page must keep working. A **reverse proxy, a load balancer or a CDN hides the visitor's address**: the module sees the proxy's, and then everybody shares one counter. Restore the real address in the web server first (nginx `realip`, Apache `mod_remoteip`, below), or raise `CRM_OPTOUT_RATE_ALL`.
+
+**What the logs hold.** The module writes the address and only the **last 4 characters** of a link to the Dolibarr log (`CRM opt-out: unknown link ...1b2c from 203.0.113.7`), never the token or any text sent by the visitor; Dolibarr itself logs the script name without its query string. **Your web server's access log is the place where the whole token ends up**, in the request line. That log is not under the module's control: use the configuration below so that it keeps the last 4 characters (nginx) or nothing (Apache) for this page, and keep in mind that a reverse proxy, a WAF or a CDN in front keeps its own logs.
+
+**Further limits in the web server (recommended).** The limit above stops guessing, but the request has already reached PHP and the database. The web server can refuse earlier and for less.
+
+nginx (the `map`, `log_format` and `limit_req_zone` lines go in `http {}`, the `location` in the `server {}` that serves Dolibarr):
+
+```nginx
+limit_req_zone $binary_remote_addr zone=crm_optout:10m rate=30r/m;
+
+# The last 4 characters of the link, for the log only
+map $arg_h $crm_h_tail {
+    "~(?<t>.{4})$"  "...$t";
+    default         "-";
+}
+# $uri has no query string: the token is never written
+log_format crm_optout '$remote_addr - [$time_local] "$request_method $uri h=$crm_h_tail" $status $body_bytes_sent';
+
+server {
+    # ...
+    location = /custom/crm/optout.php {
+        limit_req        zone=crm_optout burst=10 nodelay;
+        limit_req_status 429;
+        access_log       /var/log/nginx/crm_optout.log crm_optout;
+        include          snippets/fastcgi-php.conf;
+        fastcgi_pass     unix:/run/php/php8.3-fpm.sock;   # as for your other PHP files
+    }
+}
+```
+
+Behind a reverse proxy, restore the visitor's address first (`set_real_ip_from <proxy address>; real_ip_header X-Forwarded-For;`): without it the limit counts the proxy.
+
+Apache (2.4):
+
+```apache
+# Real address behind a reverse proxy (mod_remoteip)
+RemoteIPHeader X-Forwarded-For
+RemoteIPInternalProxy 10.0.0.0/8
+
+# %U is the path without the query string: the token is not written at all
+LogFormat "%h %l %u %t \"%m %U\" %>s %b" crm_optout
+SetEnvIf Request_URI "^/custom/crm/optout\.php$" crm_optout_request
+CustomLog ${APACHE_LOG_DIR}/access.log   combined   env=!crm_optout_request
+CustomLog ${APACHE_LOG_DIR}/crm_optout.log crm_optout env=crm_optout_request
+
+# Rate limit with mod_evasive (enable it first: a2enmod evasive)
+<IfModule mod_evasive20.c>
+    <Location "/custom/crm/optout.php">
+        DOSPageCount    5
+        DOSPageInterval 10
+        DOSBlockingPeriod 600
+    </Location>
+</IfModule>
+```
+
+(`DOSPageCount` and the other mod_evasive directives are usually set once for the server; check your version's documentation: it may not accept them inside a `<Location>`.) Apache has no built-in per-address request limit, so mod_evasive, mod_security or the fail2ban jail below does the work.
+
+fail2ban, to ban an address that keeps trying unknown links (with the nginx log format above; the Apache format has the same layout, drop the `h=\S+` part):
+
+```ini
+# /etc/fail2ban/filter.d/crm-optout.conf
+[Definition]
+failregex = ^<HOST> - \[[^\]]+\] "(GET|POST) /custom/crm/optout\.php h=\S+" (404|429) 
+ignoreregex =
+
+# /etc/fail2ban/jail.d/crm-optout.local
+[crm-optout]
+enabled  = true
+filter   = crm-optout
+logpath  = /var/log/nginx/crm_optout.log
+maxretry = 15
+findtime = 10m
+bantime  = 1h
+```
+
+Test the page from a shell (`curl -i "https://<your address>/custom/crm/optout.php?h=<64 times f>"` ten times) and read the status codes: 404 for an unknown link, then 429.
 
 ## Message history
 

@@ -453,6 +453,7 @@ CrmOptOutConfirmText=Veuillez confirmer que vous n'êtes pas intéressé et que 
 CrmOptOutConfirmButton=Oui, je ne suis pas intéressé
 CrmOptOutDone=Merci. Votre demande a été enregistrée : vous ne serez plus contacté prochainement.
 CrmOptOutAlready=Votre demande a déjà été enregistrée.
+CrmOptOutTooMany=Trop de requêtes. Veuillez réessayer plus tard.
 CrmOptOutInvalid=Ce lien n'est pas valide.
 CrmOptOutError=Votre demande n'a pas pu être enregistrée. Veuillez répondre à l'e-mail que vous avez reçu.
 CrmOptOutEvent=Le prospect a utilisé le lien « Pas intéressé, ne plus me contacter prochainement » d'un e-mail

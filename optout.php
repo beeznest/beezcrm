@@ -46,6 +46,7 @@ require_once __DIR__.'/lib/crm_bootstrap.inc.php';
  */
 
 require_once __DIR__.'/class/crmoptout.class.php';
+require_once __DIR__.'/class/crmoptoutlimit.class.php';
 
 /**
  * Print a complete page and stop. $body is built from fixed texts only, never from the request.
@@ -74,8 +75,20 @@ if (!isModEnabled('crm')) {
 }
 $langs->load('crm@crm');
 
+// Rate limit per remote address (REMOTE_ADDR only: a header the visitor sets would let anyone dodge it or use another's address).
+// The log says the address and, for a link, its last 4 characters, never the whole token.
+$remote = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+$limit = new CrmOptOutLimit($remote);
+if (!$limit->enter()) {
+	dol_syslog('CRM opt-out: rate limit reached for '.$remote, LOG_WARNING);
+	header('Retry-After: '.$limit->window());
+	crmOptOutPage(429, $langs->transnoentitiesnoconv('CrmOptOutTitle'), $langs->transnoentitiesnoconv('CrmOptOutTooMany'));
+}
+
 $request = crmOptOutRequest($_GET, $_POST, (string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
 if ($request === null) {
+	$limit->fail();
+	dol_syslog('CRM opt-out: refused request from '.$remote.' ('.crmOptOutTokenTail(is_string($_GET['h'] ?? null) ? $_GET['h'] : (is_string($_POST['h'] ?? null) ? $_POST['h'] : '')).')', LOG_INFO);
 	crmOptOutPage(404, $langs->transnoentitiesnoconv('CrmOptOutTitle'), $langs->transnoentitiesnoconv('CrmOptOutInvalid'));
 }
 
@@ -87,6 +100,8 @@ if (!$request['post'] && getDolGlobalInt('CRM_OPTOUT_CONFIRM', 1)) {
 	// Opening the link only asks for a confirmation. Nothing is changed by a GET.
 	$row = $optOut->find($token);
 	if ($row === null) {
+		$limit->fail();
+		dol_syslog('CRM opt-out: unknown link '.crmOptOutTokenTail($token).' from '.$remote, LOG_INFO);
 		crmOptOutPage(404, $langs->transnoentitiesnoconv('CrmOptOutTitle'), $langs->transnoentitiesnoconv('CrmOptOutInvalid'));
 	}
 	if ($row->date_used !== null) {
@@ -107,6 +122,8 @@ switch ($optOut->record($token)) {
 		crmOptOutPage(200, $langs->transnoentitiesnoconv('CrmOptOutTitle'), $langs->transnoentitiesnoconv('CrmOptOutAlready'));
 		// no break
 	case 'invalid':
+		$limit->fail();
+		dol_syslog('CRM opt-out: unknown link '.crmOptOutTokenTail($token).' from '.$remote, LOG_INFO);
 		crmOptOutPage(404, $langs->transnoentitiesnoconv('CrmOptOutTitle'), $langs->transnoentitiesnoconv('CrmOptOutInvalid'));
 		// no break
 	default:

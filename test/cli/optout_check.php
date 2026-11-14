@@ -137,5 +137,45 @@ crmCliCheck('CrmEmailDraft::send passes it on, true by default', $lastDraft->get
 $source = (string) file_get_contents(__DIR__.'/../../class/sequence.class.php').(string) file_get_contents(__DIR__.'/../../class/crmactivity.class.php');
 crmCliCheck('outreach and reminders never pass false', strpos($source, 'optOutLink') === false);
 
+// The rate limit of the public page: 10 unknown links or 120 requests per 10 minutes and per address, state in small files.
+require_once __DIR__.'/../../class/crmoptoutlimit.class.php';
+$limitDir = sys_get_temp_dir().'/crm_optout_limit_'.bin2hex(random_bytes(4));
+$t = 1000000;
+$one = new CrmOptOutLimit('203.0.113.7', $limitDir);
+$allowed = 0;
+for ($i = 0; $i < 10; $i++) {
+	$allowed += $one->enter($t + $i) ? 1 : 0;
+	$one->fail($t + $i);
+}
+crmCliCheck('ten unknown links in a row are answered', $allowed === 10);
+crmCliCheck('the eleventh request is refused', $one->enter($t + 11) === false);
+crmCliCheck('another address is not affected', (new CrmOptOutLimit('203.0.113.8', $limitDir))->enter($t + 11) === true);
+crmCliCheck('the same address is served again once the window has passed', $one->enter($t + 11 + $one->window()) === true);
+$files = glob($limitDir.'/ip_*.json');
+crmCliCheck('one file per address, named by a hash, with no address in it', count($files) === 2 && strpos((string) file_get_contents($files[0]), '203.0.113') === false && strpos($files[0], '203.0.113') === false);
+$many = new CrmOptOutLimit('203.0.113.9', $limitDir);
+$ok = 0;
+for ($i = 0; $i < 130; $i++) {
+	$ok += $many->enter($t + $i) ? 1 : 0;
+}
+crmCliCheck('120 requests per window at most, known links included', $ok === 120);
+crmCliCheck('an empty address turns the limit off', (new CrmOptOutLimit('', $limitDir))->enter($t) === true);
+$conf->global->CRM_OPTOUT_RATE_FAILS = '0';
+$conf->global->CRM_OPTOUT_RATE_ALL = '0';
+$free = new CrmOptOutLimit('203.0.113.10', $limitDir);
+for ($i = 0; $i < 300; $i++) {
+	$free->fail($t + $i);
+}
+crmCliCheck('0 turns each limit off', $free->enter($t + 301) === true);
+$conf->global->CRM_OPTOUT_RATE_FAILS = '';
+$conf->global->CRM_OPTOUT_RATE_ALL = '';
+$blocked = new CrmOptOutLimit('203.0.113.11', '/proc/crm_not_writable');
+crmCliCheck('an unwritable folder lets the page work', $blocked->enter($t) === true);
+foreach ((array) glob($limitDir.'/*') as $file) {
+	@unlink($file);
+}
+@rmdir($limitDir);
+crmCliCheck('a log shows the last 4 characters of a link only', crmOptOutTokenTail($goneToken) === '...'.substr($goneToken, -4) && strlen(crmOptOutTokenTail($goneToken)) === 7);
+
 $db->rollback();
 crmCliFinish();

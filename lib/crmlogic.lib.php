@@ -663,6 +663,43 @@ function crmOptOutRequest(array $get, array $post, string $method): ?array
 }
 
 /**
+ * What a log may say about a "not interested" link: its last 4 characters only, never the whole token, which is a secret
+ * that opens the page. Anything that is not a well-formed token is not echoed at all.
+ */
+function crmOptOutTokenTail(string $token): string
+{
+	return crmOptOutHashValid($token) ? '...'.substr($token, -4) : '(malformed)';
+}
+
+/**
+ * Sliding window: the moments (Unix times) of $stamps that are still inside the last $window seconds. Anything not an integer,
+ * or in the future by more than a minute (a clock that went back), is dropped.
+ *
+ * @param array<int,mixed> $stamps
+ * @return array<int,int>
+ */
+function crmRatePrune(array $stamps, int $now, int $window): array
+{
+	$kept = array();
+	foreach ($stamps as $stamp) {
+		if (is_int($stamp) && $stamp > $now - $window && $stamp <= $now + 60) {
+			$kept[] = $stamp;
+		}
+	}
+	return $kept;
+}
+
+/**
+ * True when $max or more events happened in the last $window seconds. A $max of 0 or less means "no limit".
+ *
+ * @param array<int,mixed> $stamps
+ */
+function crmRateExceeded(array $stamps, int $now, int $window, int $max): bool
+{
+	return $max > 0 && count(crmRatePrune($stamps, $now, $window)) >= $max;
+}
+
+/**
  * Add the "not interested" link at the end of an e-mail: a separated line with the text and the address for plain text, a
  * paragraph with a link for HTML (before </body> when there is one). The text and the address are escaped for HTML.
  */
@@ -674,7 +711,8 @@ function crmOptOutFooter(string $body, string $url, string $text, bool $html): s
 	if (!$html) {
 		return rtrim($body)."\n\n--\n".$text."\n".$url."\n";
 	}
-	$paragraph = '<p style="font-size:smaller;color:#666">-- <br><a href="'.htmlspecialchars($url, ENT_QUOTES, 'UTF-8').'">'.htmlspecialchars($text, ENT_QUOTES, 'UTF-8').'</a></p>';
+	// rel and referrerpolicy: the mail program must not tell the page (or any proxy on the way) where the click came from.
+	$paragraph = '<p style="font-size:smaller;color:#666">-- <br><a href="'.htmlspecialchars($url, ENT_QUOTES, 'UTF-8').'" rel="noreferrer noopener" referrerpolicy="no-referrer">'.htmlspecialchars($text, ENT_QUOTES, 'UTF-8').'</a></p>';
 	$position = strripos($body, '</body>');
 	if ($position !== false) {
 		return substr($body, 0, $position).$paragraph.substr($body, $position);

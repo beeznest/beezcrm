@@ -491,13 +491,28 @@ class CrmLogicTest extends TestCase
 		$plain = crmOptOutFooter("Hello\n", $url, $text, false);
 		$this->assertStringContainsString("Hello\n\n--\n".$text."\n".$url, $plain);
 		$html = crmOptOutFooter('<p>Hello</p>', $url, $text, true);
-		$this->assertStringContainsString('<a href="'.$url.'">Not interested, don&#039;t contact me again soon.</a>', $html);
+		$this->assertStringContainsString('<a href="'.$url.'" rel="noreferrer noopener" referrerpolicy="no-referrer">Not interested, don&#039;t contact me again soon.</a>', $html);
 		$withBody = crmOptOutFooter('<html><body><p>Hi</p></body></html>', $url, $text, true);
 		$this->assertLessThan(strpos($withBody, '</body>'), strpos($withBody, 'optout.php'));
 		$this->assertSame('Hello', crmOptOutFooter('Hello', '', $text, false));
 		$evil = crmOptOutFooter('x', 'https://a.example/?h="><script>', '<b>t</b>', true);
 		$this->assertStringNotContainsString('<script>', $evil);
 		$this->assertStringNotContainsString('<b>t</b>', $evil);
+	}
+
+	public function testOptOutTokenTailAndRateWindow(): void
+	{
+		$token = str_repeat('a', 60).'1b2c';
+		$this->assertSame('...1b2c', crmOptOutTokenTail($token));
+		$this->assertStringNotContainsString('aaaa', crmOptOutTokenTail($token));
+		$this->assertSame('(malformed)', crmOptOutTokenTail('<script>alert(1)</script>'));
+		$this->assertSame('(malformed)', crmOptOutTokenTail(''));
+		$now = 10000;
+		$this->assertSame(array(9700, 9990), crmRatePrune(array(9000, 9700, 9990, 'x', 10100), $now, 600));
+		$this->assertFalse(crmRateExceeded(array(9990, 9991), $now, 600, 3));
+		$this->assertTrue(crmRateExceeded(array(9990, 9991, 9992), $now, 600, 3));
+		$this->assertFalse(crmRateExceeded(array(1, 2, 3), $now, 600, 3), 'old events do not count');
+		$this->assertFalse(crmRateExceeded(array(9990, 9991, 9992), $now, 600, 0), 'zero means no limit');
 	}
 
 	public function testDealMarker(): void
