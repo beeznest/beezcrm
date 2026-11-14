@@ -522,3 +522,4 @@ CrmAssignNotifyHelp=Kur një hap i caktohet dikujt tjetër përveç atij që e c
 CrmMySteps=Hapat e mi për t'u bërë
 CrmMarkerHint=Një mesazh i shkruar në programin tuaj të postës lidhet me këtë marrëveshje nga adresa e kontaktit të saj. Nëse ai kontakt ka disa marrëveshje të hapura, shtoni %s në subjektin e tij që t'i tregoni CRM-së cilën.
 CrmOptOutAdd=Shto lidhjen «Nuk jam i interesuar» në fund të këtij e-maili
+CrmOptOutTooMany=Shumë kërkesa. Ju lutemi provoni përsëri më vonë.

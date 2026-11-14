@@ -522,3 +522,4 @@ CrmAssignNotifyHelp=Ha egy lépést nem a kiosztó személyre, hanem valaki más
 CrmMySteps=Teendő lépéseim
 CrmMarkerHint=A levelezőprogramban írt üzenet a kapcsolattartó címe alapján kapcsolódik ehhez az ügylethez. Ha a kapcsolattartónak több nyitott ügylete van, adja hozzá a(z) %s jelölést a tárgyhoz, hogy a CRM tudja, melyikről van szó.
 CrmOptOutAdd=A "nem érdekel" hivatkozás hozzáadása az e-mail végéhez
+CrmOptOutTooMany=Túl sok kérés. Kérjük, próbálja meg újra később.

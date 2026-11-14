@@ -522,3 +522,4 @@ CrmAssignNotifyHelp=단계가 배정한 사람이 아닌 다른 사람에게 배
 CrmMySteps=내가 할 단계
 CrmMarkerHint=메일 프로그램에서 작성한 메시지는 연락처의 주소로 이 딜에 연결됩니다. 해당 연락처에 진행 중인 딜이 여러 개이면 제목에 %s을(를) 추가하여 CRM에 어느 딜인지 알려주세요.
 CrmOptOutAdd=이 이메일 끝에 "관심 없음" 링크 추가
+CrmOptOutTooMany=요청이 너무 많습니다. 나중에 다시 시도해 주세요.

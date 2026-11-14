@@ -522,3 +522,4 @@ CrmAssignNotifyHelp=當步驟被指派給指派者以外的人時，被指派人
 CrmMySteps=我待辦的步驟
 CrmMarkerHint=在郵件程式中撰寫的郵件會透過其聯絡人的位址關聯到此交易。如果該聯絡人有多筆未結交易，請在主旨中加入 %s，以告知 CRM 是哪一筆。
 CrmOptOutAdd=在這封郵件末尾加入「沒有興趣」連結
+CrmOptOutTooMany=請求過多。請稍後再試。

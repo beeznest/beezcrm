@@ -522,3 +522,4 @@ CrmAssignNotifyHelp=Khi một bước được giao cho người khác ngoài ng
 CrmMySteps=Các bước cần làm của tôi
 CrmMarkerHint=Thư viết trong chương trình thư của bạn được gắn với giao dịch này qua địa chỉ của liên hệ. Nếu liên hệ đó có nhiều giao dịch đang mở, hãy thêm %s vào chủ đề để cho CRM biết là giao dịch nào.
 CrmOptOutAdd=Thêm liên kết "Không quan tâm" vào cuối e-mail này
+CrmOptOutTooMany=Quá nhiều yêu cầu. Vui lòng thử lại sau.

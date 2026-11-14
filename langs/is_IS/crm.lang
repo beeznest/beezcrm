@@ -522,3 +522,4 @@ CrmAssignNotifyHelp=Þegar skrefi er úthlutað til einhvers annars en þess sem
 CrmMySteps=Skrefin mín sem þarf að gera
 CrmMarkerHint=Skilaboð sem skrifuð eru í póstforritinu þínu tengjast þessum samningi með netfangi tengiliðarins. Ef sá tengiliður hefur marga opna samninga skaltu bæta %s við efnislínuna til að segja CRM hver þeirra það er.
 CrmOptOutAdd=Bæta tenglinum "hef ekki áhuga" við neðst í þennan tölvupóst
+CrmOptOutTooMany=Of margar beiðnir. Reyndu aftur síðar.

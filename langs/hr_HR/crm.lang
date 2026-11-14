@@ -522,3 +522,4 @@ CrmAssignNotifyHelp=Kad se korak dodijeli nekome tko nije osoba koja ga dodjelju
 CrmMySteps=Moji koraci za obaviti
 CrmMarkerHint=Poruka napisana u vašem programu e-pošte povezuje se s ovim poslom prema adresi njegova kontakta. Ako taj kontakt ima više otvorenih poslova, dodajte %s u predmet kako biste CRM-u rekli koji.
 CrmOptOutAdd=Dodaj vezu "nisam zainteresiran" na kraj ove e-poruke
+CrmOptOutTooMany=Previše zahtjeva. Molimo pokušajte ponovno kasnije.

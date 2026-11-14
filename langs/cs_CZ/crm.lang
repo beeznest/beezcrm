@@ -522,3 +522,4 @@ CrmAssignNotifyHelp=Když je krok přiřazen někomu jinému než tomu, kdo jej 
 CrmMySteps=Moje kroky k vyřízení
 CrmMarkerHint=Zpráva napsaná ve vašem poštovním programu se k tomuto obchodu přiřadí podle adresy jeho kontaktu. Pokud má tento kontakt několik otevřených obchodů, přidejte do předmětu %s, aby CRM vědělo, o který jde.
 CrmOptOutAdd=Přidat na konec tohoto e-mailu odkaz „nemám zájem“
+CrmOptOutTooMany=Příliš mnoho požadavků. Zkuste to prosím znovu později.

@@ -522,3 +522,4 @@ CrmAssignNotifyHelp=Når et steg tildeles en annen enn den som tildeler det, få
 CrmMySteps=Mine steg som skal gjøres
 CrmMarkerHint=En melding skrevet i e-postprogrammet ditt knyttes til denne muligheten via adressen til kontakten. Hvis kontakten har flere åpne muligheter, legg til %s i emnet for å si fra til CRM hvilken det gjelder.
 CrmOptOutAdd=Legg til «Ikke interessert»-lenken på slutten av denne e-posten
+CrmOptOutTooMany=For mange forespørsler. Prøv igjen senere.

@@ -522,3 +522,4 @@ CrmAssignNotifyHelp=Pan fydd cam yn cael ei neilltuo i rywun heblaw'r person sy'
 CrmMySteps=Fy nghamau i'w gwneud
 CrmMarkerHint=Mae neges a ysgrifennwyd yn eich rhaglen e-bost yn cael ei chlymu wrth y cytundeb hwn trwy gyfeiriad ei gyswllt. Os oes gan y cyswllt hwnnw sawl cytundeb agored, ychwanegwch %s at ei bwnc i ddweud wrth y CRM pa un.
 CrmOptOutAdd=Ychwanegu'r ddolen "heb ddiddordeb" ar ddiwedd yr e-bost hwn
+CrmOptOutTooMany=Gormod o geisiadau. Rhowch gynnig arall arni yn nes ymlaen.

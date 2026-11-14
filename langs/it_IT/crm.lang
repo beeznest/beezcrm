@@ -522,3 +522,4 @@ CrmAssignNotifyHelp=Quando un passo è assegnato a qualcuno diverso da chi lo as
 CrmMySteps=I miei passi da fare
 CrmMarkerHint=Un messaggio scritto nel tuo programma di posta viene collegato a questa trattativa tramite l'indirizzo del suo contatto. Se quel contatto ha più trattative aperte, aggiungi %s all'oggetto per indicare al CRM quale.
 CrmOptOutAdd=Aggiungi il link "non interessato" alla fine di questa e-mail
+CrmOptOutTooMany=Troppe richieste. Riprova più tardi.

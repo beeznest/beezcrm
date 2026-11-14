@@ -522,3 +522,4 @@ CrmAssignNotifyHelp=Qadam uni biriktiruvchidan boshqa kishiga biriktirilganda, m
 CrmMySteps=Mening bajariladigan qadamlarim
 CrmMarkerHint=Pochta dasturida yozilgan xabar bu bitimga uning aloqasining manzili orqali bogʻlanadi. Agar bu aloqaning bir nechta ochiq bitimi boʻlsa, CRM ga qaysi biri ekanini bildirish uchun mavzuga %s qoʻshing.
 CrmOptOutAdd=Ushbu xatning oxiriga "Qiziqmayman" havolasini qoʻshish
+CrmOptOutTooMany=So‘rovlar juda ko‘p. Iltimos, keyinroq qayta urinib ko‘ring.

@@ -522,3 +522,4 @@ CrmAssignNotifyHelp=Bir adım, atayan kişiden başka birine atandığında, ata
 CrmMySteps=Yapılacak adımlarım
 CrmMarkerHint=E-posta programınızda yazılan ileti, kişisinin adresiyle bu anlaşmaya bağlanır. Bu kişinin birden fazla açık anlaşması varsa, CRM'e hangisi olduğunu söylemek için konusuna %s ekleyin.
 CrmOptOutAdd=Bu e-postanın sonuna "İlgilenmiyorum" bağlantısını ekle
+CrmOptOutTooMany=Çok fazla istek. Lütfen daha sonra tekrar deneyin.

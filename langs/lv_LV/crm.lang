@@ -522,3 +522,4 @@ CrmAssignNotifyHelp=Kad solis tiek piešķirts citam cilvēkam, nevis tam, kas t
 CrmMySteps=Mani veicamie soļi
 CrmMarkerHint=Pasta programmā uzrakstīts ziņojums tiek sasaistīts ar šo darījumu pēc tā kontaktpersonas adreses. Ja šai kontaktpersonai ir vairāki atvērti darījumi, pievienojiet tēmai %s, lai CRM zinātu, kurš no tiem.
 CrmOptOutAdd=Pievienot saiti „Neinteresē” šī e-pasta beigās
+CrmOptOutTooMany=Pārāk daudz pieprasījumu. Lūdzu, mēģiniet vēlreiz vēlāk.

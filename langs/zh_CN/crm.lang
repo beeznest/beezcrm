@@ -522,3 +522,4 @@ CrmAssignNotifyHelp=当步骤被分配给分配者以外的人时，被分配人
 CrmMySteps=我待办的步骤
 CrmMarkerHint=在邮件程序中撰写的邮件会通过其联系人的地址关联到此交易。如果该联系人有多个未结交易，请在主题中添加 %s，以告知 CRM 是哪一个。
 CrmOptOutAdd=在这封邮件末尾添加“不感兴趣”链接
+CrmOptOutTooMany=请求过多。请稍后再试。

@@ -522,3 +522,4 @@ CrmAssignNotifyHelp=Ko je korak dodeljen nekomu drugemu kot tistemu, ki ga dodel
 CrmMySteps=Moji koraki za izvedbo
 CrmMarkerHint=Sporočilo, napisano v vašem poštnem programu, je s tem poslom povezano prek naslova njegovega stika. Če ima ta stik več odprtih poslov, dodajte v zadevo %s, da CRM ve, za katerega gre.
 CrmOptOutAdd=Dodaj povezavo »Nisem zainteresiran« na konec te e-pošte
+CrmOptOutTooMany=Preveč zahtev. Poskusite znova pozneje.

@@ -522,3 +522,4 @@ CrmAssignNotifyHelp=Når et trin tildeles en anden end den, der tildeler det, mo
 CrmMySteps=Mine trin der skal udføres
 CrmMarkerHint=En besked skrevet i dit mailprogram knyttes til denne deal via kontaktens adresse. Hvis kontakten har flere åbne deals, så tilføj %s til emnet for at fortælle CRM, hvilken der menes.
 CrmOptOutAdd=Tilføj linket "ikke interesseret" nederst i denne e-mail
+CrmOptOutTooMany=For mange anmodninger. Prøv venligst igen senere.

@@ -522,3 +522,4 @@ CrmAssignNotifyHelp=Kui samm määratakse kellelegi teisele kui selle määrajal
 CrmMySteps=Minu tehtavad sammud
 CrmMarkerHint=E-posti programmis kirjutatud sõnum seotakse selle tehinguga kontakti aadressi järgi. Kui sellel kontaktil on mitu avatud tehingut, lisage selle teemareale %s, et CRM teaks, milline neist.
 CrmOptOutAdd=Lisa selle e-kirja lõppu link „pole huvitatud“
+CrmOptOutTooMany=Liiga palju päringuid. Palun proovige hiljem uuesti.

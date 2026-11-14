@@ -522,3 +522,4 @@ CrmAssignNotifyHelp=Quando um passo é atribuído a alguém diferente de quem o 
 CrmMySteps=Os meus passos a fazer
 CrmMarkerHint=Uma mensagem escrita no seu programa de correio é associada a esta oportunidade pelo endereço do seu contacto. Se esse contacto tiver várias oportunidades abertas, acrescente %s ao assunto para indicar ao CRM qual delas.
 CrmOptOutAdd=Acrescentar a ligação "Sem interesse" no fim deste e-mail
+CrmOptOutTooMany=Demasiados pedidos. Tente novamente mais tarde.

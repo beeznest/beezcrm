@@ -522,3 +522,4 @@ CrmAssignNotifyHelp=Wanneer een stap wordt toegewezen aan iemand anders dan dege
 CrmMySteps=Mijn te doen stappen
 CrmMarkerHint=Een bericht dat in uw mailprogramma is geschreven wordt aan deze deal gekoppeld via het adres van zijn contact. Heeft dat contact meerdere open deals, voeg dan %s toe aan het onderwerp om het CRM te laten weten welke.
 CrmOptOutAdd=Voeg de link "Niet geïnteresseerd" toe aan het einde van deze e-mail
+CrmOptOutTooMany=Te veel verzoeken. Probeer het later opnieuw.

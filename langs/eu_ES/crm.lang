@@ -522,3 +522,4 @@ CrmAssignNotifyHelp=Urrats bat esleitzen duena ez den beste norbaiti esleitzen z
 CrmMySteps=Nire egin beharreko urratsak
 CrmMarkerHint=Zure posta-programan idatzitako mezu bat eragiketa honekin lotzen da bere kontaktuaren helbideagatik. Kontaktu horrek hainbat eragiketa irekita baditu, gehitu %s bere gaiari, CRMri zein den adierazteko.
 CrmOptOutAdd=Gehitu «ez nago interesatuta» esteka mezu elektroniko honen amaieran
+CrmOptOutTooMany=Eskaera gehiegi. Saiatu berriro geroago, mesedez.

@@ -522,3 +522,4 @@ CrmAssignNotifyHelp=Kun askel määrätään muulle kuin sen määrääjälle, t
 CrmMySteps=Minun tehtävät askeleeni
 CrmMarkerHint=Sähköpostiohjelmassasi kirjoitettu viesti liitetään tähän kauppaan yhteyshenkilön osoitteen perusteella. Jos yhteyshenkilöllä on useita avoimia kauppoja, lisää viestin aiheeseen %s, jotta CRM tietää, mikä niistä.
 CrmOptOutAdd=Lisää ”ei kiinnostusta” -linkki tämän sähköpostin loppuun
+CrmOptOutTooMany=Liian monta pyyntöä. Yritä myöhemmin uudelleen.

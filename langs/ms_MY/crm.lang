@@ -522,3 +522,4 @@ CrmAssignNotifyHelp=Apabila satu langkah ditugaskan kepada orang selain yang men
 CrmMySteps=Langkah saya yang perlu dibuat
 CrmMarkerHint=Mesej yang ditulis dalam program e-mel anda dikaitkan dengan peluang ini melalui alamat kenalannya. Jika kenalan itu mempunyai beberapa peluang terbuka, tambahkan %s pada subjeknya untuk memberitahu CRM yang mana satu.
 CrmOptOutAdd=Tambah pautan "Tidak berminat" pada penghujung e-mel ini
+CrmOptOutTooMany=Terlalu banyak permintaan. Sila cuba lagi nanti.

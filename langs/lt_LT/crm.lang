@@ -522,3 +522,4 @@ CrmAssignNotifyHelp=Kai žingsnis priskiriamas ne tam asmeniui, kuris jį priski
 CrmMySteps=Mano atliktini žingsniai
 CrmMarkerHint=Pašto programoje parašytas laiškas su šiuo sandoriu susiejamas pagal jo kontaktinio asmens adresą. Jei tas kontaktinis asmuo turi kelis atvirus sandorius, į temą įrašykite %s, kad CRM žinotų, kuris sandoris.
 CrmOptOutAdd=Šio el. laiško pabaigoje pridėti nuorodą „Nesidomiu“
+CrmOptOutTooMany=Per daug užklausų. Bandykite dar kartą vėliau.

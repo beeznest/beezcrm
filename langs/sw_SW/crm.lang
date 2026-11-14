@@ -522,3 +522,4 @@ CrmAssignNotifyHelp=Hatua inapokabidhiwa mtu mwingine kuliko anayeikabidhi, mhus
 CrmMySteps=Hatua zangu za kufanya
 CrmMarkerHint=Ujumbe ulioandikwa katika programu yako ya barua huunganishwa na fursa hii kwa anwani ya mawasiliano yake. Ikiwa mawasiliano hayo yana fursa kadhaa zilizo wazi, ongeza %s kwenye mada yake ili kuiambia CRM ni ipi.
 CrmOptOutAdd=Ongeza kiungo cha «Sipendezwi» mwishoni mwa barua pepe hii
+CrmOptOutTooMany=Maombi mengi mno. Tafadhali jaribu tena baadaye.

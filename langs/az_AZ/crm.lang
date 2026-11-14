@@ -522,3 +522,4 @@ CrmAssignNotifyHelp=Addım onu təyin edən şəxsdən başqasına təyin edildi
 CrmMySteps=Yerinə yetirəcəyim addımlar
 CrmMarkerHint=Poçt proqramınızda yazılmış mesaj bu sövdələşməyə onun əlaqə şəxsinin ünvanı ilə bağlanır. Əgər həmin əlaqə şəxsinin bir neçə açıq sövdələşməsi varsa, CRM-ə hansının nəzərdə tutulduğunu bildirmək üçün mövzuya %s əlavə edin.
 CrmOptOutAdd=Bu e-poçtun sonuna "maraqlanmıram" keçidini əlavə et
+CrmOptOutTooMany=Çox sayda sorğu göndərilib. Zəhmət olmasa, bir az sonra yenidən cəhd edin.

@@ -522,3 +522,4 @@ CrmAssignNotifyHelp=När ett steg tilldelas någon annan än den som tilldelar d
 CrmMySteps=Mina steg att göra
 CrmMarkerHint=Ett meddelande skrivet i ditt e-postprogram kopplas till den här affären via adressen till dess kontakt. Om kontakten har flera öppna affärer, lägg till %s i ämnesraden så att CRM vet vilken.
 CrmOptOutAdd=Lägg till länken ”Inte intresserad” i slutet av det här e-postmeddelandet
+CrmOptOutTooMany=För många förfrågningar. Försök igen senare.

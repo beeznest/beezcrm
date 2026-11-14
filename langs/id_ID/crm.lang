@@ -522,3 +522,4 @@ CrmAssignNotifyHelp=Saat sebuah langkah ditugaskan kepada orang selain yang menu
 CrmMySteps=Langkah saya yang harus dikerjakan
 CrmMarkerHint=Pesan yang ditulis di program email Anda dikaitkan dengan transaksi ini melalui alamat kontaknya. Jika kontak tersebut memiliki beberapa transaksi terbuka, tambahkan %s ke subjeknya agar CRM tahu yang mana.
 CrmOptOutAdd=Tambahkan tautan "tidak tertarik" di akhir email ini
+CrmOptOutTooMany=Terlalu banyak permintaan. Silakan coba lagi nanti.

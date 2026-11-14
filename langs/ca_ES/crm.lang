@@ -522,3 +522,4 @@ CrmAssignNotifyHelp=Quan un pas s'assigna a algú diferent de qui l'assigna, la 
 CrmMySteps=Els meus passos pendents
 CrmMarkerHint=Un missatge escrit al vostre programa de correu es vincula a aquest tracte per l'adreça del seu contacte. Si aquest contacte té diversos tractes oberts, afegiu %s a l'assumpte per indicar al CRM quin és.
 CrmOptOutAdd=Afegeix l'enllaç "no m'interessa" al final d'aquest correu
+CrmOptOutTooMany=Massa sol·licituds. Torneu-ho a provar més tard.

@@ -522,3 +522,4 @@ CrmAssignNotifyHelp=Wird ein Schritt jemand anderem als der zuweisenden Person z
 CrmMySteps=Meine anstehenden Schritte
 CrmMarkerHint=Eine in Ihrem Mailprogramm geschriebene Nachricht wird über die Adresse ihres Kontakts diesem Deal zugeordnet. Hat dieser Kontakt mehrere offene Deals, fügen Sie %s zu ihrem Betreff hinzu, damit das CRM weiß, welcher gemeint ist.
 CrmOptOutAdd=Den Link „Kein Interesse“ am Ende dieser E-Mail hinzufügen
+CrmOptOutTooMany=Zu viele Anfragen. Bitte versuchen Sie es später erneut.

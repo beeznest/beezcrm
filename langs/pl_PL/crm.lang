@@ -522,3 +522,4 @@ CrmAssignNotifyHelp=Gdy krok jest przypisany komuś innemu niż osoba, która go
 CrmMySteps=Moje kroki do wykonania
 CrmMarkerHint=Wiadomość napisana w Twoim programie pocztowym jest powiązana z tą szansą przez adres jej kontaktu. Jeśli ten kontakt ma kilka otwartych szans, dodaj %s do tematu, aby wskazać CRM, o którą chodzi.
 CrmOptOutAdd=Dodaj link "Niezainteresowany" na końcu tego e-maila
+CrmOptOutTooMany=Zbyt wiele żądań. Spróbuj ponownie później.
