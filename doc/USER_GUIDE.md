@@ -164,7 +164,9 @@ If your administrator has set up categories (Dolibarr's Tags/Categories), the de
 
 ### The "Not interested" link (from v1.2.0)
 
-From v1.2.0 every e-mail sent for a deal (from the editor, by an automated outreach, or written with the AI assistant) ends with a line **"Not interested, don't contact me again soon."**, a link the prospect can follow. You do not add it and cannot remove it: the editor shows it, in a dashed box under the text ("Added at the end of the e-mail when it is sent"), but it is not part of the text you edit, so the AI suggestion and the preview do not contain it. If you write your message in your own mail program (**Open in my mail client**, **Copy text**), the line is added to the text it gets.
+From v1.2.0 every e-mail sent for a deal (from the editor, by an automated outreach, or written with the AI assistant) ends with a line **"Not interested, don't contact me again soon."**, a link the prospect can follow. You do not write it: the editor shows it, in a dashed box under the text ("Added at the end of the e-mail when it is sent"), but it is not part of the text you edit, so the AI suggestion and the preview do not contain it. If you write your message in your own mail program (**Open in my mail client**, **Copy text**), the line is added to the text it gets.
+
+In a conversation that is already well under way (the prospect has answered), the link no longer makes sense. Untick **Add the "not interested" link at the end of this e-mail** in the editor and that one message is sent without it; the box is ticked again for the next e-mail, and a saved draft keeps the choice you made. Only the editor has this box: automated outreach and reminders always keep the link.
 
 When the prospect opens the link, a page asks them to confirm (a mail scanner opening the link does not trigger anything). After they confirm, the page thanks them and, in the CRM:
 

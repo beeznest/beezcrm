@@ -839,9 +839,11 @@ function crmOptOutLinkText(int $dealId): string
  *                     version made from it, so a client that shows no HTML still reads the message
  * @param string $from Sender address, empty for the sender of the module (crmSender())
  * @param string $copyToMe Address that gets a hidden copy (Bcc) of this message, in addition to the archive mailbox; empty for none
+ * @param bool $optOutLink False to leave out the "not interested" link of this one message (a conversation already under way); only the
+ *                         editor of e-mails passes false, outreach and everything else keep the link
  * @return array{ok:bool,error:string,msgid:string,from:string}
  */
-function crmSendMail(string $to, string $subject, string $body, int $dealId = 0, bool $html = false, string $from = '', string $copyToMe = '', array $attachments = array()): array
+function crmSendMail(string $to, string $subject, string $body, int $dealId = 0, bool $html = false, string $from = '', string $copyToMe = '', array $attachments = array(), bool $optOutLink = true): array
 {
 	global $conf;
 	require_once DOL_DOCUMENT_ROOT.'/core/class/CMailFile.class.php';
@@ -869,7 +871,9 @@ function crmSendMail(string $to, string $subject, string $body, int $dealId = 0,
 	}
 	// From v1.2.0, every e-mail sent for a deal ends with the public "Not interested, don't contact me again soon." link, whoever
 	// wrote the text (a person, an outreach step, the AI): it is added here, at the one place all of them go through.
-	if ($dealId > 0 && CrmOptOut::supported($GLOBALS['db'])) {
+	if ($dealId > 0 && !$optOutLink) {
+		dol_syslog('CRM: e-mail for deal '.$dealId.' sent without the "not interested" link, as asked by the sender', LOG_INFO);
+	} elseif ($dealId > 0 && CrmOptOut::supported($GLOBALS['db'])) {
 		$optOutUrl = (new CrmOptOut($GLOBALS['db']))->urlForDeal($dealId);
 		if ($optOutUrl === '') {
 			return array('ok' => false, 'error' => 'CrmErrorOptOutLink', 'msgid' => '', 'from' => $from);

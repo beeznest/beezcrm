@@ -120,9 +120,10 @@ class CrmEmailDraft
 	 * @param bool   $html True when the text is HTML: it is sent with a plain-text alternative
 	 * @param string $from Sender address chosen among crmSenderChoices(), empty for the sender of the module
 	 * @param string $copyToMe Address of the user who sends, for a hidden copy to themselves; empty for none
+	 * @param bool   $optOutLink False when the sender unticked the "not interested" link for this message
 	 * @return int 1 if OK, -1 on error. When the mail left but could not be recorded, error says so.
 	 */
-	public function send(User $user, string $to, string $subject, string $body, bool $html = false, string $from = '', string $copyToMe = ''): int
+	public function send(User $user, string $to, string $subject, string $body, bool $html = false, string $from = '', string $copyToMe = '', bool $optOutLink = true): int
 	{
 		if (!$this->event || !$this->deal) {
 			return -1;
@@ -139,7 +140,7 @@ class CrmEmailDraft
 		}
 		require_once __DIR__.'/crmmailfile.class.php';
 		$attachments = (new CrmMailFile($this->db))->forSend((int) $this->event->id);
-		$result = crmSendMail($to, $subject, $body, (int) $this->deal->rowid, $html, $from, $copyToMe, $attachments);
+		$result = crmSendMail($to, $subject, $body, (int) $this->deal->rowid, $html, $from, $copyToMe, $attachments, $optOutLink);
 		if (!$result['ok']) {
 			$this->error = $result['error'] !== '' ? $result['error'] : 'CrmErrorSendFailed';
 			return -1;

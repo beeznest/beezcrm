@@ -126,5 +126,16 @@ $goneToken = $tokenOf($optOut->urlForDeal((int) $gone->id));
 $gone->delete($user);
 crmCliCheck('the link of a deleted deal is refused', $optOut->record($goneToken) === 'invalid');
 
+// The editor can leave the link out of one message: the parameter exists, the link stays the default everywhere else.
+require_once __DIR__.'/../../class/crmemaildraft.class.php';
+$sendParams = (new ReflectionFunction('crmSendMail'))->getParameters();
+$last = end($sendParams);
+crmCliCheck('crmSendMail has the optOutLink parameter, true by default', $last->getName() === 'optOutLink' && $last->getDefaultValue() === true);
+$draftParams = (new ReflectionMethod('CrmEmailDraft', 'send'))->getParameters();
+$lastDraft = end($draftParams);
+crmCliCheck('CrmEmailDraft::send passes it on, true by default', $lastDraft->getName() === 'optOutLink' && $lastDraft->getDefaultValue() === true);
+$source = (string) file_get_contents(__DIR__.'/../../class/sequence.class.php').(string) file_get_contents(__DIR__.'/../../class/crmactivity.class.php');
+crmCliCheck('outreach and reminders never pass false', strpos($source, 'optOutLink') === false);
+
 $db->rollback();
 crmCliFinish();

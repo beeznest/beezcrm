@@ -72,6 +72,10 @@ $myAddress = trim((string) $user->email);
 $canCopyMe = ($myAddress !== '' && isValidEmail($myAddress));
 $copyMe = $canCopyMe && (GETPOSTISSET('format') ? GETPOSTINT('bccme') === 1 : true);
 
+// The "not interested" link at the end of the message, ticked by default (see the box below). Same rule as the copy: a posted
+// form carries the box only when ticked. A saved draft comes back with optout=0 in the address when it was unticked.
+$optOutOn = GETPOSTISSET('format') ? GETPOSTINT('optout_on') === 1 : (GETPOST('optout', 'alphanohtml') !== '0');
+
 $to = GETPOSTISSET('to') ? trim(GETPOST('to', 'nohtml')) : $draft->contactEmail();
 $subject = crmSingleLine(GETPOSTISSET('subject') ? strip_tags(GETPOST('subject', 'nohtml')) : $draft->subject(), 255);
 
@@ -152,7 +156,7 @@ if ($action !== '' && $action !== 'view') {
 		$result = $draft->save($user, $subject, $content);
 		$done = 'RecordSaved';
 	} elseif ($action === 'send') {
-		$result = $draft->send($user, $to, $subject, $content, $format === 'html', $senderAddress, $copyMe ? $myAddress : '');
+		$result = $draft->send($user, $to, $subject, $content, $format === 'html', $senderAddress, $copyMe ? $myAddress : '', $optOutOn);
 		$done = 'CrmEmailSentOk';
 	} elseif ($action === 'sentmanually') {
 		$result = $draft->markSentManually($user, $to, $subject, $content, $senderAddress);
@@ -170,7 +174,7 @@ if ($action !== '' && $action !== 'view') {
 			dol_set_user_param($db, $conf, $user, array('CRM_MAIL_FROM_CHOICE' => $senderCode));
 		}
 		setEventMessages($langs->trans($done), null);
-		header('Location: '.($action === 'save' ? $self : $dealUrl));
+		header('Location: '.($action === 'save' ? $self.($optOutOn ? '' : '&optout=0') : $dealUrl));
 		exit;
 	}
 	setEventMessages(crmErrorText($draft->error), null, 'errors');
@@ -251,8 +255,10 @@ print '</div>';
 print '<div id="crm-pane-plain" class="crm-pane"><textarea class="quatrevingtpercent" id="crm-body" name="body" rows="16"'.$readonly.'>'.dol_escape_htmltag($bodyText, 0, 1).'</textarea>';
 print '<div id="crm-plain-note">'.crmHelp($langs->trans('CrmPlainAlternativeNote'), 'div').'</div></div>';
 if ($optOutUrl !== '') {
-	// Shown as text, not as a link: the address is the one the prospect uses, and opening it from here would not be a test.
-	print '<div class="crm-optout-preview opacitymedium"><span class="fa fa-link paddingright"></span>'.dol_escape_htmltag($langs->trans('CrmOptOutAppended')).' <em>'.dol_escape_htmltag($optOutText).'</em> <code>'.dol_escape_htmltag($optOutUrl).'</code></div>';
+	// The box decides for this message only; it is ticked for every new one. Shown as text, not as a link: the address is the one the
+	// prospect uses, and opening it from here would not be a test.
+	print '<div><label><input type="checkbox" id="crm-optout" name="optout_on" value="1"'.($optOutOn ? ' checked' : '').($canAct ? '' : ' disabled').'> '.$langs->trans('CrmOptOutAdd').'</label></div>';
+	print '<div id="crm-optout-preview" class="crm-optout-preview opacitymedium"'.($optOutOn ? '' : ' style="display:none"').'><span class="fa fa-link paddingright"></span>'.dol_escape_htmltag($langs->trans('CrmOptOutAppended')).' <em>'.dol_escape_htmltag($optOutText).'</em> <code>'.dol_escape_htmltag($optOutUrl).'</code></div>';
 }
 print '</td></tr>';
 if ($mailFilesOn) {
@@ -322,6 +328,12 @@ $js = <<<'JS'
 	if (!form) { return; }
 	var cfg = __CONFIG__;
 	var field = function (id) { return document.getElementById(id); };
+	// The "not interested" link, unless the box is unticked for this message.
+	var optOutBox = field("crm-optout");
+	var optOutUrl = function () { return (optOutBox && !optOutBox.checked) ? "" : cfg.optOutUrl; };
+	if (optOutBox) {
+		optOutBox.addEventListener("change", function () { var shown = field("crm-optout-preview"); if (shown) { shown.style.display = optOutBox.checked ? "" : "none"; } });
+	}
 	var plain = field("crm-body");
 	var paneHtml = field("crm-pane-html"), panePlain = field("crm-pane-plain");
 	var tabHtml = field("crm-tab-html"), tabPlain = field("crm-tab-plain");
@@ -416,7 +428,7 @@ $js = <<<'JS'
 				if (cfg.cc) { query.push("cc=" + encodeURIComponent(cfg.cc)); }
 				if (cfg.bcc) { query.push("bcc=" + encodeURIComponent(cfg.bcc)); }
 				query.push("subject=" + encodeURIComponent(field("crm-subject").value));
-				var tail = cfg.optOutUrl ? "\n\n--\n" + cfg.optOutText + "\n" + cfg.optOutUrl + "\n" : "";
+				var tail = optOutUrl() ? "\n\n--\n" + cfg.optOutText + "\n" + optOutUrl() + "\n" : "";
 				query.push("body=" + encodeURIComponent((plain.value + tail).replace(/\r?\n/g, "\r\n")));
 				window.location.href = "mailto:" + encodeURIComponent(field("crm-to").value) + "?" + query.join("&");
 			});
@@ -431,10 +443,10 @@ $js = <<<'JS'
 		copy.addEventListener("click", function () {
 			var done = function () { copy.textContent = cfg.copied; };
 			refreshPlain(function () {
-				var tail = cfg.optOutUrl ? "\n\n--\n" + cfg.optOutText + "\n" + cfg.optOutUrl + "\n" : "";
+				var tail = optOutUrl() ? "\n\n--\n" + cfg.optOutText + "\n" + optOutUrl() + "\n" : "";
 				var text = field("crm-subject").value + "\n\n" + plain.value + tail;
 				if (format === "html" && window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
-					var html = "<p><strong>" + field("crm-subject").value.replace(/&/g, "&amp;").replace(/</g, "&lt;") + "</strong></p>" + getHtml() + (cfg.optOutUrl ? "<p>-- <br><a href=\"" + cfg.optOutUrl + "\">" + cfg.optOutText.replace(/&/g, "&amp;").replace(/</g, "&lt;") + "</a></p>" : "");
+					var html = "<p><strong>" + field("crm-subject").value.replace(/&/g, "&amp;").replace(/</g, "&lt;") + "</strong></p>" + getHtml() + (optOutUrl() ? "<p>-- <br><a href=\"" + optOutUrl() + "\">" + cfg.optOutText.replace(/&/g, "&amp;").replace(/</g, "&lt;") + "</a></p>" : "");
 					navigator.clipboard.write([new ClipboardItem({
 						"text/html": new Blob([html], { type: "text/html" }),
 						"text/plain": new Blob([text], { type: "text/plain" })
