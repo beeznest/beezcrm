@@ -1,4 +1,4 @@
-# CRM — structure analysis
+# BeezCRM — structure analysis
 
 Status: implemented in `/var/www/dolibarr-crm`. Module id 104801.
 

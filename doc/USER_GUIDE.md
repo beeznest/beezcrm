@@ -1,6 +1,6 @@
-# CRM user guide: following a prospect, start to finish
+# BeezCRM user guide: following a prospect, start to finish
 
-This guide is for the person who uses the CRM module day to day, and in particular for a salesperson who is new to the job and to the tool. It follows one prospect from first contact to a signed or lost deal, and says why each step exists. The menus are under **CRM** in the top bar. If a button or a menu is missing for you, your administrator has not given you the matching right: see the [administrator guide](ADMIN_GUIDE.md), section "Rights". Setting the module up is also described there, not here.
+This guide is for the person who uses the BeezCRM module day to day, and in particular for a salesperson who is new to the job and to the tool. It follows one prospect from first contact to a signed or lost deal, and says why each step exists. The menus are under **CRM** in the top bar. If a button or a menu is missing for you, your administrator has not given you the matching right: see the [administrator guide](ADMIN_GUIDE.md), section "Rights". Setting the module up is also described there, not here.
 
 ## Where to find things
 

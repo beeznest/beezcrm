@@ -47,7 +47,7 @@ class modCrm extends DolibarrModules
 		$this->editor_url = 'https://beeznest.com';
 		$this->version = '1.2.0';
 		$this->const_name = 'MAIN_MODULE_'.dol_strtoupper($this->name);
-		$this->picto = 'fa-handshake';
+		$this->picto = 'crm@crm';
 
 		$this->module_parts = array(
 			'triggers' => 0,
@@ -177,7 +177,7 @@ class modCrm extends DolibarrModules
 			'fk_menu' => '',
 			'type' => 'top',
 			'titre' => 'CRM',
-			'prefix' => img_picto('', $this->picto, 'class="pictofixedwidth valignmiddle"'),
+			'prefix' => img_picto('', 'fa-handshake', 'class="pictofixedwidth valignmiddle"'),
 			'mainmenu' => 'crm',
 			'leftmenu' => '',
 			'url' => '/crm/index.php',

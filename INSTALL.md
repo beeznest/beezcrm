@@ -1,4 +1,4 @@
-# Installing the CRM module
+# Installing the BeezCRM module
 
 For an administrator who installs the module on a Dolibarr instance for the first time. To update an installation that already exists, read [UPDATE.md](UPDATE.md). Everything you can configure afterwards is in [doc/ADMIN_GUIDE.md](doc/ADMIN_GUIDE.md).
 

@@ -1,7 +1,7 @@
 # CRM language file - ko_KR
-Module104801Name=CRM
-ModulecrmName=CRM
-ModuleCrmName=CRM
+Module104801Name=BeezCRM
+ModulecrmName=BeezCRM
+ModuleCrmName=BeezCRM
 Module104801Desc=영업 파이프라인: 영업 기회, 다음 단계, 예측 및 후속 관리
 ModulecrmDesc=영업 파이프라인: 영업 기회, 다음 단계, 예측 및 후속 관리
 ModuleCrmDesc=영업 파이프라인: 영업 기회, 다음 단계, 예측 및 후속 관리

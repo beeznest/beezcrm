@@ -1,6 +1,8 @@
-# CRM
+<p align="center"><img src="img/crm_logo_512.png" alt="BeezCRM" width="200"></p>
 
-Sales pipeline module for [Dolibarr](https://www.dolibarr.org). Accounts, contacts, proposals and agenda events stay native Dolibarr objects. The module adds the **deal** (also called opportunity or lead), its **stage**, qualification, forecast and follow-up.
+# BeezCRM
+
+**BeezCRM** (technical name `crm`) is a sales pipeline module for [Dolibarr](https://www.dolibarr.org). Accounts, contacts, proposals and agenda events stay native Dolibarr objects. The module adds the **deal** (also called opportunity or lead), its **stage**, qualification, forecast and follow-up.
 
 ## What it does
 

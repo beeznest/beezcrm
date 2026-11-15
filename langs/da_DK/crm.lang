@@ -1,7 +1,7 @@
 # CRM language file - da_DK
-Module104801Name=CRM
-ModulecrmName=CRM
-ModuleCrmName=CRM
+Module104801Name=BeezCRM
+ModulecrmName=BeezCRM
+ModuleCrmName=BeezCRM
 Module104801Desc=Salgspipeline: salgsmuligheder, næste skridt, prognose og opfølgning
 ModulecrmDesc=Salgspipeline: salgsmuligheder, næste skridt, prognose og opfølgning
 ModuleCrmDesc=Salgspipeline: salgsmuligheder, næste skridt, prognose og opfølgning

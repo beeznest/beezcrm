@@ -1,7 +1,7 @@
 # CRM language file - en_US
-Module104801Name=CRM
-ModulecrmName=CRM
-ModuleCrmName=CRM
+Module104801Name=BeezCRM
+ModulecrmName=BeezCRM
+ModuleCrmName=BeezCRM
 Module104801Desc=Sales pipeline: opportunities, next steps, forecast and follow-up
 ModulecrmDesc=Sales pipeline: opportunities, next steps, forecast and follow-up
 ModuleCrmDesc=Sales pipeline: opportunities, next steps, forecast and follow-up
@@ -125,7 +125,7 @@ CrmErrorStageNotEmpty=This stage still has opportunities.
 CrmBoxTitle=CRM follow-up
 CrmNoRows=Nothing to show
 CrmPlaceholders=Placeholders: __DEAL__ __REF__ __AMOUNT__ __CONTACT__ __CUSTOMER__
-CrmAboutText=CRM keeps accounts, contacts, proposals and agenda events in Dolibarr. Disabling the module keeps its tables and those events.
+CrmAboutText=BeezCRM keeps accounts, contacts, proposals and agenda events in Dolibarr. Disabling the module keeps its tables and those events.
 CrmNewSequence=New outreach
 CrmKind=Kind
 CrmDate=Date

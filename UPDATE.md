@@ -1,4 +1,4 @@
-# Updating the CRM module
+# Updating the BeezCRM module
 
 For an administrator who already runs the module and installs a newer version. To install it for the first time, read [INSTALL.md](INSTALL.md).
 

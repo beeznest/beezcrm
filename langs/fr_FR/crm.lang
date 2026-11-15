@@ -1,7 +1,7 @@
 # CRM language file - fr_FR
-Module104801Name=CRM
-ModulecrmName=CRM
-ModuleCrmName=CRM
+Module104801Name=BeezCRM
+ModulecrmName=BeezCRM
+ModuleCrmName=BeezCRM
 Module104801Desc=Pipeline commercial : opportunités, prochaines actions, prévision et relances
 ModulecrmDesc=Pipeline commercial : opportunités, prochaines actions, prévision et relances
 ModuleCrmDesc=Pipeline commercial : opportunités, prochaines actions, prévision et relances
@@ -125,7 +125,7 @@ CrmErrorStageNotEmpty=Cette étape contient encore des opportunités.
 CrmBoxTitle=Suivi CRM
 CrmNoRows=Rien à afficher
 CrmPlaceholders=Jetons : __DEAL__ __REF__ __AMOUNT__ __CONTACT__ __CUSTOMER__
-CrmAboutText=Le CRM conserve les comptes, les contacts, les propositions et les événements d'agenda dans Dolibarr. Désactiver le module conserve ses tables et ces événements.
+CrmAboutText=BeezCRM conserve les comptes, les contacts, les propositions et les événements d'agenda dans Dolibarr. Désactiver le module conserve ses tables et ces événements.
 CrmNewSequence=Nouvelle approche
 CrmKind=Type
 CrmDate=Date
