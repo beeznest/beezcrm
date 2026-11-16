@@ -45,7 +45,7 @@ class modCrm extends DolibarrModules
 		$this->descriptionlong = 'ModuleCrmDesc';
 		$this->editor_name = 'BeezNest Belgium';
 		$this->editor_url = 'https://beeznest.com';
-		$this->version = '1.2.0';
+		$this->version = '1.3.0';
 		$this->const_name = 'MAIN_MODULE_'.dol_strtoupper($this->name);
 		$this->picto = 'crm@crm';
 

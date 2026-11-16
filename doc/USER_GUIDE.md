@@ -8,7 +8,7 @@ All menus are under **CRM** in the top bar.
 
 | Menu | What it is for |
 | --- | --- |
-| **Home** | Your work to do (deals with no next step, overdue steps, past expected close, rotting) and the forecast |
+| **Home** | From v1.3.0, in this order: overdue steps, upcoming planned steps (soonest first), past expected close, deals with no next step, rotting deals and the forecast |
 | **Pipeline** | The board: one column per stage, one card per open deal. Drag a card to move it |
 | **Opportunities** | The list of deals, filtered by status (open, won, lost, all) and by a search text, sorted by clicking a column title and split in pages (the number of rows per page is the one of your Dolibarr user settings, changeable above the list). **New opportunity** is here |
 | **Automated outreach** | Automatic follow-up plans. You only see this one in use if you manage them |

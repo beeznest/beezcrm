@@ -2,6 +2,17 @@
 
 The version of the module is the `$this->version` property of `core/modules/modCrm.class.php`. This file is shown by Dolibarr on the help page of the module (Home → Setup → Modules, help icon of the CRM line). Newest version first. A change a user or an administrator can notice goes here, in the same change.
 
+## 1.3.0 (2026-11-16)
+
+The module is renamed BeezCRM, gets its logo, and the Home page shows the upcoming steps. No change of the tables, of the rights or of the menus: updating needs no schema step.
+
+Documentation rule for this version: as for 1.2.0, whatever changes an interface is marked **From v1.3.0** in the guides.
+
+### Added
+
+- **The module is called BeezCRM.** The name shown in Dolibarr (module list, setup page) is now "BeezCRM", and the module has an official logo (`img/crm.svg`, `img/crm_logo_512.png`, used as the module picto `crm@crm`). The menus, the permissions and every other label keep saying "CRM", and the technical name stays `crm` (folder `custom/crm`, tables `llx_crm_*`, constants, rights, MCP tool names): nothing to migrate.
+- **Upcoming steps on Home.** The Home page lists the next planned steps (today's and later, soonest first, 15 at most, with a link to the full list in Activities). The blocks now come in this order: overdue steps, upcoming steps, past expected close, deals with no next step, then rotting deals and the forecast.
+
 ## 1.2.0 (2026-11-13)
 
 This version improves the salesperson's workflow and connects the CRM deals to the prospects and customers (third parties, "tiers") of Dolibarr.
@@ -10,7 +21,6 @@ Documentation rule for this version: whatever changes an interface or the data i
 
 ### Added
 
-- **The module is called BeezCRM.** The name shown in Dolibarr (module list, setup page) is now "BeezCRM", and the module has an official logo (`img/crm.svg`, `img/crm_logo_512.png`, used as the module picto `crm@crm`). The menus, the permissions and every other label keep saying "CRM", and the technical name stays `crm` (folder `custom/crm`, tables `llx_crm_*`, constants, rights, MCP tool names): nothing to migrate.
 - **Outside agents and assigned steps.** New rights **`assigned`** (read the deals that have a step assigned to me), **`note`** (add and edit own notes) and **`mystep`** (create steps for myself or the owner, change and complete my own steps) make the profile of an outside agent who phones the prospects, with no right on Third parties. The agent sees only Home (their steps to do) and Activities (their steps) and opens a deal only while one of their steps is not done; the card shows the contact's phone, mobile and e-mail as text and no link to the third party. A step now has an **Assignee**: a field in the create form (the owner of the deal by default; the agent can only choose themselves or the owner), in the edit form for the salespeople, and a column in every table of steps; the assignee is told by e-mail (`CRM_ASSIGN_NOTIFY`, following the reminder dry-run). MCP tools follow the profile (`assignee_id` in `create_crm_activity` and `update_crm_activity`). **Re-enable the module** after the update (new rights and menus). New check: `test/cli/agent_check.php`.
 - **Attach files to an e-mail of the editor.** The e-mail editor (`email_compose.php`) has an **Attachments** row: choose files (several at once; the Dolibarr document size limit per file, 10 files and 20 MB at most per e-mail), tick "remove" to take one off. They are kept with the draft when you save it, **sent by Dolibarr with the message** when you press Send, and **kept on disk** (`<documents>/crm/opportunity/<deal id>/mail/`) so that the **Message history** of the deal shows them under the message, to download (a magnifier previews a PDF). They follow the message when the draft is replaced by the sent e-mail (also for "E-mail sent manually"), and go with a discarded draft or a deleted deal. A file that cannot be kept stops the send. **Schema version 8** (table `llx_crm_mail_file`): disable and re-enable the module after the update. New check: `test/cli/mail_attachments_check.php`.
 - **From the history to the text of an e-mail.** An e-mail line of the deal's **History**, of the **CRM history** of the Prospect tab, of the **Next step** list (a past e-mail, even one only marked as done) and of **Activities** now leads to the text of that message in the **Message history** of the deal card, which opens it and scrolls to it. No agenda right is needed (the link to Dolibarr's own agenda card did not show the text of an e-mail). New MCP tool `list_crm_opportunity_messages` (the e-mails of a deal with their text).

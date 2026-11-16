@@ -37,6 +37,8 @@ Going to **1.2.0** also runs schema step 8 (attachments of the e-mails of the ed
 
 Going to **1.2.0** adds three rights (`assigned`, `note`, `mystep`, for the outside agents) and changes the CRM menu so that those users see only Home and Activities: they come with **disabling and enabling the module again**; nobody gets them until you give them (users or groups, Users → Permissions). No schema change.
 
+Going to **1.3.0** needs no schema step and no new right. The module is now called **BeezCRM** in Dolibarr and has a logo: to see the logo in the module list, disable and enable the module again (the picto is read from the descriptor). The technical name stays `crm`, so nothing else changes.
+
 ## What an update does and does not touch
 
 - It **creates** what is missing: new columns, new settings with their defaults, new rights.
