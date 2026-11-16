@@ -202,6 +202,21 @@ class modCrm extends DolibarrModules
 			'target' => '',
 			'user' => 0,
 		);
+		// Activities come right after Home: the steps to do are the first thing a salesperson looks at.
+		$this->menu[$r++] = array(
+			'fk_menu' => 'fk_mainmenu=crm',
+			'type' => 'left',
+			'titre' => 'CrmActivities',
+			'mainmenu' => 'crm',
+			'leftmenu' => 'crmactivity',
+			'url' => '/crm/activity_list.php',
+			'langs' => 'crm@crm',
+			'position' => 1000 + $r,
+			'enabled' => "isModEnabled('crm')",
+			'perms' => $canSee,
+			'target' => '',
+			'user' => 0,
+		);
 		$this->menu[$r++] = array(
 			'fk_menu' => 'fk_mainmenu=crm',
 			'type' => 'left',
@@ -244,7 +259,7 @@ class modCrm extends DolibarrModules
 			'target' => '',
 			'user' => 0,
 		);
-		// Automated outreach come right after Opportunities, which they work on, then Activities and Reports.
+		// Automated outreach come right after Opportunities, which they work on, then Reports.
 		$this->menu[$r++] = array(
 			'fk_menu' => 'fk_mainmenu=crm',
 			'type' => 'left',
@@ -256,20 +271,6 @@ class modCrm extends DolibarrModules
 			'position' => 1000 + $r,
 			'enabled' => "isModEnabled('crm')",
 			'perms' => $canRead,
-			'target' => '',
-			'user' => 0,
-		);
-		$this->menu[$r++] = array(
-			'fk_menu' => 'fk_mainmenu=crm',
-			'type' => 'left',
-			'titre' => 'CrmActivities',
-			'mainmenu' => 'crm',
-			'leftmenu' => 'crmactivity',
-			'url' => '/crm/activity_list.php',
-			'langs' => 'crm@crm',
-			'position' => 1000 + $r,
-			'enabled' => "isModEnabled('crm')",
-			'perms' => $canSee,
 			'target' => '',
 			'user' => 0,
 		);
