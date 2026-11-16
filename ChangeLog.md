@@ -4,14 +4,20 @@ The version of the module is the `$this->version` property of `core/modules/modC
 
 ## 1.3.0 (2026-11-16)
 
-The module is renamed BeezCRM, gets its logo, and the Home page shows the upcoming steps. No change of the tables, of the rights or of the menus: updating needs no schema step.
+The module is renamed BeezCRM, gets its logo, and the Home page shows the upcoming steps. No change of the tables or of the rights: updating needs no schema step. The left menu has Activities right after Home (disable and enable the module again to apply it).
 
 Documentation rule for this version: as for 1.2.0, whatever changes an interface is marked **From v1.3.0** in the guides.
 
 ### Added
 
+- **Activities right after Home in the left menu.** The menu order is now Home, Activities, Pipeline, Opportunities, Automated outreach, Reports. The order of the menu is read from the module descriptor, so it changes when the module is disabled and enabled again.
 - **The module is called BeezCRM.** The name shown in Dolibarr (module list, setup page) is now "BeezCRM", and the module has an official logo (`img/crm.svg`, `img/crm_logo_512.png`, used as the module picto `crm@crm`). The menus, the permissions and every other label keep saying "CRM", and the technical name stays `crm` (folder `custom/crm`, tables `llx_crm_*`, constants, rights, MCP tool names): nothing to migrate.
 - **Upcoming steps on Home.** The Home page lists the next planned steps (today's and later, soonest first, 15 at most, with a link to the full list in Activities). The blocks now come in this order: overdue steps, upcoming steps, past expected close, deals with no next step, then rotting deals and the forecast.
+
+### Changed
+
+- **The French menu "Approche automatisée" is now "Approches automatisées"** (plural, like the list it opens).
+- **Documentation updated for the new name.** The README, the install and update guides, the three guides of `doc/` and the notes for developers say BeezCRM where they speak of the product. The menus, the rights and the labels of the screens ("CRM → Setup", "Configure CRM", "CRM history"...) are unchanged and still said as they are on screen. The guides describe the new order of the Home blocks and of the left menu, and `doc/STRUCTURE_ANALYSIS.md` has a section "Name (from v1.3.0)" that says what keeps the technical name `crm` and why.
 
 ## 1.2.0 (2026-11-13)
 

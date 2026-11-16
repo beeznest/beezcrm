@@ -20,7 +20,7 @@ htdocs/custom/crm/core/modules/modCrm.class.php
 
 `htdocs/custom/README.md` shows a nested `htdocs` symlink because that is how many Dolistore zips are packed. This project is the other shape: the repository root is what Dolibarr scans. A Dolistore zip (`module_crm-x.y.zip`) is the other way in: Home → Setup → Modules → Deploy an external module unpacks it into the same install path.
 
-Core modules are different. Their pages live in `htdocs/<modulename>/` and their descriptors live in `htdocs/core/modules/modXxx.class.php`. CRM does not go there.
+Core modules are different. Their pages live in `htdocs/<modulename>/` and their descriptors live in `htdocs/core/modules/modXxx.class.php`. BeezCRM does not go there.
 
 On this instance the two alt-root lines in `htdocs/conf/conf.php` are commented. The fallback above still points at `htdocs/custom`, so a module installed there is found. No file under `htdocs/core`, `htdocs/comm`, `htdocs/societe`, `htdocs/projet`, or `htdocs/ai` is modified.
 
@@ -45,7 +45,7 @@ The expected amount stays on the deal. Linking a proposal shows its total beside
 
 Agenda events use the existing types `AC_TEL`, `AC_RDV`, and `AC_OTH`. The module does not insert rows into `llx_c_actioncomm`. An e-mail uses `AC_EMAIL` (sent) or `AC_EMAIL_IN` (received) whether or not the type is active, as core does when it logs a message sent from a proposal or an invoice: `ActionComm` looks the type up by code, and the active flag only hides it from the manual pick-lists. It falls back to `AC_OTH` only if the type row is missing. Call and meeting still need an active type. Creating an event goes through `ActionComm`. The third party and the contact are set on the event, so it shows on the account and in the calendar, including CalDAV.
 
-Disabling CRM does not delete those events. They are real history. The link back to the deal stops resolving while the module is off, and works again when it is turned back on.
+Disabling BeezCRM does not delete those events. They are real history. The link back to the deal stops resolving while the module is off, and works again when it is turned back on.
 
 ## What changes relative to the screenshots
 
@@ -64,11 +64,11 @@ Disabling CRM does not delete those events. They are real history. The link back
 
 ## Pages
 
-Top menu **CRM**. Left menu entries come from the module descriptor.
+Top menu **CRM**. Left menu entries come from the module descriptor, in this order (from v1.3.0): Home, Activities, Pipeline, Opportunities, Automated outreach, Reports. The menus keep the short name "CRM" although the module is called BeezCRM (see "Name" below).
 
 | Page | Role |
 | --- | --- |
-| `index.php` | Work to do: no next step, overdue next step, expected close in the past, rotting. Then forecast for the coming months. |
+| `index.php` | Work to do, in this order (from v1.3.0): overdue next steps, upcoming planned steps (soonest first, 15), expected close in the past, no next step, rotting. Then forecast for the coming months. |
 | `pipeline.php` | Kanban for one pipeline, filtered by owner. Drag and drop moves the stage. |
 | `opportunity_list.php` | Ref, title, account, contact, stage, amount, expected close, owner, next step date, qualification gaps |
 | `opportunity_card.php` | Deal, linked proposals, qualification, next step, timeline of agenda events, win / loss |
@@ -81,9 +81,18 @@ Top menu **CRM**. Left menu entries come from the module descriptor.
 
 The home box lists the current user's overdue steps and deals with no next step.
 
+## Name (from v1.3.0)
+
+The module is called **BeezCRM** where Dolibarr shows its name (module list, setup page, About tab) and in the documents. Two names stay short on purpose:
+
+- the **technical name `crm`**: the folder `custom/crm`, the class `modCrm`, `MAIN_MODULE_CRM`, the rights class and ids, the language file `crm@crm`, the tables `llx_crm_*`, the settings `CRM_*`, the link `opportunity@crm` of the agenda events and the names of the MCP tools. Changing any of them would lose the enabled state, the rights, the data links and the URLs of every installation, and Dolibarr has no module upgrade mechanism to migrate them;
+- the **labels of the interface**: the top menu "CRM", the rights ("Configure CRM"), "CRM opportunity", "CRM history", "CRM note added"... They describe a function (the customer relationship), not the product.
+
+The name is the language keys `Module104801Name`, `ModulecrmName` and `ModuleCrmName`. The logo is in `img/` (`crm.svg` is the master, `crm_logo_512.png` is the image for the Dolistore, `crm.png` and `object_crm.png` are 128 px pictos) and is the module picto (`crm@crm`). The top menu keeps its `fa-handshake` icon, because the logo has text and is too detailed at 16 px. The Dolistore zip keeps its name `module_crm-x.y.z.zip`, because Dolibarr installs it in the folder named after it.
+
 ## Third party, Prospect tab
 
-From v1.2.0 the CRM shows itself on the Prospect tab of the Dolibarr third party (`comm/card.php`) without patching core, through the hook context `thirdpartycomm` (the Third party tab, `thirdpartycard`, is deliberately not hooked) (declared in `module_parts['hooks']`, so a re-enable is needed) in `ActionsCrm`:
+From v1.2.0 BeezCRM shows itself on the Prospect tab of the Dolibarr third party (`comm/card.php`) without patching core, through the hook context `thirdpartycomm` (the Third party tab, `thirdpartycard`, is deliberately not hooked) (declared in `module_parts['hooks']`, so a re-enable is needed) in `ActionsCrm`:
 
 - `formObjectOptions` adds a row "CRM opportunity" to the table of the card (core prints `resprints` in `extrafields_view.tpl.php`, view mode only; the method ignores `create`, `edit`, `update` and `add`). It lists up to three deals of the third party, open first, each linked to `opportunity_card.php`, with a "n more" link to the deal list, or, for a prospect without deal and a user who may write, a link to the creation form with `socid`.
 - `addMoreRecentObjects` returns the "CRM history" block in `resprints`; core prints it at the end of the right column, after the recent proposals, orders and so on.
@@ -108,7 +117,7 @@ From v1.2.0, no schema. `CrmCategory` reads and writes **Dolibarr's categories o
 
 - **Level.** The third party, not the deal: core has no category type for an external module's objects, and a per-deal link table (`llx_crm_opportunity_category` pointing at `llx_categorie`) can be added later without changing the display code.
 - **Colours.** `crmCategoryColor()` accepts 3 or 6 hex digits with or without `#` and returns `#rrggbb` or '', the only value ever put in a `style` attribute (core refuses a bad colour on creation, but the column is free text). `crmAccountMarks()` underlines the account name with one band per coloured category, three at most, in a flex row, with all labels in the tooltip. Lists load the categories of all their accounts in one query (`fetchForThirdparties`).
-- **Writing.** `setForDeal()` takes a full list, keeps only categories of third parties that exist, drops the heading of a one-answer group, keeps one sub-category per group (`CRM_CATEGORY_SINGLE`), and applies the difference with core's `Categorie::add_type()` / `del_type()` (so the category triggers run). The right is the CRM's: `write` and a deal the user may see (`crmCanReadOwner`). It deliberately does **not** require the Dolibarr right `categorie->creer`, which opens every category of every third party; core's rights are only needed to manage the categories (names, colours) and `categorie->lire` to see the tags on core's own cards.
+- **Writing.** `setForDeal()` takes a full list, keeps only categories of third parties that exist, drops the heading of a one-answer group, keeps one sub-category per group (`CRM_CATEGORY_SINGLE`), and applies the difference with core's `Categorie::add_type()` / `del_type()` (so the category triggers run). The right is BeezCRM's: `write` and a deal the user may see (`crmCanReadOwner`). It deliberately does **not** require the Dolibarr right `categorie->creer`, which opens every category of every third party; core's rights are only needed to manage the categories (names, colours) and `categorie->lire` to see the tags on core's own cards.
 - **Filter.** `Opportunity::listFromWhere()` takes a category id and keeps the deals whose third party is linked to it or to a descendant (`EXISTS` on `llx_categorie_societe`), the same for the list, its count, the kanban and the MCP list.
 - The deal card also shows the language of the third party (`default_lang`) as a badge: it is a field of the third party, not a category.
 
@@ -245,7 +254,7 @@ The add-step form of `sequence_card.php` has an AI button, enabled by `crm-forma
 
 ## E-mail history
 
-From v1.2.0: what tells the recipient least. The module adds no marker of the deal to any subject (a draft title, the sent subject, the `mailto:` link) and removes none: a message sent by the platform already carries the deal in its `Message-ID` (`...-dolibarr-crm<deal id>@host`, core's trackid) and in the `X-Dolibarr-TRACKID` header that `CMailFile` adds, and the customer's answer quotes the Message-ID in `In-Reply-To` and `References`, which `CrmMailArchive::findDeal()` reads first. A message written in a mail client by `mailto:` has no such header: it is found by the contact's address (rule 1c below), or by the marker the person types when the contact has several open deals (`CrmMarkerHint` tells them, with the short form from `crmDealMarker()`); `crmNormalizeSubject()` ignores markers so that copy still replaces the draft, which has none. The outreach in send mode never added a marker. A planned e-mail marked as done (`CrmActivity::complete()` only sets the percentage) is told apart from a recorded message by an empty `email_subject`, which `createEmail()` always sets: `fetchMessages()` and the timeline carry `closed_draft`, shown as "Draft closed". Attachments (from v1.2.0, schema 8): `CrmMailFile` attaches files to the planned e-mail event (the draft) that the editor edits, stored under `<documents>/crm/opportunity/<deal id>/mail/` (a subfolder, so ids of notes files and mail files cannot clash) with `llx_crm_mail_file.fk_action` = the draft's event id. `CrmEmailDraft::send()` hands `forSend()` (path, mime type, name) to `crmSendMail()`, which gives them to `CMailFile`; `replaceWithDone()` calls `repoint()` so the files follow the message to its new done event (the draft is deleted and re-created, never updated), and `discard()` deletes what is still on the draft. A draft only accepts files while it is a planned e-mail (`percent < 100`); the editor processes removals and uploads on every action that keeps the form (save, send, manual send, AI suggestion) and a failed upload stops a send. Files are served by `mail_file.php` only. Attachments of collected messages are not stored. The **Message history** section of the deal card is `CrmActivity::fetchMessages()` (the rows of e-mail events in the deal History, the next-step list, Activities and the account CRM history link to it by `#crm-msg-<event id>`, which a script of the card opens; the link to the core agenda card was dropped because it does not show the text of an e-mail and needs the agenda right; MCP `list_crm_opportunity_messages`): the done `AC_EMAIL` / `AC_EMAIL_IN` events of the deal, oldest first, with their text (HTML turned to text for display), read with the CRM's right on the deal, not the agenda's.
+From v1.2.0: what tells the recipient least. The module adds no marker of the deal to any subject (a draft title, the sent subject, the `mailto:` link) and removes none: a message sent by the platform already carries the deal in its `Message-ID` (`...-dolibarr-crm<deal id>@host`, core's trackid) and in the `X-Dolibarr-TRACKID` header that `CMailFile` adds, and the customer's answer quotes the Message-ID in `In-Reply-To` and `References`, which `CrmMailArchive::findDeal()` reads first. A message written in a mail client by `mailto:` has no such header: it is found by the contact's address (rule 1c below), or by the marker the person types when the contact has several open deals (`CrmMarkerHint` tells them, with the short form from `crmDealMarker()`); `crmNormalizeSubject()` ignores markers so that copy still replaces the draft, which has none. The outreach in send mode never added a marker. A planned e-mail marked as done (`CrmActivity::complete()` only sets the percentage) is told apart from a recorded message by an empty `email_subject`, which `createEmail()` always sets: `fetchMessages()` and the timeline carry `closed_draft`, shown as "Draft closed". Attachments (from v1.2.0, schema 8): `CrmMailFile` attaches files to the planned e-mail event (the draft) that the editor edits, stored under `<documents>/crm/opportunity/<deal id>/mail/` (a subfolder, so ids of notes files and mail files cannot clash) with `llx_crm_mail_file.fk_action` = the draft's event id. `CrmEmailDraft::send()` hands `forSend()` (path, mime type, name) to `crmSendMail()`, which gives them to `CMailFile`; `replaceWithDone()` calls `repoint()` so the files follow the message to its new done event (the draft is deleted and re-created, never updated), and `discard()` deletes what is still on the draft. A draft only accepts files while it is a planned e-mail (`percent < 100`); the editor processes removals and uploads on every action that keeps the form (save, send, manual send, AI suggestion) and a failed upload stops a send. Files are served by `mail_file.php` only. Attachments of collected messages are not stored. The **Message history** section of the deal card is `CrmActivity::fetchMessages()` (the rows of e-mail events in the deal History, the next-step list, Activities and the account CRM history link to it by `#crm-msg-<event id>`, which a script of the card opens; the link to the core agenda card was dropped because it does not show the text of an e-mail and needs the agenda right; MCP `list_crm_opportunity_messages`): the done `AC_EMAIL` / `AC_EMAIL_IN` events of the deal, oldest first, with their text (HTML turned to text for display), read with BeezCRM's right on the deal, not the agenda's.
 
 The full exchange with a customer is kept as agenda events on the deal, not in a table of the module. A message is one done event (`percent` 100, so it is never counted as a next step) with `elementtype = 'opportunity@crm'`, the plain-text body in the note, and Dolibarr's own e-mail columns (`email_msgid`, from, to, cc, subject). Code `AC_EMAIL` for a message we sent, `AC_EMAIL_IN` for one we received; the event type is chosen by `CrmActivity::typeCode()` (the same code, `AC_EMAIL` or `AC_EMAIL_IN`).
 
@@ -260,7 +269,7 @@ Reading. The module has no IMAP code. The Dolibarr **e-mail collector** (core mo
 
 Anything else is ignored without error, so the mailbox is not a general inbox and the other operations of the collector are not disturbed. A message already recorded (same Message-ID) is skipped, which is how the Bcc copy of a module e-mail does not create a second event. The direction is "sent" when the sender is the module sender, an address in `MAIL_FROM_EMAILS_TO_CONSIDER_SENDING`, or a Dolibarr user's e-mail, otherwise "received". A received message stops the running enrolments of the deal whose outreach has `stop_on_reply`.
 
-Limits. A message composed from scratch, with no thread to a recorded one, cannot be tied to a deal unless, from v1.2.0, its other end is the contact of exactly one open deal. A Bcc copy is not in the customer's "reply all", so their answer reaches the mailbox only if a person copies or forwards it; use Cc if the customer's replies should be seen directly. The note holds the plain-text body: attachments are not stored. Events follow the agenda's visibility rules, not the CRM's.
+Limits. A message composed from scratch, with no thread to a recorded one, cannot be tied to a deal unless, from v1.2.0, its other end is the contact of exactly one open deal. A Bcc copy is not in the customer's "reply all", so their answer reaches the mailbox only if a person copies or forwards it; use Cc if the customer's replies should be seen directly. The note holds the plain-text body: attachments are not stored. Events follow the agenda's visibility rules, not BeezCRM's.
 
 ## Data the module owns
 
@@ -312,7 +321,7 @@ Used as they already exist:
 | Proposals | proposal operations in `htdocs/ai/tools/crud_objects.class.php` |
 | Company sales outside the pipeline | `get_sales_report` |
 
-CRM tools:
+BeezCRM tools:
 
 | Tool | Writes |
 | --- | --- |
@@ -369,7 +378,7 @@ No purge button in v1. A later action can drop only `llx_crm_*` and `CRM_*` cons
 ├── class/
 │   ├── actions_crm.class.php          # addMcpTools, e-mail collector operation, search entry, third party Prospect tab (v1.2.0)
 │   ├── crmoptout.class.php            # the "not interested" link of a deal and its effect (v1.2.0)
-│   ├── crmcategory.class.php          # core categories of third parties in the CRM (v1.2.0)
+│   ├── crmcategory.class.php          # core categories of third parties in BeezCRM (v1.2.0)
 │   ├── crmnote.class.php              # internal notes, versions and files of a deal (v1.2.0)
 │   ├── crmaccountview.class.php       # deals and CRM history of a third party (v1.2.0)
 │   ├── crmmailarchive.class.php       # e-mail to deal matching and recording

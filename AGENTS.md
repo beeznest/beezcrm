@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Guidance for AI agents working on the **CRM** external module for Dolibarr. Read this first, then `README.md` (overview and links), `doc/ADMIN_GUIDE.md` (install, Dolibarr settings, every setup page, cron, e-mail, MCP, maintenance), `doc/USER_GUIDE.md` (what a salesperson does) and `doc/STRUCTURE_ANALYSIS.md` (design decisions, data model, rationale).
+Guidance for AI agents working on the **BeezCRM** external module for Dolibarr (technical name `crm`: the interface keeps the short "CRM" in its menus, rights and labels, see "Name" in `doc/STRUCTURE_ANALYSIS.md`). Read this first, then `README.md` (overview and links), `doc/ADMIN_GUIDE.md` (install, Dolibarr settings, every setup page, cron, e-mail, MCP, maintenance), `doc/USER_GUIDE.md` (what a salesperson does) and `doc/STRUCTURE_ANALYSIS.md` (design decisions, data model, rationale).
 
 ## Environment
 

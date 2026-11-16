@@ -4,26 +4,26 @@ This guide is for the person who uses the BeezCRM module day to day, and in part
 
 ## Where to find things
 
-All menus are under **CRM** in the top bar.
+All menus are under **CRM** in the top bar: the module is called BeezCRM, but its menus keep the short name CRM. From v1.3.0 **Activities** comes right after **Home**, and in French the menu **Automated outreach** is **Approches automatisées**.
 
 | Menu | What it is for |
 | --- | --- |
 | **Home** | From v1.3.0, in this order: overdue steps, upcoming planned steps (soonest first), past expected close, deals with no next step, rotting deals and the forecast |
+| **Activities** | Your next steps and history, with filters: overdue, today, planned, done; sortable and in pages like the deal list |
 | **Pipeline** | The board: one column per stage, one card per open deal. Drag a card to move it |
 | **Opportunities** | The list of deals, filtered by status (open, won, lost, all) and by a search text, sorted by clicking a column title and split in pages (the number of rows per page is the one of your Dolibarr user settings, changeable above the list). **New opportunity** is here |
 | **Automated outreach** | Automatic follow-up plans. You only see this one in use if you manage them |
-| **Activities** | Your next steps and history, with filters: overdue, today, planned, done; sortable and in pages like the deal list |
 | **Reports** | Win rate, conversion, loss reasons and more. Needs a right your administrator gives |
 | **Setup** | For administrators only |
 
 The general search box at the top of Dolibarr also has an entry **CRM opportunities** (shortcut `O`): type a reference, a title, an account name or a contact name, and choose it. The list then shows the matches in every status. It only shows deals you may see.
 
-**On the Prospect tab of a third party (from v1.2.0).** Open a third party in Dolibarr and click its **Prospect** tab (the **Third party** tab is not changed). When it has deals you may see, the CRM adds two things to that tab:
+**On the Prospect tab of a third party (from v1.2.0).** Open a third party in Dolibarr and click its **Prospect** tab (the **Third party** tab is not changed). When it has deals you may see, BeezCRM adds two things to that tab:
 
-- in the table of the basic data, a line **CRM opportunity** with the reference of its deals, each one a link to the deal in the CRM, with its title and its stage (open deals first, three at most, then a link "n more..."). A prospect with no deal shows a link **New opportunity** instead, if you may create deals;
+- in the table of the basic data, a line **CRM opportunity** with the reference of its deals, each one a link to the deal in BeezCRM, with its title and its stage (open deals first, three at most, then a link "n more..."). A prospect with no deal shows a link **New opportunity** instead, if you may create deals;
 - at the bottom of the right column, after the lists of recent proposals and orders, the block **CRM history**: the last **5** things that happened on the deals of this third party, newest first: stage moves and the steps and e-mails that are done. Each line gives the date, the deal (a link), what happened and who did it. The link **Full CRM history** at the top right of the block opens the whole list, in pages.
 
-Nothing shows if the CRM module is off or if you have no CRM right. You only see your own deals unless you have "Read every owner". Planned steps are not history: they stay on the deal card and in **Activities**.
+Nothing shows if the BeezCRM module is off or if you have no CRM right. You only see your own deals unless you have "Read every owner". Planned steps are not history: they stay on the deal card and in **Activities**.
 
 **The "?" button.** Most pages carry long explanations of what a list or a field is for. To keep the screens light, they are **hidden** by default. A **"?" button** appears in the top right corner of the page title bar whenever the page has some; click it to show them, click it again to hide them. It does not remember your choice from one page to the next. Short hints and warnings are always visible.
 
@@ -129,8 +129,8 @@ Moving is allowed to any open stage, forward or back, as long as the deal has a 
 
 **E-mails suggested by an outreach.** By default the tool does not send anything by itself. When an e-mail step is due, it appears on the deal as a planned e-mail (in the Next step list, in CRM → Activities and, once late, on Home), with the suggested text already filled in. Click the **envelope icon** (tooltip "Write / send"), or the title of the e-mail, to open it. Read it, change it, and choose:
 
-- **Send from here**: Dolibarr sends it to the address shown (the deal's contact by default) after a confirmation. The **Sender** list at the top of the editor (from v1.2.0 the choice is also remembered when you press **Save draft**, not only when you send) is the address the message is sent from. It offers, when they exist: the default address of the CRM, **your own address** (the e-mail of your user: add it to your profile if the list does not offer it) and the **mailbox of the lead e-mail collector**. The confirmation names the address you picked, and your choice is kept for your next e-mails. The box **Send me a hidden copy (Bcc)** is ticked by default: the message is also sent, as a hidden copy, to the e-mail address of your user, so that you keep it in your own mailbox. Untick it for a message you do not want a copy of. The copy only goes with "Send from here" and needs an e-mail address in your profile. Replies go to the address you chose: if you pick your own, the CRM records the answer on the deal only when it also reaches the mailbox the e-mail collector reads. If the editor says that no sender is set, ask your administrator: the message cannot be sent from here until one is. It is recorded on the deal and the draft disappears.
-- **Open in my mail client**: your mail program opens with the recipient, subject and text filled in, and the archive address in copy. Send it from there. The CRM does not add anything to the subject: the message is tied to the deal by the address of its contact. If that contact has **several open deals**, type the short marker of the deal, such as `[O2026-0001]` (the editor shows it), in the subject so the CRM knows which one (the long form `[OPP2026-0001]` of earlier versions works too). A message sent with **Send from here** needs no marker: the deal is in the message headers. **Keep the archive address in copy.** Then come back and press **E-mail sent manually**, so the step is closed. If the text is too long for your mail program, use **Copy text** and paste it.
+- **Send from here**: Dolibarr sends it to the address shown (the deal's contact by default) after a confirmation. The **Sender** list at the top of the editor (from v1.2.0 the choice is also remembered when you press **Save draft**, not only when you send) is the address the message is sent from. It offers, when they exist: the default address of BeezCRM, **your own address** (the e-mail of your user: add it to your profile if the list does not offer it) and the **mailbox of the lead e-mail collector**. The confirmation names the address you picked, and your choice is kept for your next e-mails. The box **Send me a hidden copy (Bcc)** is ticked by default: the message is also sent, as a hidden copy, to the e-mail address of your user, so that you keep it in your own mailbox. Untick it for a message you do not want a copy of. The copy only goes with "Send from here" and needs an e-mail address in your profile. Replies go to the address you chose: if you pick your own, BeezCRM records the answer on the deal only when it also reaches the mailbox the e-mail collector reads. If the editor says that no sender is set, ask your administrator: the message cannot be sent from here until one is. It is recorded on the deal and the draft disappears.
+- **Open in my mail client**: your mail program opens with the recipient, subject and text filled in, and the archive address in copy. Send it from there. BeezCRM does not add anything to the subject: the message is tied to the deal by the address of its contact. If that contact has **several open deals**, type the short marker of the deal, such as `[O2026-0001]` (the editor shows it), in the subject so BeezCRM knows which one (the long form `[OPP2026-0001]` of earlier versions works too). A message sent with **Send from here** needs no marker: the deal is in the message headers. **Keep the archive address in copy.** Then come back and press **E-mail sent manually**, so the step is closed. If the text is too long for your mail program, use **Copy text** and paste it.
 - **E-mail sent manually**: registers the e-mail as sent now. A few minutes later, when the archive mailbox is read, the real message (with its exact text and date) replaces this entry, so the history does not show it twice. If you forgot to press the button, the real message still replaces the draft, as long as the subject is the same.
 - **Delete this step**: removes the planned e-mail from the deal completely. Use it only if you no longer want that step; to come back to it later, use the link back to the deal instead.
 - **Save draft**: keeps your changes for later.
@@ -168,7 +168,7 @@ From v1.2.0 every e-mail sent for a deal (from the editor, by an automated outre
 
 In a conversation that is already well under way (the prospect has answered), the link no longer makes sense. Untick **Add the "not interested" link at the end of this e-mail** in the editor and that one message is sent without it; the box is ticked again for the next e-mail, and a saved draft keeps the choice you made. Only the editor has this box: automated outreach and reminders always keep the link.
 
-When the prospect opens the link, a page asks them to confirm (a mail scanner opening the link does not trigger anything). After they confirm, the page thanks them and, in the CRM:
+When the prospect opens the link, a page asks them to confirm (a mail scanner opening the link does not trigger anything). After they confirm, the page thanks them and, in BeezCRM:
 
 - the deal is **closed as Lost**, with the loss reason **Not interested**;
 - a **done event** is added to the deal ("The prospect used the "Not interested, don't contact me again soon" link of an e-mail"), dated when they confirmed;
@@ -193,7 +193,7 @@ For the cleaning of tests: someone with the right **Configure CRM** sees **Delet
 
 **Who does a step.** The form that creates a next step has a field **Assignee**: the owner of the deal by default, or any colleague who handles steps (including the outside agents). The tables of steps (the deal card, **Activities** and **Home**) have a column **Assignee**. The person you assign it to receives an e-mail when your administrator has switched the notifications on.
 
-**If you are an outside agent** (you phone the prospects for the company), the CRM shows you only **Home** and **Activities**:
+**If you are an outside agent** (you phone the prospects for the company), BeezCRM shows you only **Home** and **Activities**:
 - **Home** lists **your steps to do**, the late ones first, each with its date and a check to complete it. Click the reference to open the deal.
 - On the **deal card** you read what the deal holds, the **notes** and the **messages** already exchanged, and you have the **name, phone, mobile and e-mail of the contact** to call, and to check by phone that they are right (tell the salesperson in a note when one is wrong). You cannot open the third party and you cannot change the deal itself.
 - You can **add notes** (the result of your call, what the contact said), edit **your own** notes, **complete** or **reschedule** (date and time) **your** steps, and **create a next step** for yourself or for the deal's owner (for example "call back on Thursday").
@@ -214,11 +214,12 @@ These figures are only as good as the data you enter: stages moved when somethin
 
 ## Your daily and weekly routine
 
-**Every day, ten minutes: CRM → Home.** Each list is work to do:
+**Every day, ten minutes: CRM → Home.** Each list is work to do (from v1.3.0 they come in this order, the most urgent first):
 
-- **No next step**: open deals with nothing planned. Plan something for each one.
 - **Overdue**: next steps whose date has passed. Do them, complete them, or move the date by planning a new one. CRM → Activities shows the same with filters (overdue, today, planned, done).
+- **Upcoming steps**: the next planned steps, soonest first (the 15 first ones; a link opens the whole list in Activities). Read it to prepare your day and the days after.
 - **Past expected close**: the date you gave has passed. Either the date was wrong (update it) or the deal is stuck (act, or close it).
+- **No next step**: open deals with nothing planned. Plan something for each one.
 - **Rotting**: no completed activity for longer than the stage allows. Contact the customer, or decide that the deal is dead.
 
 The home box of Dolibarr's main page shows your overdue steps and deals without a next step too. If your administrator has enabled owner reminders, you also get a daily summary e-mail.

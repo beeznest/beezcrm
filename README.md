@@ -40,7 +40,7 @@ Requires Dolibarr 21 or later, PHP 8.1 or later, and the Dolibarr modules Third 
 ln -sfn /path/to/this/directory /path/to/dolibarr/htdocs/custom/crm
 ```
 
-Then, as an administrator, enable **CRM** in Home → Setup → Modules, grant the CRM rights to your users, and follow the [administrator guide](doc/ADMIN_GUIDE.md): it covers the Dolibarr settings to check first, the module setup page by page, the scheduled jobs, e-mail, the e-mail history and MCP.
+Then, as an administrator, enable **BeezCRM** in Home → Setup → Modules, grant the BeezCRM rights to your users, and follow the [administrator guide](doc/ADMIN_GUIDE.md): it covers the Dolibarr settings to check first, the module setup page by page, the scheduled jobs, e-mail, the e-mail history and MCP.
 
 Disabling the module keeps its tables and the agenda events; it never touches third parties, contacts, proposals or users.
 
