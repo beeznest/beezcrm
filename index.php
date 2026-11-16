@@ -104,8 +104,6 @@ $printDeals = function (string $title, string $descKey, array $rows) use ($langs
 	print '</table>';
 };
 
-$printDeals($langs->trans('CrmNoNextStep'), 'CrmNoNextStepDesc', $hygiene['no_next']);
-
 print '<h2>'.$langs->trans('CrmOverdue').' ('.count($hygiene['overdue']).')</h2>';
 print crmHelp($langs->trans('CrmOverdueDesc'));
 if (count($hygiene['overdue']) === 0) {
@@ -130,7 +128,44 @@ if (count($hygiene['overdue']) === 0) {
 	print '</table>';
 }
 
+// From v1.3.0: the next planned steps come right after the overdue ones, soonest first (same rows as Activities, scope "planned").
+$upcomingLimit = 15;
+$steps = new CrmActivity($db);
+$upcoming = $steps->fetchList($user, 'planned', 0, $upcomingLimit, 0, 'date', 'ASC');
+$upcomingTotal = $steps->countList($user, 'planned');
+print '<h2>'.dol_escape_htmltag($langs->trans('CrmUpcomingSteps')).' ('.$upcomingTotal.')</h2>';
+print crmHelp($langs->trans('CrmUpcomingStepsDesc'));
+if (count($upcoming) === 0) {
+	print '<p class="opacitymedium">'.$langs->trans('CrmNoRows').'</p>';
+} else {
+	print '<table class="noborder centpercent">';
+	print '<tr class="liste_titre"><td>'.$langs->trans('CrmDate').'</td><td>'.$langs->trans('Ref').'</td><td>'.$langs->trans('CrmActivity').'</td><td>'.$langs->trans('CrmAccount').'</td><td>'.$langs->trans('CrmResponsible').'</td><td></td></tr>';
+	foreach ($upcoming as $row) {
+		$url = dol_buildpath('/crm/opportunity_card.php', 1).'?id='.(int) $row->fk_element;
+		$upcomingAssignee = trim((string) $row->assignee_firstname.' '.(string) $row->assignee_lastname);
+		print '<tr class="oddeven"><td class="nowraponall">'.dol_print_date($db->jdate($row->datep), 'dayhour').'</td>';
+		print '<td><a href="'.$url.'">'.dol_escape_htmltag((string) $row->ref).'</a></td>';
+		print '<td>'.dol_escape_htmltag((string) $row->label);
+		if (CrmActivity::isPlannedEmail((string) $row->event_code, (int) $row->percent)) {
+			print ' '.crmIconLink(dol_buildpath('/crm/email_compose.php', 1).'?id='.(int) $row->rowid, 'fa-envelope', $langs->trans('CrmWriteSend'));
+		}
+		print '</td>';
+		print '<td>'.dol_escape_htmltag((string) $row->soc_name).'</td>';
+		print '<td>'.dol_escape_htmltag($upcomingAssignee !== '' ? $upcomingAssignee : (string) $row->assignee_login).'</td><td>';
+		if (CrmActivity::mayChangeStep($user, (int) $row->fk_user_action)) {
+			print crmIconLink(dol_buildpath('/crm/activity_list.php', 1).'?scope=planned&action=complete&eventid='.(int) $row->rowid.'&token='.newToken(), 'check', $langs->trans('CrmComplete'));
+		}
+		print '</td></tr>';
+	}
+	print '</table>';
+	if ($upcomingTotal > count($upcoming)) {
+		print '<p><a href="'.dol_buildpath('/crm/activity_list.php', 1).'?scope=planned">'.dol_escape_htmltag(sprintf($langs->trans('CrmUpcomingMore'), (string) ($upcomingTotal - count($upcoming)))).'</a></p>';
+	}
+}
+
 $printDeals($langs->trans('CrmPastClose'), 'CrmPastCloseDesc', $hygiene['past_close']);
+$printDeals($langs->trans('CrmNoNextStep'), 'CrmNoNextStepDesc', $hygiene['no_next']);
+
 $printDeals($langs->trans('CrmRotting'), 'CrmRottingDesc', $hygiene['rotting']);
 
 print '<h2>'.$langs->trans('CrmForecast').'</h2>';

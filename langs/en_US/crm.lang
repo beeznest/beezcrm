@@ -523,3 +523,6 @@ CrmAssignNotify=Tell the assignee of a step by e-mail
 CrmAssignNotifyHelp=When a step is assigned to somebody other than the person who assigns it, the assignee receives an e-mail with the deal, the step and its date. Like the owner reminders, these e-mails follow the reminder dry-run: while it is on (the default) they are only written to the log and nothing is sent.
 CrmMySteps=My steps to do
 CrmMarkerHint=A message written in your mail program is tied to this deal by the address of its contact. If that contact has several open deals, add %s to its subject to tell the CRM which one.
+CrmUpcomingSteps=Upcoming steps
+CrmUpcomingStepsDesc=The next planned steps, soonest first. Today's steps are included; late ones are further down.
+CrmUpcomingMore=%s more in Activities

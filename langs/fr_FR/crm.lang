@@ -523,3 +523,6 @@ CrmAssignNotify=Prévenir par e-mail le responsable d'une action
 CrmAssignNotifyHelp=Quand une action est assignée à quelqu'un d'autre que la personne qui l'assigne, le responsable reçoit un e-mail avec l'affaire, l'action et sa date. Comme les rappels aux responsables, ces e-mails suivent le mode simulation des rappels : tant qu'il est activé (par défaut) ils sont seulement écrits dans le journal et rien n'est envoyé.
 CrmMySteps=Mes actions à faire
 CrmMarkerHint=Un message écrit dans votre logiciel de messagerie est rattaché à cette affaire par l'adresse de son contact. Si ce contact a plusieurs affaires ouvertes, ajoutez %s à son objet pour dire au CRM laquelle.
+CrmUpcomingSteps=Prochaines actions prévues
+CrmUpcomingStepsDesc=Les prochaines actions planifiées, la plus proche d'abord. Celles du jour sont incluses ; celles en retard sont plus bas.
+CrmUpcomingMore=%s de plus dans Activités
