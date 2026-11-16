@@ -17,7 +17,7 @@ Documentation rule for this version: as for 1.2.0, whatever changes an interface
 ### Changed
 
 - **The French menu "Approche automatisée" is now "Approches automatisées"** (plural, like the list it opens).
-- **Documentation updated for the new name.** The README, the install and update guides, the three guides of `doc/` and the notes for developers say BeezCRM where they speak of the product. The menus, the rights and the labels of the screens ("CRM → Setup", "Configure CRM", "CRM history"...) are unchanged and still said as they are on screen. The guides describe the new order of the Home blocks and of the left menu, and `doc/STRUCTURE_ANALYSIS.md` has a section "Name (from v1.3.0)" that says what keeps the technical name `crm` and why.
+- **Documentation updated for the new name.** The README, the install and update guides, the three guides of `doc/` and the notes for developers say BeezCRM where they speak of the product. The menus, the rights and the labels of the screens ("CRM → Setup", "Configure CRM", "CRM history"...) are unchanged and still said as they are on screen. The install guide gives the `git clone` command of the new repository, <https://github.com/beeznest/beezcrm> (folder `crm`), and the README links to it. The guides describe the new order of the Home blocks and of the left menu, and `doc/STRUCTURE_ANALYSIS.md` has a section "Name (from v1.3.0)" that says what keeps the technical name `crm` and why.
 
 ## 1.2.0 (2026-11-13)
 

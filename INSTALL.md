@@ -13,6 +13,12 @@ For an administrator who installs the module on a Dolibarr instance for the firs
 
 Get the directory that contains `core/modules/modCrm.class.php`, for example with `git clone`, or by copying it. There is no packaged archive yet.
 
+```text
+git clone https://github.com/beeznest/beezcrm.git crm
+```
+
+Keep the folder name `crm`: Dolibarr serves the module from `custom/crm`, so a folder called `beezcrm` would not work. To get a released version and not the latest code, add `--branch v1.3.0` (or the tag you want) to the command.
+
 ## 2. Put it where Dolibarr looks for external modules
 
 Dolibarr loads external modules from `htdocs/custom`. The module must be reachable as **`htdocs/custom/crm`**: the directory name `crm` is the technical name of the module and cannot be changed.

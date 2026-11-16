@@ -59,6 +59,10 @@ doc/       the guides above
 
 The pages (`index.php`, `pipeline.php`, `opportunity_*.php`, `activity_list.php`, `sequence_*.php`, `report.php`, `email_compose.php`) sit at the root, which Dolibarr serves as `/custom/crm/`.
 
+## Source code and issues
+
+The code, the releases and the issue tracker are on GitHub: <https://github.com/beeznest/beezcrm>.
+
 ## License
 
 GPL-3.0-or-later, like Dolibarr.
