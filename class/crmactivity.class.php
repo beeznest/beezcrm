@@ -369,7 +369,14 @@ class CrmActivity
 		$tr->load('crm@crm');
 		$zone = !empty($_SESSION['dol_tz_string']) ? ' ('.$_SESSION['dol_tz_string'].')' : '';
 		$subject = crmSingleLine($tr->transnoentitiesnoconv('CrmAssignedSubject', crmSingleLine(strip_tags($label), 120)), 200);
-		$body = $tr->transnoentitiesnoconv('CrmAssignedBody', (string) $deal->ref, crmSingleLine(strip_tags((string) $deal->label), 200), crmSingleLine(strip_tags($label), 255), dol_print_date($datep, 'dayhour', 'tzuserrel').$zone, trim((string) $actor->firstname.' '.(string) $actor->lastname) ?: (string) $actor->login, dol_buildpath('/crm/opportunity_card.php', 2).'?id='.((int) $dealId));
+		$body = strtr($tr->transnoentitiesnoconv('CrmAssignedBody'), array(
+			'{ref}' => (string) $deal->ref,
+			'{label}' => crmSingleLine(strip_tags((string) $deal->label), 200),
+			'{step}' => crmSingleLine(strip_tags($label), 255),
+			'{due}' => dol_print_date($datep, 'dayhour', 'tzuserrel').$zone,
+			'{actor}' => trim((string) $actor->firstname.' '.(string) $actor->lastname) ?: (string) $actor->login,
+			'{url}' => dol_buildpath('/crm/opportunity_card.php', 2).'?id='.((int) $dealId),
+		));
 		if (getDolGlobalInt('CRM_REMINDER_DRY_RUN', 1)) {
 			dol_syslog('CRM step '.$eventId.' assigned to user '.$assigneeId.': e-mail simulated (reminder dry-run is on)', LOG_INFO);
 			return;
